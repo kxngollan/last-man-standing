@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 
-const Home = (): ReactNode => {
+const Signup = (): ReactNode => {
   return <div></div>;
 };
 
-export default Home;
+export default Signup;

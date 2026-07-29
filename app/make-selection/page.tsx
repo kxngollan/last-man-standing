@@ -1,7 +1,5 @@
 import { ReactNode } from "react";
 
-const Home = (): ReactNode => {
+const MakeSelection = (): ReactNode => {
   return <div></div>;
 };
-
-export default Home;
