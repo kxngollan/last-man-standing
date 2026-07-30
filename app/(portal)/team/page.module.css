@@ -1,0 +1,152 @@
+/* Hallmark · genre: playful · macrostructure: Long Document · theme: Hum · nav: app-shell bar · footer: none
+ * motion: none (Long Document is motion-off) · contrast: pass · mobile: pass
+ */
+
+.main {
+  width: 100%;
+  max-width: 46rem;
+  margin-inline: auto;
+  padding: clamp(var(--space-lg), 4vw, var(--space-2xl))
+    clamp(var(--space-md), 4vw, var(--space-xl)) var(--space-3xl);
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-strong);
+}
+.title {
+  font-size: var(--text-2xl);
+}
+
+/* ---- Timeline ---- */
+.timeline {
+  list-style: none;
+  margin: 0 0 var(--space-2xl);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.entry {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: var(--space-sm);
+  align-items: stretch;
+}
+.marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--space-md);
+  position: relative;
+}
+/* connecting line */
+.marker::before {
+  content: "";
+  position: absolute;
+  top: 2.75rem;
+  bottom: -1.5rem;
+  width: 2px;
+  background: var(--color-rule);
+}
+.entry:last-child .marker::before {
+  display: none;
+}
+.gw {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+  background: var(--color-paper-3);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2xs) var(--space-xs);
+  z-index: var(--z-raised);
+}
+.entry[data-pending="true"] .gw {
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+.entry[data-pending="true"] .card {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+.body {
+  flex: 1;
+  min-width: 0;
+}
+.teamLine {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.team {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-md);
+}
+.fixture {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+.detail {
+  margin-top: var(--space-3xs);
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+
+/* ---- Teams used ---- */
+.used {
+  padding: var(--space-lg);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  border: 1px solid var(--color-rule);
+  margin-bottom: var(--space-xl);
+}
+.usedTitle {
+  font-size: var(--text-md);
+  font-weight: 800;
+  font-family: var(--font-display);
+  margin-bottom: var(--space-md);
+}
+.usedCount {
+  color: var(--color-muted);
+  font-weight: 400;
+  font-size: var(--text-sm);
+}
+.usedList {
+  list-style: none;
+  margin: 0 0 var(--space-md);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+.usedItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.usedName {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.usedHint {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  max-width: 60ch;
+}
+
+.footerCta {
+  display: flex;
+}

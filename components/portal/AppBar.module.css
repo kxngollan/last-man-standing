@@ -1,0 +1,115 @@
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) clamp(var(--space-md), 4vw, var(--space-xl));
+  background: color-mix(in oklch, var(--color-paper) 88%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+  text-decoration: none;
+  color: var(--color-ink);
+}
+.mark {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  color: var(--color-accent-strong);
+}
+.name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.nav {
+  display: none;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin-inline: auto;
+}
+.link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-muted);
+  text-decoration: none;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  transition: color var(--dur-short) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .link:hover {
+    color: var(--color-ink);
+    background: var(--color-paper-2);
+  }
+}
+.link[data-active="true"] {
+  color: var(--color-ink);
+  background: var(--color-paper-3);
+}
+
+.status {
+  margin-inline-start: auto;
+}
+.avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  font-family: var(--font-display);
+  border: none;
+  cursor: pointer;
+}
+
+/* Mobile nav strip — shown only when the in-bar nav is hidden */
+.mobileNav {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: var(--space-xs) clamp(var(--space-md), 4vw, var(--space-xl));
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+.mobileNav::-webkit-scrollbar {
+  display: none;
+}
+.mobileNav .link {
+  flex: none;
+}
+
+/* On wider screens the primary nav appears and the mobile strip is dropped */
+@media (min-width: 44rem) {
+  .nav {
+    display: flex;
+  }
+  .status {
+    margin-inline-start: 0;
+  }
+  .mobileNav {
+    display: none;
+  }
+}

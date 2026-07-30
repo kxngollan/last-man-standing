@@ -1,0 +1,247 @@
+/* Hallmark · genre: playful · macrostructure: Marquee Hero · theme: Hum · nav: N7 brutal slab · footer: Ft8 marquee
+ * motion: marquee scroll · CTA hover-lift (2 primitives) · contrast: pass · mobile: pass
+ */
+
+.page {
+  min-height: 100dvh;
+}
+
+/* ---------------- N7 brutal-slab nav ---------------- */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) clamp(var(--space-md), 5vw, var(--space-2xl));
+  border-bottom: 2px solid var(--color-ink);
+}
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-md);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.navLink {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+@media (hover: hover) and (pointer: fine) {
+  .navLink:hover {
+    color: var(--color-accent-strong);
+  }
+}
+.navLink:first-child {
+  display: none;
+}
+@media (min-width: 34rem) {
+  .navLink:first-child {
+    display: inline;
+  }
+}
+
+/* ---------------- Marquee hero ---------------- */
+.hero {
+  padding: clamp(var(--space-2xl), 8vw, var(--space-3xl))
+    clamp(var(--space-md), 5vw, var(--space-2xl)) var(--space-2xl);
+  overflow: hidden;
+}
+.heroCopy {
+  max-width: 40rem;
+}
+.title {
+  font-size: var(--text-display);
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+}
+.accent {
+  color: var(--color-accent-strong);
+}
+.lede {
+  margin-top: var(--space-lg);
+  max-width: 46ch;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--color-ink-2);
+}
+.heroCta {
+  margin-top: var(--space-xl);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.free {
+  margin-top: var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.marquee {
+  margin-top: var(--space-2xl);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.track {
+  display: flex;
+  gap: var(--space-md);
+  width: max-content;
+  animation: marquee 34s linear infinite;
+}
+@media (hover: hover) {
+  .marquee:hover .track {
+    animation-play-state: paused;
+  }
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ---------------- How it works ---------------- */
+.how {
+  padding: var(--space-2xl) clamp(var(--space-md), 5vw, var(--space-2xl));
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.h2 {
+  font-size: var(--text-xl);
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-lg);
+}
+.step {
+  border-top: 2px solid var(--color-ink);
+  padding-top: var(--space-md);
+}
+.stepN {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  color: var(--color-accent-strong);
+}
+.stepTitle {
+  margin-top: var(--space-sm);
+  font-size: var(--text-md);
+  font-weight: 800;
+}
+.stepBody {
+  margin-top: var(--space-2xs);
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  line-height: 1.5;
+}
+
+/* ---------------- Rules strip ---------------- */
+.rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-lg);
+  padding: var(--space-2xl) clamp(var(--space-md), 5vw, var(--space-2xl));
+  max-width: 72rem;
+  margin-inline: auto;
+  background: var(--color-paper-2);
+  border-radius: var(--radius-card);
+}
+.rule {
+  min-width: 0;
+}
+.ruleK {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-md);
+  color: var(--color-accent-strong);
+}
+.ruleV {
+  margin-top: var(--space-2xs);
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  line-height: 1.5;
+}
+
+/* ---------------- CTA band ---------------- */
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  text-align: center;
+  padding: var(--space-3xl) clamp(var(--space-md), 5vw, var(--space-2xl));
+}
+.ctaTitle {
+  font-size: var(--text-2xl);
+  max-width: 18ch;
+}
+
+/* ---------------- Ft8 marquee footer ---------------- */
+.footer {
+  border-top: 2px solid var(--color-ink);
+}
+.footMarquee {
+  overflow: hidden;
+  padding-block: var(--space-md);
+  border-bottom: 1px solid var(--color-rule);
+}
+.footTrack {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}
+.footTag {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-lg);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding-inline: var(--space-md);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.footDot {
+  color: var(--color-accent);
+}
+.footBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-lg) clamp(var(--space-md), 5vw, var(--space-2xl));
+}
+.footLinks {
+  display: flex;
+  gap: var(--space-lg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.footLinks a {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.copy {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .footTrack {
+    animation: none;
+  }
+}
