@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
+import PasswordInput from "@/components/ui/PasswordInput";
 import styles from "@/components/auth/authContent.module.css";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,32 +59,21 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={!!error}
-            aria-describedby="login-help"
           />
         </div>
 
-        <div className="lms-field">
-          <label className="lms-field__label" htmlFor="password">
-            Password
-          </label>
-          <input
-            className="lms-field__control"
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={!!error}
-            aria-describedby="login-help"
-          />
-          <Link href="/login" className={styles.forgot}>
-            Forgot password?
-          </Link>
-        </div>
+        <PasswordInput
+          id="password"
+          label="Password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+          error={error || undefined}
+        />
 
-        <p className="lms-field__help" id="login-help" data-error={!!error} role={error ? "alert" : undefined}>
-          {error}
-        </p>
+        <Link href="/forgot" className={styles.forgot}>
+          Forgot password?
+        </Link>
 
         <button
           type="submit"

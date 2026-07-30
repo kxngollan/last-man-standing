@@ -41,3 +41,25 @@ export async function sendVerificationEmail(to: string, link: string): Promise<v
       </div>`,
   });
 }
+
+export async function sendPasswordResetEmail(to: string, link: string): Promise<void> {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log(`\n[email] Password reset link for ${to}:\n${link}\n`);
+    return;
+  }
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    subject: "Reset your Last Man Standing password",
+    text: `We received a request to reset your password.\n\nSet a new password:\n${link}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore this email.`,
+    html: `
+      <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto">
+        <h1 style="font-size:20px">Reset your password</h1>
+        <p>We received a request to reset your Last Man Standing password.</p>
+        <p><a href="${link}" style="display:inline-block;background:#d1563b;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700">Set a new password</a></p>
+        <p style="color:#666;font-size:13px">Or paste this link into your browser:<br>${link}</p>
+        <p style="color:#666;font-size:13px">This link expires in 1 hour. If you didn't request this, you can safely ignore it.</p>
+      </div>`,
+  });
+}

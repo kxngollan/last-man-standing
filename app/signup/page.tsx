@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import AuthShell from "@/components/auth/AuthShell";
+import PasswordInput from "@/components/ui/PasswordInput";
 import styles from "@/components/auth/authContent.module.css";
 
 type Fields = {
@@ -96,7 +97,9 @@ export default function SignupPage() {
         if (res.status === 409) {
           setErrors((e) => ({ ...e, email: data.error ?? "That email is already taken." }));
         }
-        setServerError(data.error ?? "Couldn’t create your account. Please try again.");
+        const base = data.error ?? "Couldn’t create your account. Please try again.";
+        // `detail` is only present in development — shows the raw cause.
+        setServerError(data.detail ? `${base} — ${data.detail}` : base);
         return;
       }
       setDone(true);
@@ -183,47 +186,28 @@ export default function SignupPage() {
           </p>
         </div>
 
-        <div className={`lms-field ${errors.password ? "lms-field--error" : ""}`}>
-          <label className="lms-field__label" htmlFor="password">
-            Password<span className="lms-field__req" aria-hidden="true">*</span>
-          </label>
-          <input
-            className="lms-field__control"
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            value={fields.password}
-            onChange={(e) => update("password", e.target.value)}
-            onBlur={() => blur("password")}
-            aria-invalid={!!errors.password}
-            aria-describedby="password-help"
-            aria-required="true"
-          />
-          <p className="lms-field__help" id="password-help">
-            {errors.password ?? "At least 8 characters."}
-          </p>
-        </div>
+        <PasswordInput
+          id="password"
+          label="Password"
+          required
+          autoComplete="new-password"
+          value={fields.password}
+          onChange={(v) => update("password", v)}
+          onBlur={() => blur("password")}
+          error={errors.password}
+          helper="At least 8 characters."
+        />
 
-        <div className={`lms-field ${errors.confirm ? "lms-field--error" : ""}`}>
-          <label className="lms-field__label" htmlFor="confirm">
-            Confirm password<span className="lms-field__req" aria-hidden="true">*</span>
-          </label>
-          <input
-            className="lms-field__control"
-            id="confirm"
-            type="password"
-            autoComplete="new-password"
-            value={fields.confirm}
-            onChange={(e) => update("confirm", e.target.value)}
-            onBlur={() => blur("confirm")}
-            aria-invalid={!!errors.confirm}
-            aria-describedby="confirm-help"
-            aria-required="true"
-          />
-          <p className="lms-field__help" id="confirm-help">
-            {errors.confirm ?? ""}
-          </p>
-        </div>
+        <PasswordInput
+          id="confirm"
+          label="Confirm password"
+          required
+          autoComplete="new-password"
+          value={fields.confirm}
+          onChange={(v) => update("confirm", v)}
+          onBlur={() => blur("confirm")}
+          error={errors.confirm}
+        />
 
         <div className={`lms-field ${errors.dob ? "lms-field--error" : ""}`}>
           <label className="lms-field__label" htmlFor="dob">

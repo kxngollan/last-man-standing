@@ -148,6 +148,36 @@ textarea.lms-field__control {
   font-weight: 600;
 }
 
+/* password field with show/hide eye */
+.lms-field__wrap {
+  position: relative;
+}
+.lms-field__control--eye {
+  padding-inline-end: 2.75rem;
+}
+.lms-field__eye {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 0;
+  height: 44px;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  border-radius: var(--radius-input);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lms-field__eye:hover {
+    color: var(--color-ink);
+  }
+}
+.lms-field__eye:active {
+  transform: translateY(1px);
+}
+
 /* checkbox row */
 .lms-check {
   display: flex;

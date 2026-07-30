@@ -4,7 +4,7 @@ import { authConfig } from "./auth.config";
 import { connectDB } from "@/database/connect";
 import { User } from "@/models/User";
 import { verifyPassword } from "@/lib/password";
-import { loginSchema } from "@/lib/validation";
+import isEmail from "@/lib/isEmail";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -15,21 +15,46 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+        // Auth.js reports every failure to the client as a generic
+        // "CredentialsSignin". We log the real reason here so it's visible
+        // in the dev server console. Read fields directly — Auth.js may pass
+        // extra keys (callbackUrl, redirect), so a strict schema would reject.
+        const email =
+          typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
+        const password = typeof credentials?.password === "string" ? credentials.password : "";
 
-        await connectDB();
-        const user = await User.findOne({ email: parsed.data.email.toLowerCase() });
-        if (!user) return null;
-
-        const ok = await verifyPassword(parsed.data.password, user.passwordHash);
-        if (!ok) return null;
-
-        if (!user.emailVerified) {
-          // Surfaced to the client as an auth error.
-          throw new Error("EMAIL_NOT_VERIFIED");
+        if (!isEmail(email) || password.length < 1) {
+          console.warn("[auth] login rejected: missing or malformed email/password");
+          return null;
         }
 
+        try {
+          await connectDB();
+        } catch (err) {
+          console.error("[auth] login failed: database unreachable —", (err as Error).message);
+          return null;
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+          console.warn(`[auth] login rejected: no account for ${email}`);
+          return null;
+        }
+
+        const ok = await verifyPassword(password, user.passwordHash);
+        if (!ok) {
+          console.warn(`[auth] login rejected: wrong password for ${email}`);
+          return null;
+        }
+
+        if (!user.emailVerified) {
+          console.warn(
+            `[auth] login rejected: ${email} hasn't confirmed their email (check the signup verification link)`
+          );
+          return null;
+        }
+
+        console.log(`[auth] login ok: ${email}`);
         return {
           id: String(user._id),
           name: user.name,
