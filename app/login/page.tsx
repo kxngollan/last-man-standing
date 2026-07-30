@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
 import styles from "@/components/auth/authContent.module.css";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     if (!email || !password) {
@@ -25,11 +28,16 @@ export default function LoginPage() {
       return;
     }
     setSubmitting(true);
-    // Simulated call to the credentials provider.
-    setTimeout(() => {
-      setSubmitting(false);
-      setError("We couldn’t find an account with those details. Check and try again.");
-    }, 700);
+    const res = await signIn("credentials", { email, password, redirect: false });
+    setSubmitting(false);
+    if (res?.error) {
+      setError(
+        "We couldn’t log you in. Check your details — and if you just signed up, confirm your email first."
+      );
+      return;
+    }
+    router.push("/dashboard");
+    router.refresh();
   }
 
   return (

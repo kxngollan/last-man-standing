@@ -58,6 +58,7 @@ export default function SignupPage() {
   const [touched, setTouched] = useState<Partial<Record<keyof Fields, boolean>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   function update<K extends keyof Fields>(key: K, value: Fields[K]) {
     const next = { ...fields, [key]: value };
@@ -70,18 +71,40 @@ export default function SignupPage() {
     setErrors(validate(fields));
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setServerError("");
     const errs = validate(fields);
     setErrors(errs);
     setTouched({ name: true, email: true, password: true, confirm: true, dob: true, agree: true });
     if (Object.keys(errs).length > 0) return;
+
     setSubmitting(true);
-    // Simulated call to POST /api/sign-up → creates unverified user + sends email.
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      const res = await fetch("/api/sign-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: fields.name,
+          email: fields.email,
+          password: fields.password,
+          dob: fields.dob,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 409) {
+          setErrors((e) => ({ ...e, email: data.error ?? "That email is already taken." }));
+        }
+        setServerError(data.error ?? "Couldn’t create your account. Please try again.");
+        return;
+      }
       setDone(true);
-    }, 700);
+    } catch {
+      setServerError("Network error — please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (done) {
@@ -239,6 +262,12 @@ export default function SignupPage() {
             {errors.agree ?? ""}
           </p>
         </div>
+
+        {serverError && (
+          <p className="lms-field__help" data-error="true" role="alert">
+            {serverError}
+          </p>
+        )}
 
         <button
           type="submit"

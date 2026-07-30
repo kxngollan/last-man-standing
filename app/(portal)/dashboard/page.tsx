@@ -1,46 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePortalState } from "@/components/portal/usePortalState";
+import { teamColor } from "@/lib/teamColor";
 import styles from "./page.module.css";
-
-/* ---- Mock game state (stands in for the game engine) ---- */
-const GAME_NO = 4;
-const GAME_WEEK = 3;
-const PLAYERS_LEFT = 42;
-const PLAYERS_TOTAL = 60;
-const WEEKS_SURVIVED = 2;
-const WILDCARDS_LEFT = 1;
-const YOUR_PICK = "Arsenal";
-
-type Standing = {
-  name: string;
-  survived: number;
-  lastPick: string;
-  lastCode: string;
-  color: string;
-  status: "alive" | "out";
-  you?: boolean;
-};
-
-const STANDINGS: Standing[] = [
-  { name: "You", survived: 2, lastPick: "Arsenal", lastCode: "ARS", color: "oklch(55% 0.2 25)", status: "alive", you: true },
-  { name: "Priya Nair", survived: 2, lastPick: "Man City", lastCode: "MCI", color: "oklch(52% 0.12 235)", status: "alive" },
-  { name: "Tom Okafor", survived: 2, lastPick: "Liverpool", lastCode: "LIV", color: "oklch(52% 0.19 22)", status: "alive" },
-  { name: "Sam Tan", survived: 2, lastPick: "Newcastle", lastCode: "NEW", color: "oklch(32% 0.01 0)", status: "alive" },
-  { name: "Elena Ruiz", survived: 1, lastPick: "Chelsea", lastCode: "CHE", color: "oklch(48% 0.17 260)", status: "out" },
-  { name: "Marcus Webb", survived: 1, lastPick: "Everton", lastCode: "EVE", color: "oklch(45% 0.15 260)", status: "out" },
-  { name: "Aisha Bello", survived: 0, lastPick: "Wolves", lastCode: "WOL", color: "oklch(52% 0.13 72)", status: "out" },
-];
 
 function useCountUp(target: number, on: boolean) {
   const [value, setValue] = useState(0);
-  const ref = useRef(0);
   useEffect(() => {
-    if (!on) {
-      setValue(target);
-      return;
-    }
+    if (!on) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) {
       setValue(target);
@@ -51,9 +20,7 @@ function useCountUp(target: number, on: boolean) {
     let raf = 0;
     const tick = (t: number) => {
       const p = Math.min(1, (t - start) / dur);
-      const eased = 1 - Math.pow(1 - p, 3);
-      ref.current = Math.round(eased * target);
-      setValue(ref.current);
+      setValue(Math.round((1 - Math.pow(1 - p, 3)) * target));
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -78,32 +45,116 @@ function Stat({ value, label, on }: { value: number; label: string; on: boolean 
 }
 
 export default function DashboardPage() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const { state, loading, error, refetch } = usePortalState();
+  const [ready, setReady] = useState(false);
+  const [joining, setJoining] = useState(false);
+  useEffect(() => {
+    if (state) setReady(true);
+  }, [state]);
+
+  if (loading) {
+    return (
+      <main className={styles.main}>
+        <div className="lms-state">
+          <span className="lms-spinner lms-spinner--lg" aria-hidden="true" />
+          <p className="lms-state__body">Loading the game…</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !state) {
+    return (
+      <main className={styles.main}>
+        <div className="lms-state">
+          <h1 className="lms-state__title">Something went wrong</h1>
+          <p className="lms-state__body">{error ?? "Please try again."}</p>
+          <button className="lms-btn lms-btn--primary" onClick={() => refetch()}>
+            Retry
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (!state.game) {
+    return (
+      <main className={styles.main}>
+        <div className="lms-state">
+          <h1 className="lms-state__title">No game running</h1>
+          <p className="lms-state__body">
+            There isn’t a game on right now. Check back soon — a new one starts when the admin
+            opens registration.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const { game, entry, players, standings, myPick } = state;
+
+  async function join() {
+    setJoining(true);
+    await fetch("/api/games/join", { method: "POST" });
+    await refetch();
+    setJoining(false);
+  }
+
+  const wildcardsLeft = entry ? (entry.wildcardUsed ? 0 : 1) : 0;
 
   return (
     <main className={styles.main}>
       <div className={styles.head}>
         <div>
           <p className={styles.kicker} data-nums>
-            Game {GAME_NO} &middot; Week {GAME_WEEK}
+            Game {game.no} &middot; Week {game.gameWeek}
           </p>
-          <h1 className={styles.title}>You&rsquo;re still standing.</h1>
+          <h1 className={styles.title}>
+            {entry?.status === "winner"
+              ? "You won this game 🏆"
+              : entry?.status === "eliminated"
+                ? "You’re out of this game."
+                : entry
+                  ? "You’re still standing."
+                  : "The game is on."}
+          </h1>
         </div>
-        <Link href="/make-selection" className="lms-btn lms-btn--primary">
-          Make your Week {GAME_WEEK} pick
-        </Link>
+        {entry?.status === "alive" && game.status === "active" && (
+          <Link href="/make-selection" className="lms-btn lms-btn--primary">
+            Make your Week {game.gameWeek} pick
+          </Link>
+        )}
+        {!entry && game.status === "registration" && (
+          <button
+            className="lms-btn lms-btn--primary"
+            onClick={join}
+            disabled={joining}
+            aria-disabled={joining}
+          >
+            {joining ? "Joining…" : "Join this game"}
+          </button>
+        )}
       </div>
 
-      <section className={styles.stats} aria-label="Your game at a glance">
-        <Stat value={PLAYERS_LEFT} label={`of ${PLAYERS_TOTAL} still standing`} on={mounted} />
-        <Stat value={WEEKS_SURVIVED} label="weeks survived" on={mounted} />
-        <Stat value={WILDCARDS_LEFT} label="wildcard left" on={mounted} />
-        <div className={styles.stat}>
-          <div className={styles.pickNum}>{YOUR_PICK}</div>
-          <div className="lms-stat__label">your Week {GAME_WEEK} pick</div>
-        </div>
-      </section>
+      {entry && (
+        <section className={styles.stats} aria-label="Your game at a glance">
+          <Stat value={players.alive} label={`of ${players.total} still standing`} on={ready} />
+          <Stat value={entry.survivedWeeks} label="weeks survived" on={ready} />
+          <Stat value={wildcardsLeft} label="wildcard left" on={ready} />
+          <div className={styles.stat}>
+            <div className={styles.pickNum}>
+              {myPick?.isWildcard ? "Wildcard" : myPick?.teamName ?? "Not set"}
+            </div>
+            <div className="lms-stat__label">your Week {game.gameWeek} pick</div>
+          </div>
+        </section>
+      )}
+
+      {!entry && game.status === "active" && (
+        <p className={styles.notice}>
+          This game already kicked off — you’ll be able to join the next one.
+        </p>
+      )}
 
       <section aria-label="Standings">
         <div className="lms-head">
@@ -113,36 +164,55 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <ul className={styles.board}>
-          {STANDINGS.map((p, i) => (
-            <li key={p.name} className={styles.row} data-you={p.you} data-out={p.status === "out"}>
-              <span className={styles.rank} data-nums aria-hidden="true">
-                {i + 1}
-              </span>
-              <span className={styles.player}>
-                <span className={styles.pname}>
-                  {p.name}
-                  {p.you && <span className={styles.youTag}>you</span>}
-                </span>
-                <span className={styles.psub} data-nums>
-                  survived {p.survived} {p.survived === 1 ? "week" : "weeks"}
-                </span>
-              </span>
-              <span className={styles.lastPick}>
-                <span className="lms-crest" style={{ background: p.color }} aria-hidden="true">
-                  {p.lastCode}
-                </span>
-                <span className={styles.pickName}>{p.lastPick}</span>
-              </span>
-              <span
-                className={`lms-chip ${p.status === "alive" ? "lms-chip--safe" : "lms-chip--out"}`}
+        {standings.length === 0 ? (
+          <p className={styles.notice}>No players yet — be the first to join.</p>
+        ) : (
+          <ul className={styles.board}>
+            {standings.map((p, i) => (
+              <li
+                key={`${p.name}-${i}`}
+                className={styles.row}
+                data-you={p.you}
+                data-out={p.status !== "alive"}
               >
-                <span className="lms-dot" aria-hidden="true" />
-                {p.status === "alive" ? "In" : "Out"}
-              </span>
-            </li>
-          ))}
-        </ul>
+                <span className={styles.rank} data-nums aria-hidden="true">
+                  {i + 1}
+                </span>
+                <span className={styles.player}>
+                  <span className={styles.pname}>
+                    {p.name}
+                    {p.you && <span className={styles.youTag}>you</span>}
+                  </span>
+                  <span className={styles.psub} data-nums>
+                    survived {p.survivedWeeks} {p.survivedWeeks === 1 ? "week" : "weeks"}
+                  </span>
+                </span>
+                <span className={styles.lastPick}>
+                  {p.lastTeamTla ? (
+                    <>
+                      <span
+                        className="lms-crest"
+                        style={{ background: teamColor(p.lastTeamTla) }}
+                        aria-hidden="true"
+                      >
+                        {p.lastTeamTla}
+                      </span>
+                      <span className={styles.pickName}>{p.lastTeamName}</span>
+                    </>
+                  ) : (
+                    <span className={styles.pickName}>—</span>
+                  )}
+                </span>
+                <span
+                  className={`lms-chip ${p.status === "alive" ? "lms-chip--safe" : "lms-chip--out"}`}
+                >
+                  <span className="lms-dot" aria-hidden="true" />
+                  {p.status === "winner" ? "Winner" : p.status === "alive" ? "In" : "Out"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </main>
   );

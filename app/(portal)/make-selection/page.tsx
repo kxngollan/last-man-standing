@@ -1,102 +1,193 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePortalState } from "@/components/portal/usePortalState";
+import { teamColor } from "@/lib/teamColor";
 import styles from "./page.module.css";
 
-/* ---- Mock data (stands in for the game engine + football-data.org) ---- */
-
-type Team = {
-  id: string;
-  name: string;
-  code: string;
-  color: string;
-  opponent: string;
-  venue: "H" | "A";
-  usedGw?: number; // set if the player already spent this team
-};
-
-const GAME_WEEK = 3;
-const PLAYERS_LEFT = 42;
-const WEEKS_SURVIVED = 2;
-const WILDCARDS_LEFT = 1;
-
-// Deadline: first kickoff of the game week (picks lock here).
-const DEADLINE = new Date("2026-08-01T12:30:00+01:00");
-const DEADLINE_LABEL = "Sat 1 Aug, 12:30";
-
-const TEAMS: Team[] = [
-  { id: "ars", name: "Arsenal", code: "ARS", color: "oklch(55% 0.2 25)", opponent: "Nott'm Forest", venue: "H" },
-  { id: "avl", name: "Aston Villa", code: "AVL", color: "oklch(38% 0.12 15)", opponent: "Chelsea", venue: "H" },
-  { id: "bou", name: "Bournemouth", code: "BOU", color: "oklch(52% 0.19 25)", opponent: "Burnley", venue: "H" },
-  { id: "bre", name: "Brentford", code: "BRE", color: "oklch(52% 0.2 28)", opponent: "Fulham", venue: "H" },
-  { id: "bha", name: "Brighton", code: "BHA", color: "oklch(52% 0.16 245)", opponent: "Man City", venue: "A" },
-  { id: "bur", name: "Burnley", code: "BUR", color: "oklch(40% 0.11 350)", opponent: "Bournemouth", venue: "A" },
-  { id: "che", name: "Chelsea", code: "CHE", color: "oklch(48% 0.17 260)", opponent: "Aston Villa", venue: "A" },
-  { id: "cry", name: "Crystal Palace", code: "CRY", color: "oklch(52% 0.16 265)", opponent: "Wolves", venue: "H" },
-  { id: "eve", name: "Everton", code: "EVE", color: "oklch(45% 0.15 260)", opponent: "Man United", venue: "A" },
-  { id: "ful", name: "Fulham", code: "FUL", color: "oklch(30% 0.01 0)", opponent: "Brentford", venue: "A" },
-  { id: "lee", name: "Leeds", code: "LEE", color: "oklch(50% 0.03 250)", opponent: "Sunderland", venue: "A" },
-  { id: "liv", name: "Liverpool", code: "LIV", color: "oklch(52% 0.19 22)", opponent: "Newcastle", venue: "H", usedGw: 2 },
-  { id: "mci", name: "Man City", code: "MCI", color: "oklch(52% 0.12 235)", opponent: "Brighton", venue: "H", usedGw: 1 },
-  { id: "mun", name: "Man United", code: "MUN", color: "oklch(54% 0.2 28)", opponent: "Everton", venue: "H" },
-  { id: "new", name: "Newcastle", code: "NEW", color: "oklch(32% 0.01 0)", opponent: "Liverpool", venue: "A" },
-  { id: "nfo", name: "Nott'm Forest", code: "NFO", color: "oklch(52% 0.2 25)", opponent: "Arsenal", venue: "A" },
-  { id: "sun", name: "Sunderland", code: "SUN", color: "oklch(52% 0.2 25)", opponent: "Leeds", venue: "H" },
-  { id: "tot", name: "Tottenham", code: "TOT", color: "oklch(48% 0.07 265)", opponent: "West Ham", venue: "H" },
-  { id: "whu", name: "West Ham", code: "WHU", color: "oklch(40% 0.12 20)", opponent: "Tottenham", venue: "A" },
-  { id: "wol", name: "Wolves", code: "WOL", color: "oklch(52% 0.13 72)", opponent: "Crystal Palace", venue: "A" },
-];
-
-function useCountdown(target: Date) {
+function useCountdown(targetIso: string | null) {
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
+    if (!targetIso) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [targetIso]);
 
   return useMemo(() => {
-    if (now === null) return null; // avoid hydration mismatch — render nothing until mounted
-    const ms = Math.max(0, target.getTime() - now);
-    const days = Math.floor(ms / 86_400_000);
-    const hours = Math.floor((ms % 86_400_000) / 3_600_000);
-    const mins = Math.floor((ms % 3_600_000) / 60_000);
-    const secs = Math.floor((ms % 60_000) / 1000);
-    return { days, hours, mins, secs, expired: ms === 0 };
-  }, [now, target]);
+    if (now === null || !targetIso) return null;
+    const ms = Math.max(0, new Date(targetIso).getTime() - now);
+    return {
+      days: Math.floor(ms / 86_400_000),
+      hours: Math.floor((ms % 86_400_000) / 3_600_000),
+      mins: Math.floor((ms % 3_600_000) / 60_000),
+      secs: Math.floor((ms % 60_000) / 1000),
+      expired: ms === 0,
+    };
+  }, [now, targetIso]);
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+function StateShell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className={styles.main}>
+      <div className="lms-state">{children}</div>
+    </main>
+  );
+}
+
 export default function MakeSelectionPage() {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState<string | null>(null);
+  const { state, loading, error, refetch } = usePortalState();
+  const [selected, setSelected] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [wildcardLeft, setWildcardLeft] = useState(WILDCARDS_LEFT);
-  const [wildcardActive, setWildcardActive] = useState(false);
+  const [actionError, setActionError] = useState("");
 
-  const countdown = useCountdown(DEADLINE);
-  const selectedTeam = TEAMS.find((t) => t.id === selected) ?? null;
-  const confirmedTeam = TEAMS.find((t) => t.id === confirmed) ?? null;
-  const dirty = selected !== null && selected !== confirmed;
+  const myPick = state?.myPick ?? null;
+  const gameWeek = state?.game?.gameWeek ?? 0;
+  const deadline = state?.deadline ?? null;
+  const countdown = useCountdown(deadline);
 
-  function confirmPick() {
-    if (!selected || confirming) return;
+  // Sync local selection to the saved pick when data loads.
+  useEffect(() => {
+    if (myPick && !myPick.isWildcard && myPick.teamApiId != null) {
+      setSelected(myPick.teamApiId);
+    }
+  }, [myPick]);
+
+  if (loading) {
+    return (
+      <StateShell>
+        <span className="lms-spinner lms-spinner--lg" aria-hidden="true" />
+        <p className="lms-state__body">Loading this week’s fixtures…</p>
+      </StateShell>
+    );
+  }
+  if (error || !state) {
+    return (
+      <StateShell>
+        <h1 className="lms-state__title">Something went wrong</h1>
+        <p className="lms-state__body">{error ?? "Please try again."}</p>
+        <button className="lms-btn lms-btn--primary" onClick={() => refetch()}>
+          Retry
+        </button>
+      </StateShell>
+    );
+  }
+  if (!state.game) {
+    return (
+      <StateShell>
+        <h1 className="lms-state__title">No game running</h1>
+        <p className="lms-state__body">There’s no game to pick for right now.</p>
+        <Link href="/dashboard" className="lms-btn lms-btn--ghost">
+          Back to dashboard
+        </Link>
+      </StateShell>
+    );
+  }
+  if (!state.entry) {
+    return (
+      <StateShell>
+        <h1 className="lms-state__title">
+          {state.game.status === "registration" ? "Join to play" : "You’re not in this game"}
+        </h1>
+        <p className="lms-state__body">
+          {state.game.status === "registration"
+            ? "Registration is open — join from the dashboard to make your first pick."
+            : "This game already kicked off. You’ll be able to join the next one."}
+        </p>
+        <Link href="/dashboard" className="lms-btn lms-btn--primary">
+          Go to dashboard
+        </Link>
+      </StateShell>
+    );
+  }
+  if (state.entry.status !== "alive") {
+    return (
+      <StateShell>
+        <h1 className="lms-state__title">
+          {state.entry.status === "winner" ? "You won this game 🏆" : "You’re out"}
+        </h1>
+        <p className="lms-state__body">
+          {state.entry.status === "winner"
+            ? "Last one standing. Enjoy the bragging rights."
+            : "Your run ended this game. Hang tight for the next one."}
+        </p>
+        <Link href="/dashboard" className="lms-btn lms-btn--ghost">
+          See standings
+        </Link>
+      </StateShell>
+    );
+  }
+
+  // Wildcard already played this week.
+  if (myPick?.isWildcard) {
+    return (
+      <StateShell>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" fill="var(--color-wild-wash)" />
+          <path
+            d="m8 12 2.8 2.8L16 9.5"
+            stroke="var(--color-wild-ink)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <h1 className="lms-state__title">Wildcard played</h1>
+        <p className="lms-state__body">
+          You’re safe for Week {gameWeek} without using a team. See you next week.
+        </p>
+        <Link href="/dashboard" className="lms-btn lms-btn--ghost">
+          Back to dashboard
+        </Link>
+      </StateShell>
+    );
+  }
+
+  const { game, entry, teams, players } = state;
+  const locked = state.locked;
+  const wildcardLeft = entry.wildcardUsed ? 0 : 1;
+  const confirmedTeamId = myPick && !myPick.isWildcard ? myPick.teamApiId : null;
+  const dirty = selected != null && selected !== confirmedTeamId;
+  const selectedTeam = teams.find((t) => t.apiId === selected) ?? null;
+
+  async function confirmPick() {
+    if (selected == null || confirming) return;
     setConfirming(true);
-    // Simulated round-trip to the game engine.
-    setTimeout(() => {
-      setConfirmed(selected);
-      setConfirming(false);
-    }, 650);
+    setActionError("");
+    const res = await fetch("/api/picks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamApiId: selected }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) setActionError(data.error ?? "Couldn’t save your pick.");
+    await refetch();
+    setConfirming(false);
   }
 
-  function playWildcard() {
-    if (wildcardLeft < 1) return;
-    setWildcardActive(true);
-    setWildcardLeft((n) => n - 1);
-    setSelected(null);
-    setConfirmed(null);
+  async function playWildcard() {
+    if (confirming) return;
+    setConfirming(true);
+    setActionError("");
+    const res = await fetch("/api/picks/wildcard", { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) setActionError(data.error ?? "Couldn’t play your wildcard.");
+    await refetch();
+    setConfirming(false);
   }
+
+  const deadlineLabel = deadline
+    ? new Date(deadline).toLocaleString(undefined, {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "To be confirmed";
 
   return (
     <div className={styles.shell}>
@@ -104,99 +195,59 @@ export default function MakeSelectionPage() {
         <div className={styles.header}>
           <div>
             <h1 className={styles.title}>
-              Pick your <span className={styles.titleAccent}>Week {GAME_WEEK}</span> team
+              Pick your <span className={styles.titleAccent}>Week {gameWeek}</span> team
             </h1>
             <p className={styles.lede}>
-              Choose one team to win. Win and you&rsquo;re through to next week &mdash; draw
-              or lose and you&rsquo;re out. Each team can only be used once.
+              Choose one team to win. Win and you’re through to next week — draw or lose and
+              you’re out. Each team can only be used once.
             </p>
             <div className={styles.survived}>
               <span>
-                <b data-nums>{PLAYERS_LEFT}</b> still standing
+                <b data-nums>{players.alive}</b> still standing
               </span>
               <span>
-                You&rsquo;ve survived <b data-nums>{WEEKS_SURVIVED}</b> weeks
+                You’ve survived <b data-nums>{entry.survivedWeeks}</b>{" "}
+                {entry.survivedWeeks === 1 ? "week" : "weeks"}
               </span>
             </div>
           </div>
 
           <div className={styles.countdown}>
-            <div className={styles.countdownLabel}>Picks lock in</div>
+            <div className={styles.countdownLabel}>{locked ? "Picks locked" : "Picks lock in"}</div>
             <div className={styles.clock} data-nums aria-hidden="true">
-              {countdown ? (
-                countdown.expired ? (
-                  <span>Locked</span>
-                ) : (
-                  <>
-                    {countdown.days > 0 && (
-                      <span>
-                        {countdown.days}
-                        <small>d</small>
-                      </span>
-                    )}
+              {locked ? (
+                <span>Locked</span>
+              ) : countdown ? (
+                <>
+                  {countdown.days > 0 && (
                     <span>
-                      {pad(countdown.hours)}
-                      <small>h</small>
+                      {countdown.days}
+                      <small>d</small>
                     </span>
-                    <span>
-                      {pad(countdown.mins)}
-                      <small>m</small>
-                    </span>
-                    <span>
-                      {pad(countdown.secs)}
-                      <small>s</small>
-                    </span>
-                  </>
-                )
+                  )}
+                  <span>
+                    {pad(countdown.hours)}
+                    <small>h</small>
+                  </span>
+                  <span>
+                    {pad(countdown.mins)}
+                    <small>m</small>
+                  </span>
+                  <span>
+                    {pad(countdown.secs)}
+                    <small>s</small>
+                  </span>
+                </>
               ) : (
-                <span>&mdash;&mdash;</span>
+                <span>——</span>
               )}
             </div>
-            <p className={styles.deadlineWhen}>Deadline &middot; {DEADLINE_LABEL}</p>
+            <p className={styles.deadlineWhen}>Deadline &middot; {deadlineLabel}</p>
           </div>
         </div>
 
-        <section className={styles.wildcard} aria-label="Wildcard" hidden={wildcardActive}>
-          <svg
-            className={styles.wildcardIcon}
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M4 5h11l5 5-9 9-7-7V5Z"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-            />
-            <circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" />
-          </svg>
-          <div className={styles.wildcardBody}>
-            <h2>Tough week? Play your wildcard.</h2>
-            <p>
-              It keeps you safe this week without picking a team &mdash; and doesn&rsquo;t use
-              one up. You have{" "}
-              <b data-nums>
-                {wildcardLeft} wildcard{wildcardLeft === 1 ? "" : "s"}
-              </b>{" "}
-              left this game.
-            </p>
-          </div>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnWild}`}
-            onClick={playWildcard}
-            disabled={wildcardLeft < 1}
-            aria-disabled={wildcardLeft < 1}
-          >
-            {wildcardLeft < 1 ? "No wildcards left" : "Play wildcard"}
-          </button>
-        </section>
-
-        {wildcardActive && (
-          <section className={styles.wildcard} aria-live="polite">
+        {!locked && (
+          <section className={styles.wildcard} aria-label="Wildcard">
             <svg
               className={styles.wildcardIcon}
               width="26"
@@ -205,132 +256,146 @@ export default function MakeSelectionPage() {
               fill="none"
               aria-hidden="true"
             >
-              <path
-                d="m5 12 4.5 4.5L19 7"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M4 5h11l5 5-9 9-7-7V5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              <circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" />
             </svg>
             <div className={styles.wildcardBody}>
-              <h2>Wildcard played &mdash; you&rsquo;re safe this week.</h2>
-              <p>No team pick needed. See you in Week {GAME_WEEK + 1}.</p>
+              <h2>Tough week? Play your wildcard.</h2>
+              <p>
+                It keeps you safe this week without picking a team — and doesn’t use one up. You
+                have <b data-nums>{wildcardLeft}</b> wildcard{wildcardLeft === 1 ? "" : "s"} left.
+              </p>
             </div>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnWild}`}
+              onClick={playWildcard}
+              disabled={wildcardLeft < 1 || confirming}
+              aria-disabled={wildcardLeft < 1 || confirming}
+            >
+              {wildcardLeft < 1 ? "No wildcards left" : "Play wildcard"}
+            </button>
           </section>
         )}
 
-        {!wildcardActive && (
-          <>
-            <div className={styles.gridHead}>
-              <h2>This week&rsquo;s fixtures</h2>
-              <p className={styles.gridHint}>Greyed-out teams are ones you&rsquo;ve already used.</p>
-            </div>
+        <div className={styles.gridHead}>
+          <h2>This week’s fixtures</h2>
+          <p className={styles.gridHint}>
+            {locked
+              ? "Picks are locked for this week."
+              : "Greyed-out teams are ones you’ve already used."}
+          </p>
+        </div>
 
-            <fieldset className={styles.grid}>
-              <legend className={styles.legend}>
-                <span className={styles.srOnly}>Choose your team for Game Week {GAME_WEEK}</span>
-              </legend>
+        {teams.length === 0 ? (
+          <p className={styles.gridHint}>Fixtures for this week haven’t loaded yet.</p>
+        ) : (
+          <fieldset className={styles.grid} disabled={locked}>
+            <legend className={styles.legend}>
+              <span className={styles.srOnly}>Choose your team for game week {gameWeek}</span>
+            </legend>
 
-              {TEAMS.map((team) => {
-                const used = team.usedGw !== undefined;
-                const id = `team-${team.id}`;
-                return (
-                  <div key={team.id} style={{ display: "contents" }}>
-                    <input
-                      className={styles.radio}
-                      type="radio"
-                      name="team"
-                      id={id}
-                      value={team.id}
-                      disabled={used}
-                      checked={selected === team.id}
-                      onChange={() => setSelected(team.id)}
-                    />
-                    <label className={styles.card} htmlFor={id} data-used={used}>
-                      <span
-                        className={styles.crest}
-                        style={{ background: team.color }}
-                        aria-hidden="true"
-                      >
-                        {team.code}
+            {teams.map((team) => {
+              const isCurrent = confirmedTeamId === team.apiId;
+              const disabled = (team.used && !isCurrent) || locked;
+              const id = `team-${team.apiId}`;
+              return (
+                <div key={team.apiId} style={{ display: "contents" }}>
+                  <input
+                    className={styles.radio}
+                    type="radio"
+                    name="team"
+                    id={id}
+                    value={team.apiId}
+                    disabled={disabled}
+                    checked={selected === team.apiId}
+                    onChange={() => setSelected(team.apiId)}
+                  />
+                  <label className={styles.card} htmlFor={id} data-used={team.used && !isCurrent}>
+                    <span
+                      className={styles.crest}
+                      style={{ background: teamColor(team.tla) }}
+                      aria-hidden="true"
+                    >
+                      {team.tla}
+                    </span>
+                    <span className={styles.teamMeta}>
+                      <span className={styles.teamName}>{team.shortName || team.name}</span>
+                      <span className={styles.fixture} data-nums>
+                        {team.venue === "H" ? "vs " : "@ "}
+                        {team.opponent} ({team.venue})
                       </span>
-                      <span className={styles.teamMeta}>
-                        <span className={styles.teamName}>{team.name}</span>
-                        <span className={styles.fixture}>
-                          {team.venue === "H" ? "vs " : "@ "}
-                          {team.opponent} ({team.venue})
-                        </span>
+                    </span>
+                    {team.used && !isCurrent ? (
+                      <span className={styles.usedTag}>USED</span>
+                    ) : (
+                      <span className={styles.tick} aria-hidden="true">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="m5 12 4.5 4.5L19 7"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       </span>
-                      {used ? (
-                        <span className={styles.usedTag}>USED &middot; GW{team.usedGw}</span>
-                      ) : (
-                        <span className={styles.tick} aria-hidden="true">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                            <path
-                              d="m5 12 4.5 4.5L19 7"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </span>
-                      )}
-                    </label>
-                  </div>
-                );
-              })}
-            </fieldset>
-          </>
+                    )}
+                  </label>
+                </div>
+              );
+            })}
+          </fieldset>
         )}
       </main>
 
-      {!wildcardActive && (
-        <div className={styles.confirmBar}>
-          <div className={styles.confirmInner}>
-            <p className={styles.confirmSummary} data-done={confirmed !== null && !dirty}>
-              {confirmed && !dirty ? (
-                <>
-                  <b>Pick confirmed: {confirmedTeam?.name}</b>{" "}
-                  <span>&middot; change any time before the deadline</span>
-                </>
-              ) : selectedTeam ? (
-                <>
-                  <b>{selectedTeam.name}</b>{" "}
-                  <span>
-                    {selectedTeam.venue === "H" ? "vs " : "@ "}
-                    {selectedTeam.opponent}
-                  </span>
-                </>
-              ) : (
-                <span>Select a team to make your pick.</span>
-              )}
-            </p>
+      <div className={styles.confirmBar}>
+        <div className={styles.confirmInner}>
+          <p className={styles.confirmSummary} data-done={confirmedTeamId != null && !dirty}>
+            {actionError ? (
+              <span style={{ color: "var(--color-out-ink)" }}>{actionError}</span>
+            ) : locked ? (
+              <span>Picks are locked for this week.</span>
+            ) : confirmedTeamId != null && !dirty ? (
+              <>
+                <b>Pick confirmed: {myPick?.teamName}</b>{" "}
+                <span>&middot; change any time before the deadline</span>
+              </>
+            ) : selectedTeam ? (
+              <>
+                <b>{selectedTeam.shortName || selectedTeam.name}</b>{" "}
+                <span>
+                  {selectedTeam.venue === "H" ? "vs " : "@ "}
+                  {selectedTeam.opponent}
+                </span>
+              </>
+            ) : (
+              <span>Select a team to make your pick.</span>
+            )}
+          </p>
 
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              onClick={confirmPick}
-              disabled={!dirty || confirming}
-              aria-disabled={!dirty || confirming}
-            >
-              {confirming ? (
-                <>
-                  <span className={styles.spinner} aria-hidden="true" />
-                  Saving&hellip;
-                </>
-              ) : confirmed && !dirty ? (
-                "Pick saved"
-              ) : confirmed ? (
-                "Update pick"
-              ) : (
-                "Confirm pick"
-              )}
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            onClick={confirmPick}
+            disabled={!dirty || confirming || locked}
+            aria-disabled={!dirty || confirming || locked}
+          >
+            {confirming ? (
+              <>
+                <span className={styles.spinner} aria-hidden="true" />
+                Saving…
+              </>
+            ) : confirmedTeamId != null && !dirty ? (
+              "Pick saved"
+            ) : confirmedTeamId != null ? (
+              "Update pick"
+            ) : (
+              "Confirm pick"
+            )}
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

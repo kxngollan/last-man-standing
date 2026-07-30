@@ -156,6 +156,12 @@
   }
 }
 
+.notice {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-md) 0 var(--space-xl);
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
