@@ -7,6 +7,7 @@ import { Team } from "@/models/Team";
 import { Fixture } from "@/models/Fixture";
 import { User } from "@/models/User";
 import { getMatchdayDeadline, isLocked } from "./deadline";
+import { getPickWindow } from "./pickWindow";
 import { GameError } from "./errors";
 import type { TeamOption, PortalState, AdminOverview } from "./portalTypes";
 
@@ -100,6 +101,9 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
       entry: null,
       deadline: null,
       locked: false,
+      pickMatchday: 0,
+      pickGameWeek: 0,
+      pickAhead: false,
       players: { total: 0, alive: 0 },
       teams: [],
       myPick: null,
@@ -112,13 +116,19 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
   const gameNo = await Game.countDocuments({ createdAt: { $lte: game.createdAt } });
   const gameWeek = md - game.startMatchday + 1;
 
-  const [teams, fixtures, entry, entries, deadline] = await Promise.all([
+  // The week players actually pick for: the current week, or — once it has
+  // kicked off — the next game week, however far ahead it sits.
+  const pick = await getPickWindow(game.season, md);
+  const pickMd = pick.matchday;
+  const pickGameWeek = pickMd - game.startMatchday + 1;
+
+  const [teams, fixtures, entry, entries] = await Promise.all([
     Team.find({}).lean(),
-    Fixture.find({ season: game.season, matchday: md }).lean(),
+    Fixture.find({ season: game.season, matchday: pickMd }).lean(),
     Entry.findOne({ gameId: game._id, userId }),
     Entry.find({ gameId: game._id }).lean(),
-    getMatchdayDeadline(game.season, md),
   ]);
+  const deadline = pick.deadline;
 
   const teamById = new Map(teams.map((t) => [t.apiId, t]));
 
@@ -157,16 +167,16 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
   }
   teamOptions.sort((a, b) => a.name.localeCompare(b.name));
 
-  // Current pick.
+  // The player's pick for the week they can currently pick.
   let myPick: PortalState["myPick"] = null;
   if (entry) {
-    const pick = await Pick.findOne({ entryId: entry._id, matchday: md }).lean();
-    if (pick) {
+    const current = await Pick.findOne({ entryId: entry._id, matchday: pickMd }).lean();
+    if (current) {
       myPick = {
-        teamApiId: pick.teamApiId,
-        teamName: pick.teamApiId ? teamById.get(pick.teamApiId)?.name ?? null : null,
-        isWildcard: pick.isWildcard,
-        result: pick.result,
+        teamApiId: current.teamApiId,
+        teamName: current.teamApiId ? teamById.get(current.teamApiId)?.name ?? null : null,
+        isWildcard: current.isWildcard,
+        result: current.result,
       };
     }
   }
@@ -242,7 +252,10 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
         }
       : null,
     deadline: deadline ? deadline.toISOString() : null,
-    locked: isLocked(deadline),
+    locked: pick.locked,
+    pickMatchday: pickMd,
+    pickGameWeek,
+    pickAhead: pick.ahead,
     players: {
       total: entries.length,
       alive: entries.filter((e) => e.status === "alive").length,

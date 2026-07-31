@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import RulesModal from "./RulesModal";
 import styles from "./AppBar.module.css";
 
 const NAV = [
   { href: "/dashboard", label: "Standings" },
   { href: "/make-selection", label: "Make pick" },
   { href: "/team", label: "My picks" },
+  { href: "/table", label: "Table" },
+  { href: "/fixtures", label: "Fixtures" },
 ];
 
 function initialsOf(name?: string | null): string {
@@ -142,6 +145,7 @@ export default function AppBar() {
           <span className="lms-dot" aria-hidden="true" />
           Still in
         </span>
+        <RulesModal />
         <AccountMenu />
       </header>
 

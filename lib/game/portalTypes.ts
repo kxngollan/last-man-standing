@@ -16,6 +16,54 @@ export interface TeamOption {
   used: boolean;
 }
 
+/** One row of the Premier League table. */
+export interface LeagueRow {
+  position: number;
+  name: string;
+  shortName: string;
+  tla: string;
+  crest: string | null;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+  /** Recent results, most recent last, e.g. "W,W,D,L,W" — may be null. */
+  form: string | null;
+}
+
+export interface LeagueTable {
+  season: number;
+  updatedAt: string;
+  rows: LeagueRow[];
+}
+
+export type FixtureState = "scheduled" | "live" | "finished" | "postponed";
+
+/** One fixture in the browsable fixtures view. */
+export interface FixtureRow {
+  apiId: number;
+  kickoff: string; // ISO
+  state: FixtureState;
+  statusLabel: string; // human label, e.g. "FT", "19:00", "Postponed"
+  home: { name: string; shortName: string; tla: string; crest: string | null };
+  away: { name: string; shortName: string; tla: string; crest: string | null };
+  homeScore: number | null;
+  awayScore: number | null;
+  winner: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
+}
+
+export interface FixturesWeek {
+  season: number;
+  matchday: number;
+  currentMatchday: number;
+  totalMatchdays: number;
+  fixtures: FixtureRow[];
+}
+
 export interface AdminOverview {
   current: {
     id: string;
@@ -54,6 +102,11 @@ export interface PortalState {
   } | null;
   deadline: string | null;
   locked: boolean;
+  /** The game week players can pick for right now (the current week, or the next one once it locks). */
+  pickMatchday: number;
+  pickGameWeek: number;
+  /** True when the pick week is ahead of the in-play week (picking in advance). */
+  pickAhead: boolean;
   players: { total: number; alive: number };
   teams: TeamOption[];
   myPick: {

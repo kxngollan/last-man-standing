@@ -61,7 +61,7 @@ export default function TeamPage() {
     );
   }
 
-  const { game, entry, history } = state;
+  const { game, entry, history, pickGameWeek } = state;
   const used = history.filter((h) => !h.isWildcard && h.tla);
   const alive = entry.status === "alive";
 
@@ -143,7 +143,7 @@ export default function TeamPage() {
       {alive && game.status === "active" && (
         <div className={styles.footerCta}>
           <Link href="/make-selection" className="lms-btn lms-btn--primary">
-            Make your Week {game.gameWeek} pick
+            Make your Week {pickGameWeek} pick
           </Link>
         </div>
       )}

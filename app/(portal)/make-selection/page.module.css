@@ -136,6 +136,28 @@
 .titleAccent {
   color: var(--color-accent-strong);
 }
+.aheadNote {
+  margin-top: var(--space-sm);
+  max-width: 46ch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2xs) var(--space-xs);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-ink-2);
+}
+.aheadTag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-xs);
+}
 .lede {
   margin-top: var(--space-sm);
   max-width: 46ch;

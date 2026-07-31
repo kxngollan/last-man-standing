@@ -1,0 +1,198 @@
+/* Hallmark · theme: Hum · Fixtures — week selector + symmetric home/away rows. */
+
+.main {
+  width: 100%;
+  max-width: 52rem;
+  margin-inline: auto;
+  padding: clamp(var(--space-lg), 4vw, var(--space-2xl))
+    clamp(var(--space-md), 4vw, var(--space-xl)) var(--space-3xl);
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-strong);
+  margin-bottom: var(--space-2xs);
+}
+.title {
+  font-size: var(--text-2xl);
+}
+
+/* ---- Week selector ---- */
+.controls {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin: var(--space-lg) 0 var(--space-xl);
+}
+.weekPick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  align-items: center;
+}
+.weekLabel {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.nowTag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-xs);
+}
+.weekSelect {
+  min-width: 9rem;
+  height: 40px;
+  padding: 0 var(--space-md);
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule-2);
+  border-radius: var(--radius-input);
+  cursor: pointer;
+  transition: border-color var(--dur-short) var(--ease-out);
+}
+.weekSelect:focus-visible {
+  outline: 2px solid var(--color-focus);
+  border-color: var(--color-ink-2);
+}
+
+/* ---- Days + games ---- */
+.weeks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.weeks[aria-busy="true"] {
+  opacity: 0.55;
+}
+.dayTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--color-rule);
+  margin-bottom: var(--space-sm);
+}
+.games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.game {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+.game[data-state="live"] {
+  border-color: var(--color-accent);
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+.homeTeam {
+  justify-content: flex-end;
+  text-align: end;
+}
+.awayTeam {
+  justify-content: flex-start;
+  text-align: start;
+}
+.teamName {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-ink-2);
+}
+.teamName[data-win="true"] {
+  color: var(--color-ink);
+}
+
+/* ---- Centre column (score / time / status) ---- */
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 3.5rem;
+}
+.score {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.dash {
+  color: var(--color-muted);
+  padding-inline: 3px;
+}
+.time {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+.vs {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+.state {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+.live {
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+
+.notice {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-md) 0 var(--space-xl);
+  text-align: center;
+}

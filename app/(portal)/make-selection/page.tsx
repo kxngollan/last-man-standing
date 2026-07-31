@@ -45,7 +45,8 @@ export default function MakeSelectionPage() {
   const [actionError, setActionError] = useState("");
 
   const myPick = state?.myPick ?? null;
-  const gameWeek = state?.game?.gameWeek ?? 0;
+  const gameWeek = state?.pickGameWeek ?? 0;
+  const pickAhead = state?.pickAhead ?? false;
   const deadline = state?.deadline ?? null;
   const countdown = useCountdown(deadline);
 
@@ -197,6 +198,13 @@ export default function MakeSelectionPage() {
             <h1 className={styles.title}>
               Pick your <span className={styles.titleAccent}>Week {gameWeek}</span> team
             </h1>
+            {pickAhead && !locked && (
+              <p className={styles.aheadNote}>
+                <span className={styles.aheadTag}>Ahead</span>
+                This week hasn’t kicked off yet — you’re picking early. Change it any time before the
+                deadline.
+              </p>
+            )}
             <p className={styles.lede}>
               Choose one team to win. Win and you’re through to next week. Draw or lose and
               you’re out. Each team can only be used once.

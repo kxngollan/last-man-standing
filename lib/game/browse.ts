@@ -1,0 +1,219 @@
+import { connectDB } from "@/database/connect";
+import { Team } from "@/models/Team";
+import { Fixture, type IFixture } from "@/models/Fixture";
+import { syncSeasonFixtures } from "@/lib/football-api/sync";
+import { DEFAULT_SEASON, TOTAL_MATCHDAYS, INCOMPLETE_STATUSES } from "./constants";
+import { getCurrentGame } from "./queries";
+import type {
+  LeagueTable,
+  FixturesWeek,
+  FixtureRow,
+  FixtureState,
+} from "./portalTypes";
+
+/** The season players browse: the current game's season, or the configured default. */
+async function browseSeason(): Promise<number> {
+  const game = await getCurrentGame();
+  return game?.season ?? DEFAULT_SEASON;
+}
+
+type TeamTally = {
+  apiId: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+  /** Finished results in kickoff order, most recent last: "W" | "D" | "L". */
+  form: { kickoff: number; result: "W" | "D" | "L" }[];
+};
+
+/**
+ * The Premier League table for the browsed season, built from our own fixture
+ * results (the same source the Fixtures view reads) and ranked by the official
+ * Premier League rules, in order:
+ *   1. Points (3 for a win, 1 for a draw)
+ *   2. Goal difference
+ *   3. Goals scored
+ *   4. Team name (A–Z) — a deterministic fallback for display. The Premier
+ *      League leaves teams level here unless a title/relegation/qualification
+ *      place is at stake (then a play-off decides); it does NOT use head-to-head.
+ * Only FINISHED fixtures count toward the standings.
+ */
+export async function getLeagueTable(): Promise<LeagueTable> {
+  await connectDB();
+  const season = await browseSeason();
+  await ensureSeasonFixtures(season);
+
+  const [fixtures, teams] = await Promise.all([
+    Fixture.find({ season }).lean<IFixture[]>(),
+    Team.find({}).lean(),
+  ]);
+  const teamById = new Map(teams.map((t) => [t.apiId, t]));
+
+  const tallies = new Map<number, TeamTally>();
+  const tally = (apiId: number): TeamTally => {
+    let t = tallies.get(apiId);
+    if (!t) {
+      t = { apiId, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, form: [] };
+      tallies.set(apiId, t);
+    }
+    return t;
+  };
+
+  // Every club that appears in the season's fixtures belongs in the table, even
+  // before it has played — so the full 20 show up with zeroes from game week 1.
+  for (const f of fixtures) {
+    tally(f.homeTeamApiId);
+    tally(f.awayTeamApiId);
+  }
+
+  for (const f of fixtures) {
+    if (f.status !== "FINISHED" || f.homeScore == null || f.awayScore == null) continue;
+    const home = tally(f.homeTeamApiId);
+    const away = tally(f.awayTeamApiId);
+    const kickoff = new Date(f.utcKickoff).getTime();
+
+    home.played++;
+    away.played++;
+    home.goalsFor += f.homeScore;
+    home.goalsAgainst += f.awayScore;
+    away.goalsFor += f.awayScore;
+    away.goalsAgainst += f.homeScore;
+
+    if (f.homeScore > f.awayScore) {
+      home.won++;
+      home.points += 3;
+      away.lost++;
+      home.form.push({ kickoff, result: "W" });
+      away.form.push({ kickoff, result: "L" });
+    } else if (f.homeScore < f.awayScore) {
+      away.won++;
+      away.points += 3;
+      home.lost++;
+      away.form.push({ kickoff, result: "W" });
+      home.form.push({ kickoff, result: "L" });
+    } else {
+      home.drawn++;
+      away.drawn++;
+      home.points++;
+      away.points++;
+      home.form.push({ kickoff, result: "D" });
+      away.form.push({ kickoff, result: "D" });
+    }
+  }
+
+  const nameOf = (apiId: number) => teamById.get(apiId)?.name ?? "";
+
+  const ranked = [...tallies.values()].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.goalsFor - a.goalsAgainst;
+    const gdB = b.goalsFor - b.goalsAgainst;
+    if (gdB !== gdA) return gdB - gdA;
+    if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+    return nameOf(a.apiId).localeCompare(nameOf(b.apiId));
+  });
+
+  return {
+    season,
+    updatedAt: new Date().toISOString(),
+    rows: ranked.map((t, i) => {
+      const meta = teamById.get(t.apiId);
+      const form = t.form
+        .slice()
+        .sort((x, y) => x.kickoff - y.kickoff)
+        .slice(-5)
+        .map((r) => r.result)
+        .join(",");
+      return {
+        position: i + 1,
+        name: meta?.name ?? "TBD",
+        shortName: meta?.shortName ?? "TBD",
+        tla: meta?.tla ?? "",
+        crest: meta?.crest ?? null,
+        played: t.played,
+        won: t.won,
+        drawn: t.drawn,
+        lost: t.lost,
+        goalsFor: t.goalsFor,
+        goalsAgainst: t.goalsAgainst,
+        goalDifference: t.goalsFor - t.goalsAgainst,
+        points: t.points,
+        form: form || null,
+      };
+    }),
+  };
+}
+
+/** Populate the whole season's fixtures (one API call) the first time it's needed. */
+async function ensureSeasonFixtures(season: number): Promise<void> {
+  const have = await Fixture.countDocuments({ season });
+  if (have === 0) await syncSeasonFixtures(season);
+}
+
+/** The matchday to show by default: the live game's, else the first unfinished week. */
+async function defaultMatchday(season: number, fixtures: IFixture[]): Promise<number> {
+  const game = await getCurrentGame();
+  if (game && game.season === season) return game.currentMatchday;
+  const incomplete = fixtures.filter((f) => INCOMPLETE_STATUSES.includes(f.status));
+  if (incomplete.length) return Math.min(...incomplete.map((f) => f.matchday));
+  return fixtures.length ? Math.max(...fixtures.map((f) => f.matchday)) : 1;
+}
+
+function fixtureState(status: string): { state: FixtureState; label: string } {
+  if (status === "FINISHED") return { state: "finished", label: "FT" };
+  if (status === "IN_PLAY" || status === "PAUSED") return { state: "live", label: "LIVE" };
+  if (status === "POSTPONED" || status === "CANCELLED" || status === "SUSPENDED") {
+    return { state: "postponed", label: "PP" };
+  }
+  return { state: "scheduled", label: "" }; // client formats the kickoff time
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/** Fixtures for one matchday of the browsed season, with team names and crests. */
+export async function getFixturesForMatchday(matchday?: number): Promise<FixturesWeek> {
+  await connectDB();
+  const season = await browseSeason();
+  await ensureSeasonFixtures(season);
+
+  const [all, teams] = await Promise.all([
+    Fixture.find({ season }).lean<IFixture[]>(),
+    Team.find({}).lean(),
+  ]);
+  const teamById = new Map(teams.map((t) => [t.apiId, t]));
+  const side = (apiId: number) => {
+    const t = teamById.get(apiId);
+    return {
+      name: t?.name ?? "TBD",
+      shortName: t?.shortName ?? "TBD",
+      tla: t?.tla ?? "",
+      crest: t?.crest ?? null,
+    };
+  };
+
+  const currentMatchday = await defaultMatchday(season, all);
+  const md = clamp(matchday ?? currentMatchday, 1, TOTAL_MATCHDAYS);
+
+  const fixtures: FixtureRow[] = all
+    .filter((f) => f.matchday === md)
+    .sort((a, b) => new Date(a.utcKickoff).getTime() - new Date(b.utcKickoff).getTime())
+    .map((f) => {
+      const { state, label } = fixtureState(f.status);
+      return {
+        apiId: f.apiId,
+        kickoff: new Date(f.utcKickoff).toISOString(),
+        state,
+        statusLabel: label,
+        home: side(f.homeTeamApiId),
+        away: side(f.awayTeamApiId),
+        homeScore: f.homeScore,
+        awayScore: f.awayScore,
+        winner: f.winner,
+      };
+    });
+
+  return { season, matchday: md, currentMatchday, totalMatchdays: TOTAL_MATCHDAYS, fixtures };
+}

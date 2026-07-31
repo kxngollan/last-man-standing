@@ -91,7 +91,7 @@ export default function DashboardPage() {
     );
   }
 
-  const { game, entry, players, standings, myPick } = state;
+  const { game, entry, players, standings, myPick, pickGameWeek } = state;
 
   async function join() {
     setJoining(true);
@@ -121,7 +121,7 @@ export default function DashboardPage() {
         </div>
         {entry?.status === "alive" && game.status === "active" && (
           <Link href="/make-selection" className="lms-btn lms-btn--primary">
-            Make your Week {game.gameWeek} pick
+            Make your Week {pickGameWeek} pick
           </Link>
         )}
         {!entry && game.status === "registration" && (
@@ -145,7 +145,7 @@ export default function DashboardPage() {
             <div className={styles.pickNum}>
               {myPick?.isWildcard ? "Wildcard" : myPick?.teamName ?? "Not set"}
             </div>
-            <div className="lms-stat__label">your Week {game.gameWeek} pick</div>
+            <div className="lms-stat__label">your Week {pickGameWeek} pick</div>
           </div>
         </section>
       )}
