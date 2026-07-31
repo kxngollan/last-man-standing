@@ -5,10 +5,16 @@ import { createResetToken } from "@/lib/passwordReset";
 import { sendPasswordResetEmail } from "@/lib/email";
 import isEmail from "@/lib/isEmail";
 import { readJson } from "@/lib/api";
+import { PASSWORD_RESET_ENABLED } from "@/lib/features";
 
 // Always responds { ok: true } regardless of whether the email exists,
 // so it can't be used to probe which accounts are registered.
 export async function POST(request: Request) {
+  // Password reset is disabled in production for now.
+  if (!PASSWORD_RESET_ENABLED) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
   const body = await readJson<{ email?: string }>(request);
   const email = (body?.email ?? "").trim().toLowerCase();
 

@@ -1,8 +1,90 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { connectDB } from "@/database/connect";
 import { Team } from "@/models/Team";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
 import styles from "./page.module.css";
+
+export const metadata: Metadata = {
+  title: { absolute: `${SITE_NAME} · Free Premier League Survival Game` },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+};
+
+// Structured data for search engines: what the site is, plus an FAQ built from
+// the game's own rules (eligible for FAQ rich results).
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: SITE_DESCRIPTION,
+      inLanguage: "en-GB",
+    },
+    {
+      "@type": "VideoGame",
+      "@id": `${SITE_URL}/#game`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      genre: ["Sports", "Prediction game"],
+      gamePlatform: "Web browser",
+      applicationCategory: "Game",
+      inLanguage: "en-GB",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "GBP" },
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "How do you play Last Man Standing?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Each game week, pick one Premier League team you think will win. If they win you go through. If they draw or lose, you are knocked out.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I pick the same team twice?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "No. You can only use each team once per game, so save your strongest sides for the tough weeks.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What is the wildcard?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "You get one wildcard per game. Play it on a tough week to stay safe without picking a team, and it does not use a team up.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Is Last Man Standing free to play?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. It is free to play, for ages 16 and over, with no stakes, just bragging rights.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Who wins the game?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "When a single player is left standing, they win the whole game. If everyone falls in the same week, nobody wins and a new game begins.",
+          },
+        },
+      ],
+    },
+  ],
+};
 
 // Curated fallback used for the hero marquee when the crest images can't be
 // loaded (e.g. no teams seeded yet, or DB unavailable at render time).
@@ -55,6 +137,10 @@ export default async function LandingPage() {
   const crests = await marqueeCrests();
   return (
     <div className={styles.page}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+      />
       {/* N7 brutal-slab nav */}
       <header className={styles.nav}>
         <span className={styles.wordmark}>Last Man Standing</span>

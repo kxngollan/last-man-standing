@@ -1,10 +1,13 @@
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import AuthShell from "@/components/auth/AuthShell";
 import ResetForm from "@/components/auth/ResetForm";
+import { PASSWORD_RESET_ENABLED } from "@/lib/features";
 import styles from "@/components/auth/authContent.module.css";
 
 export const metadata = {
-  title: "Reset password · Last Man Standing",
+  title: "Reset password",
+  robots: { index: false, follow: false },
 };
 
 export default async function ResetPage({
@@ -12,6 +15,8 @@ export default async function ResetPage({
 }: {
   searchParams: Promise<{ token?: string | string[] }>;
 }) {
+  if (!PASSWORD_RESET_ENABLED) notFound();
+
   const params = await searchParams;
   const token = typeof params.token === "string" ? params.token : "";
 

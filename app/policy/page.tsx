@@ -2,7 +2,7 @@ import Link from "next/link";
 import styles from "./page.module.css";
 
 export const metadata = {
-  title: "Privacy Policy · Last Man Standing",
+  title: "Privacy Policy",
   description: "How Last Man Standing collects, uses, and protects your personal data.",
 };
 

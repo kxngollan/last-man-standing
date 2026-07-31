@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
 import PasswordInput from "@/components/ui/PasswordInput";
+import { PASSWORD_RESET_ENABLED } from "@/lib/features";
 import styles from "@/components/auth/authContent.module.css";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,9 +72,11 @@ export default function LoginPage() {
           error={error || undefined}
         />
 
-        <Link href="/forgot" className={styles.forgot}>
-          Forgot password?
-        </Link>
+        {PASSWORD_RESET_ENABLED && (
+          <Link href="/forgot" className={styles.forgot}>
+            Forgot password?
+          </Link>
+        )}
 
         <button
           type="submit"

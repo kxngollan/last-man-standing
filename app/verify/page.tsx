@@ -4,7 +4,8 @@ import styles from "@/components/auth/authContent.module.css";
 import { consumeVerificationToken, type VerifyOutcome } from "@/lib/verification";
 
 export const metadata = {
-  title: "Confirm email · Last Man Standing",
+  title: "Confirm email",
+  robots: { index: false, follow: false },
 };
 
 type Outcome = VerifyOutcome | "error";

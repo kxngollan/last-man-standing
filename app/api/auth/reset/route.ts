@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { resetPasswordWithToken } from "@/lib/passwordReset";
 import { readJson, errorResponse } from "@/lib/api";
+import { PASSWORD_RESET_ENABLED } from "@/lib/features";
 
 export async function POST(request: Request) {
   try {
+    // Password reset is disabled in production for now.
+    if (!PASSWORD_RESET_ENABLED) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
     const body = await readJson<{ token?: string; password?: string }>(request);
     const token = body?.token ?? "";
     const password = body?.password ?? "";
