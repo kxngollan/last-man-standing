@@ -28,15 +28,20 @@ export default async function VerifyPage({
   }
 
   const ok = outcome === "verified" || outcome === "already";
+  const isProduction = process.env.NODE_ENV === "production";
 
   const copy: Record<Outcome, { title: string; lede: string }> = {
     verified: {
       title: "Email confirmed",
-      lede: "Your account is verified. Log in and join the next game when registration opens.",
+      lede: isProduction
+        ? "Your account is verified. You can now log in."
+        : "Your account is verified. Log in and join the next game when registration opens.",
     },
     already: {
       title: "Already confirmed",
-      lede: "This email is already verified. You’re good to log in.",
+      lede: isProduction
+        ? "This email is already verified. You can now log in."
+        : "This email is already verified. You’re good to log in.",
     },
     invalid: {
       title: "Link expired or invalid",
