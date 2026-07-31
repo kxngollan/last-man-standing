@@ -140,7 +140,7 @@ export default function TeamPage() {
         )}
       </section>
 
-      {alive && game.status === "active" && (
+      {alive && game.status !== "finished" && (
         <div className={styles.footerCta}>
           <Link href="/make-selection" className="lms-btn lms-btn--primary">
             Make your Week {pickGameWeek} pick

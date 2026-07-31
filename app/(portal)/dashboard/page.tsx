@@ -119,7 +119,7 @@ export default function DashboardPage() {
                   : "The game is on."}
           </h1>
         </div>
-        {entry?.status === "alive" && game.status === "active" && (
+        {entry?.status === "alive" && game.status !== "finished" && (
           <Link href="/make-selection" className="lms-btn lms-btn--primary">
             Make your Week {pickGameWeek} pick
           </Link>

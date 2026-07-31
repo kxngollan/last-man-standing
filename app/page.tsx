@@ -156,6 +156,7 @@ export default async function LandingPage() {
           <span className={styles.footLinks}>
             <Link href="/signup">Sign up</Link>
             <Link href="/login">Log in</Link>
+            <Link href="/policy">Privacy</Link>
           </span>
           <span className={styles.copy} data-nums>
             © 2026 Last Man Standing

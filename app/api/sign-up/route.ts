@@ -4,8 +4,10 @@ import { User } from "@/models/User";
 import { signupSchema } from "@/lib/validation";
 import { hashPassword } from "@/lib/password";
 import { isOldEnough } from "@/lib/age";
-import { createVerificationToken } from "@/lib/verification";
-import { sendVerificationEmail } from "@/lib/email";
+// Email verification is disabled for now — re-enable these (and the block below,
+// plus emailVerified: false) when the email sender is turned back on.
+// import { createVerificationToken } from "@/lib/verification";
+// import { sendVerificationEmail } from "@/lib/email";
 import { readJson, errorResponse } from "@/lib/api";
 
 export async function POST(request: Request) {
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
         email: emailLc,
         passwordHash,
         dob: dobDate,
-        emailVerified: false,
+        emailVerified: true, // TODO: revert to false once email verification is re-enabled
         isAdmin: adminEmails.includes(emailLc),
       });
     } catch (err: unknown) {
@@ -68,9 +70,11 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    const token = await createVerificationToken(String(user._id));
-    const base = process.env.APP_URL ?? "http://localhost:3000";
-    await sendVerificationEmail(emailLc, `${base}/verify?token=${token}`);
+    // Email verification is disabled for now — accounts are usable immediately.
+    // Re-enable to send the confirmation link when the email sender is turned on:
+    // const token = await createVerificationToken(String(user._id));
+    // const base = process.env.APP_URL ?? "http://localhost:3000";
+    // await sendVerificationEmail(emailLc, `${base}/verify?token=${token}`);
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {

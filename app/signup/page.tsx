@@ -271,6 +271,9 @@ export default function SignupPage() {
       </form>
 
       <p className={styles.alt}>
+        By creating an account, you agree to our <Link href="/policy">Privacy Policy</Link>.
+      </p>
+      <p className={styles.alt}>
         Already have an account? <Link href="/login">Log in</Link>
       </p>
     </AuthShell>

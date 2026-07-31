@@ -1,14 +1,14 @@
 import { connectDB } from "@/database/connect";
 import { Pick } from "@/models/Pick";
 import { Fixture } from "@/models/Fixture";
-import { getActiveGame, requireAliveEntry } from "./queries";
+import { getPlayableGame, requireAliveEntry } from "./queries";
 import { getPickWindow } from "./pickWindow";
 import { GameError } from "./errors";
 
 /** Make (or change) the pick for the open game week (this week, or the next once it locks). */
 export async function makePick(userId: string, teamApiId: number): Promise<void> {
   await connectDB();
-  const game = await getActiveGame();
+  const game = await getPlayableGame();
   const entry = await requireAliveEntry(game._id, userId);
 
   const window = await getPickWindow(game.season, game.currentMatchday);
@@ -56,7 +56,7 @@ export async function makePick(userId: string, teamApiId: number): Promise<void>
 /** Spend this game's single wildcard on the open game week. */
 export async function useWildcard(userId: string): Promise<void> {
   await connectDB();
-  const game = await getActiveGame();
+  const game = await getPlayableGame();
   const entry = await requireAliveEntry(game._id, userId);
   if (entry.wildcardUsed) throw new GameError("You’ve already used your wildcard this game.", 409);
 

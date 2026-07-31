@@ -26,6 +26,19 @@ export async function getActiveGame(): Promise<HydratedDocument<IGame>> {
   return game;
 }
 
+/**
+ * The game open for picks — registration or active (anything but finished).
+ * Players can lock in their pick during registration, before kickoff.
+ */
+export async function getPlayableGame(): Promise<HydratedDocument<IGame>> {
+  await connectDB();
+  const game = await Game.findOne({ status: { $in: ["registration", "active"] } }).sort({
+    createdAt: -1,
+  });
+  if (!game) throw new GameError("There isn’t a game open right now.", 409);
+  return game;
+}
+
 export async function requireAliveEntry(
   gameId: Types.ObjectId,
   userId: string | Types.ObjectId
