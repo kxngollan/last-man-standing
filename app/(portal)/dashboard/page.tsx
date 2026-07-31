@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePortalState } from "@/components/portal/usePortalState";
-import { teamColor } from "@/lib/teamColor";
+import { TeamCrest } from "@/components/portal/TeamCrest";
 import styles from "./page.module.css";
 
 function useCountUp(target: number, on: boolean) {
@@ -83,7 +83,7 @@ export default function DashboardPage() {
         <div className="lms-state">
           <h1 className="lms-state__title">No game running</h1>
           <p className="lms-state__body">
-            There isn’t a game on right now. Check back soon — a new one starts when the admin
+            There isn’t a game on right now. Check back soon. A new one starts when the admin
             opens registration.
           </p>
         </div>
@@ -152,7 +152,7 @@ export default function DashboardPage() {
 
       {!entry && game.status === "active" && (
         <p className={styles.notice}>
-          This game already kicked off — you’ll be able to join the next one.
+          This game already kicked off. You’ll be able to join the next one.
         </p>
       )}
 
@@ -165,7 +165,7 @@ export default function DashboardPage() {
         </div>
 
         {standings.length === 0 ? (
-          <p className={styles.notice}>No players yet — be the first to join.</p>
+          <p className={styles.notice}>No players yet. Be the first to join.</p>
         ) : (
           <ul className={styles.board}>
             {standings.map((p, i) => (
@@ -190,13 +190,7 @@ export default function DashboardPage() {
                 <span className={styles.lastPick}>
                   {p.lastTeamTla ? (
                     <>
-                      <span
-                        className="lms-crest"
-                        style={{ background: teamColor(p.lastTeamTla) }}
-                        aria-hidden="true"
-                      >
-                        {p.lastTeamTla}
-                      </span>
+                      <TeamCrest crest={p.lastTeamCrest} tla={p.lastTeamTla} />
                       <span className={styles.pickName}>{p.lastTeamName}</span>
                     </>
                   ) : (

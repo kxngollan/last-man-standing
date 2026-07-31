@@ -332,5 +332,9 @@ textarea.lms-field__control {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  object-fit: cover;
+  /* Badges are transparent and often non-square — contain (not cover) keeps
+     the whole crest visible; the light backing lets it read in dark mode. */
+  object-fit: contain;
+  padding: 12%;
+  background: var(--color-paper);
 }

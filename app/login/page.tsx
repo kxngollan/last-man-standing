@@ -33,7 +33,7 @@ export default function LoginPage() {
     setSubmitting(false);
     if (res?.error) {
       setError(
-        "We couldn’t log you in. Check your details — and if you just signed up, confirm your email first."
+        "We couldn’t log you in. Check your details, and if you just signed up, confirm your email first."
       );
       return;
     }

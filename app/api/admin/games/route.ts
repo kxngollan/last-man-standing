@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const body = await readJson<{ startMatchday?: number; season?: number }>(request);
     const startMatchday = Number(body?.startMatchday);
     if (!Number.isInteger(startMatchday) || startMatchday < 1 || startMatchday > 38) {
-      return NextResponse.json({ error: "Provide a start game week (1–38)." }, { status: 400 });
+      return NextResponse.json({ error: "Provide a start game week (1 to 38)." }, { status: 400 });
     }
     const season = body?.season ? Number(body.season) : undefined;
     const game = await createGame({ createdBy: user.id, startMatchday, season });

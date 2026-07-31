@@ -10,19 +10,19 @@ const isDev = process.env.NODE_ENV !== "production";
 function friendlyMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   if (/MONGO_DB_URI/i.test(msg)) {
-    return "The database isn’t configured — set MONGO_DB_URI in .env.local, then restart the dev server.";
+    return "The database isn’t configured. Set MONGO_DB_URI in .env.local, then restart the dev server.";
   }
   if (/ECONNREFUSED|ENOTFOUND|querySrv|getaddrinfo|ETIMEDOUT|serverSelection|topology/i.test(msg)) {
-    return "Couldn’t reach the database. Check MONGO_DB_URI and that your cluster is running and your IP is allow-listed.";
+    return "Couldn’t reach the database. Check MONGO_DB_URI and that your cluster is running and your IP is allowlisted.";
   }
   if (/bad auth|authentication failed|not authorized/i.test(msg)) {
     return "Database authentication failed. Check the username and password in MONGO_DB_URI.";
   }
   if (/FOOTBALL_API/i.test(msg)) {
-    return "The football data API key isn’t set — add FOOTBALL_API to .env.local.";
+    return "The football data API key isn’t set. Add FOOTBALL_API to .env.local.";
   }
   if (/AUTH_SECRET|MissingSecret/i.test(msg)) {
-    return "Auth isn’t configured — set AUTH_SECRET in .env.local.";
+    return "Auth isn’t configured. Set AUTH_SECRET in .env.local.";
   }
   return "Something went wrong. Please try again.";
 }

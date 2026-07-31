@@ -37,12 +37,12 @@ export default function ResetForm({ token }: { token: string }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setServerError(data.detail ? `${data.error} — ${data.detail}` : data.error ?? "Couldn’t reset your password.");
+        setServerError(data.detail ? `${data.error}: ${data.detail}` : data.error ?? "Couldn’t reset your password.");
         return;
       }
       setDone(true);
     } catch {
-      setServerError("Network error — please try again.");
+      setServerError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }

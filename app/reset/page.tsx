@@ -4,7 +4,7 @@ import ResetForm from "@/components/auth/ResetForm";
 import styles from "@/components/auth/authContent.module.css";
 
 export const metadata = {
-  title: "Reset password — Last Man Standing",
+  title: "Reset password · Last Man Standing",
 };
 
 export default async function ResetPage({

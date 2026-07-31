@@ -1,33 +1,58 @@
 import Link from "next/link";
+import { connectDB } from "@/database/connect";
+import { Team } from "@/models/Team";
+import { TeamCrest } from "@/components/portal/TeamCrest";
 import styles from "./page.module.css";
 
-const CRESTS: { code: string; color: string }[] = [
-  { code: "ARS", color: "oklch(55% 0.2 25)" },
-  { code: "AVL", color: "oklch(38% 0.12 15)" },
-  { code: "CHE", color: "oklch(48% 0.17 260)" },
-  { code: "LIV", color: "oklch(52% 0.19 22)" },
-  { code: "MCI", color: "oklch(52% 0.12 235)" },
-  { code: "MUN", color: "oklch(54% 0.2 28)" },
-  { code: "NEW", color: "oklch(32% 0.01 0)" },
-  { code: "TOT", color: "oklch(48% 0.07 265)" },
-  { code: "BHA", color: "oklch(52% 0.16 245)" },
-  { code: "WHU", color: "oklch(40% 0.12 20)" },
+// Curated fallback used for the hero marquee when the crest images can't be
+// loaded (e.g. no teams seeded yet, or DB unavailable at render time).
+const FALLBACK_CRESTS: { tla: string; color: string }[] = [
+  { tla: "ARS", color: "oklch(55% 0.2 25)" },
+  { tla: "AVL", color: "oklch(38% 0.12 15)" },
+  { tla: "CHE", color: "oklch(48% 0.17 260)" },
+  { tla: "LIV", color: "oklch(52% 0.19 22)" },
+  { tla: "MCI", color: "oklch(52% 0.12 235)" },
+  { tla: "MUN", color: "oklch(54% 0.2 28)" },
+  { tla: "NEW", color: "oklch(32% 0.01 0)" },
+  { tla: "TOT", color: "oklch(48% 0.07 265)" },
+  { tla: "BHA", color: "oklch(52% 0.16 245)" },
+  { tla: "WHU", color: "oklch(40% 0.12 20)" },
 ];
+
+type MarqueeCrest = { tla: string; crest: string | null; color?: string };
+
+/** Official team badges for the hero marquee, with a graceful letter fallback. */
+async function marqueeCrests(): Promise<MarqueeCrest[]> {
+  try {
+    await connectDB();
+    const teams = await Team.find({ crest: { $ne: null } })
+      .select("tla crest")
+      .lean();
+    const withCrest = teams
+      .filter((t) => t.crest)
+      .map((t) => ({ tla: t.tla, crest: t.crest as string }));
+    if (withCrest.length >= 6) return withCrest;
+  } catch {
+    // DB unavailable — fall through to the curated letter discs.
+  }
+  return FALLBACK_CRESTS.map((c) => ({ tla: c.tla, crest: null, color: c.color }));
+}
 
 const STEPS = [
   { n: "01", title: "Pick a team", body: "Each game week, choose one Premier League team you think will win." },
   { n: "02", title: "Survive", body: "If they win, you’re through. If they draw or lose, you’re out." },
-  { n: "03", title: "Never repeat", body: "You can only use each team once — spend your big guns wisely." },
+  { n: "03", title: "Never repeat", body: "You can only use each team once, so spend your big guns wisely." },
   { n: "04", title: "Last one wins", body: "When a single player is left standing, they win the whole game." },
 ];
 
 const RULES = [
   { k: "Wildcard", v: "One per game. Play it on a tough week to stay safe without picking." },
   { k: "Postponed?", v: "If your team’s match is called off, you’re safe and go through." },
-  { k: "All out?", v: "If everyone falls in the same week, nobody wins — a new game begins." },
+  { k: "All out?", v: "If everyone falls in the same week, nobody wins and a new game begins." },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const crests = await marqueeCrests();
   return (
     <div className={styles.page}>
       {/* N7 brutal-slab nav */}
@@ -73,10 +98,8 @@ export default function LandingPage() {
 
         <div className={styles.marquee} aria-hidden="true">
           <div className={styles.track}>
-            {[...CRESTS, ...CRESTS].map((c, i) => (
-              <span key={i} className="lms-crest lms-crest--lg" style={{ background: c.color }}>
-                {c.code}
-              </span>
+            {[...crests, ...crests].map((c, i) => (
+              <TeamCrest key={i} crest={c.crest} tla={c.tla} size="lg" fallbackColor={c.color} />
             ))}
           </div>
         </div>

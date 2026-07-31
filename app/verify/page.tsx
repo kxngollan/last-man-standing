@@ -4,7 +4,7 @@ import styles from "@/components/auth/authContent.module.css";
 import { consumeVerificationToken, type VerifyOutcome } from "@/lib/verification";
 
 export const metadata = {
-  title: "Confirm email — Last Man Standing",
+  title: "Confirm email · Last Man Standing",
 };
 
 type Outcome = VerifyOutcome | "error";
@@ -35,11 +35,11 @@ export default async function VerifyPage({
     },
     already: {
       title: "Already confirmed",
-      lede: "This email is already verified — you’re good to log in.",
+      lede: "This email is already verified. You’re good to log in.",
     },
     invalid: {
       title: "Link expired or invalid",
-      lede: "This confirmation link didn’t work. It may have expired — request a new one from the login page.",
+      lede: "This confirmation link didn’t work. It may have expired, so request a new one from the login page.",
     },
     error: {
       title: "Couldn’t confirm right now",

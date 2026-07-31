@@ -33,7 +33,7 @@ function ageFrom(dob: string): number | null {
 function validate(f: Fields): Errors {
   const e: Errors = {};
   if (!f.name.trim()) e.name = "Enter your name so other players can see who they’re up against.";
-  if (!f.email.trim()) e.email = "Enter your email — we’ll send a confirmation link.";
+  if (!f.email.trim()) e.email = "Enter your email. We’ll send a confirmation link.";
   else if (!EMAIL_RE.test(f.email)) e.email = "That doesn’t look like a valid email address.";
   if (!f.password) e.password = "Choose a password.";
   else if (f.password.length < 8) e.password = "Use at least 8 characters.";
@@ -99,12 +99,12 @@ export default function SignupPage() {
         }
         const base = data.error ?? "Couldn’t create your account. Please try again.";
         // `detail` is only present in development — shows the raw cause.
-        setServerError(data.detail ? `${base} — ${data.detail}` : base);
+        setServerError(data.detail ? `${base}: ${data.detail}` : base);
         return;
       }
       setDone(true);
     } catch {
-      setServerError("Network error — please try again.");
+      setServerError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }

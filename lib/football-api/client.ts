@@ -24,12 +24,33 @@ export interface FdMatch {
   };
 }
 
-async function fd<T>(path: string): Promise<T> {
+export interface FdStandingRow {
+  position: number;
+  team: FdTeam;
+  playedGames: number;
+  won: number;
+  draw: number;
+  lost: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  form: string | null;
+}
+
+/**
+ * @param revalidate  Seconds to cache the response for (Next data cache). When
+ *   omitted the request is uncached (`no-store`) — right for writes/resolution,
+ *   wrong for player-facing reads that would otherwise hammer the rate limit.
+ */
+async function fd<T>(path: string, revalidate?: number): Promise<T> {
   const key = process.env.FOOTBALL_API;
   if (!key) throw new Error("FOOTBALL_API is not set. Add it to .env.local.");
   const res = await fetch(`${BASE}${path}`, {
     headers: { "X-Auth-Token": key },
-    cache: "no-store",
+    ...(revalidate === undefined
+      ? { cache: "no-store" as const }
+      : { next: { revalidate } }),
   });
   if (!res.ok) {
     throw new Error(`football-data.org request failed (${res.status}) for ${path}`);
@@ -48,4 +69,25 @@ export async function fetchPLMatchday(season: number, matchday: number): Promise
     `/competitions/PL/matches?season=${season}&matchday=${matchday}`
   );
   return data.matches ?? [];
+}
+
+/** Every match in a season (all 38 matchdays) in a single request. */
+export async function fetchPLSeasonMatches(season: number): Promise<FdMatch[]> {
+  const data = await fd<{ matches: FdMatch[] }>(
+    `/competitions/PL/matches?season=${season}`
+  );
+  return data.matches ?? [];
+}
+
+/** The league table (TOTAL standings), cached for a few minutes by default. */
+export async function fetchPLStandings(
+  season: number,
+  revalidate = 300
+): Promise<FdStandingRow[]> {
+  const data = await fd<{ standings: { type: string; table: FdStandingRow[] }[] }>(
+    `/competitions/PL/standings?season=${season}`,
+    revalidate
+  );
+  const total = data.standings?.find((s) => s.type === "TOTAL");
+  return total?.table ?? [];
 }

@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { usePortalState } from "@/components/portal/usePortalState";
-import { teamColor } from "@/lib/teamColor";
+import { TeamCrest } from "@/components/portal/TeamCrest";
 import { TEAMS_PER_GAME } from "@/lib/game/constants";
 import styles from "./page.module.css";
 
 const RESULT_META: Record<string, { chip: string; label: string; detail: string }> = {
-  win: { chip: "lms-chip--safe", label: "Won", detail: "Won — through to the next week." },
+  win: { chip: "lms-chip--safe", label: "Won", detail: "Won. Through to the next week." },
   safe: { chip: "lms-chip--safe", label: "Safe", detail: "Safe this week." },
-  postponed: { chip: "lms-chip--safe", label: "Safe", detail: "Match postponed — counted as safe." },
-  draw: { chip: "lms-chip--out", label: "Out", detail: "Drew — knocked out here." },
-  loss: { chip: "lms-chip--out", label: "Out", detail: "Lost — knocked out here." },
+  postponed: { chip: "lms-chip--safe", label: "Safe", detail: "Match postponed, counted as safe." },
+  draw: { chip: "lms-chip--out", label: "Out", detail: "Drew. Knocked out here." },
+  loss: { chip: "lms-chip--out", label: "Out", detail: "Lost. Knocked out here." },
   pending: { chip: "lms-chip--neutral", label: "This week", detail: "Awaiting this week’s result." },
 };
 
@@ -73,7 +73,7 @@ export default function TeamPage() {
         </p>
         <h1 className={styles.title}>My picks</h1>
         <p className="lms-head__hint">
-          Every team you pick is locked in for the game — you can’t use it again until a new game
+          Every team you pick is locked in for the game. You can’t use it again until a new game
           starts.
         </p>
       </div>
@@ -84,7 +84,7 @@ export default function TeamPage() {
         <ol className={styles.timeline}>
           {history.map((p) => {
             const meta = p.isWildcard
-              ? { chip: "lms-chip--wild", label: "Wildcard", detail: "Wildcard played — safe this week." }
+              ? { chip: "lms-chip--wild", label: "Wildcard", detail: "Wildcard played. Safe this week." }
               : RESULT_META[p.result] ?? RESULT_META.pending;
             return (
               <li key={p.matchday} className={styles.entry} data-pending={p.result === "pending"}>
@@ -94,13 +94,11 @@ export default function TeamPage() {
                   </span>
                 </div>
                 <div className={`lms-panel ${styles.card}`}>
-                  <span
-                    className="lms-crest lms-crest--lg"
-                    style={{ background: teamColor(p.tla ?? "WC") }}
-                    aria-hidden="true"
-                  >
-                    {p.isWildcard ? "WC" : p.tla}
-                  </span>
+                  <TeamCrest
+                    crest={p.isWildcard ? null : p.crest}
+                    tla={p.isWildcard ? "WC" : p.tla}
+                    size="lg"
+                  />
                   <div className={styles.body}>
                     <div className={styles.teamLine}>
                       <span className={styles.team}>{p.isWildcard ? "Wildcard" : p.teamName}</span>
@@ -123,25 +121,19 @@ export default function TeamPage() {
           </span>
         </h2>
         {used.length === 0 ? (
-          <p className={styles.usedHint}>None yet — all {TEAMS_PER_GAME} teams are available.</p>
+          <p className={styles.usedHint}>None yet. All {TEAMS_PER_GAME} teams are available.</p>
         ) : (
           <>
             <ul className={styles.usedList}>
               {used.map((p) => (
                 <li key={p.matchday} className={styles.usedItem}>
-                  <span
-                    className="lms-crest"
-                    style={{ background: teamColor(p.tla ?? "") }}
-                    aria-hidden="true"
-                  >
-                    {p.tla}
-                  </span>
+                  <TeamCrest crest={p.crest} tla={p.tla} />
                   <span className={styles.usedName}>{p.teamName}</span>
                 </li>
               ))}
             </ul>
             <p className={styles.usedHint}>
-              {TEAMS_PER_GAME - used.length} teams still available. Choose wisely — you’ll want your
+              {TEAMS_PER_GAME - used.length} teams still available. Choose wisely. You’ll want your
               strongest fixtures later.
             </p>
           </>

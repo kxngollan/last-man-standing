@@ -8,9 +8,9 @@ import { Fixture } from "@/models/Fixture";
 import { User } from "@/models/User";
 import { getMatchdayDeadline, isLocked } from "./deadline";
 import { GameError } from "./errors";
-import type { TeamOption, PortalState } from "./portalTypes";
+import type { TeamOption, PortalState, AdminOverview } from "./portalTypes";
 
-export type { TeamOption, PortalState } from "./portalTypes";
+export type { TeamOption, PortalState, AdminOverview } from "./portalTypes";
 
 /** The single global game currently open (registration or active), if any. */
 export async function getCurrentGame(): Promise<HydratedDocument<IGame> | null> {
@@ -36,6 +36,59 @@ export async function requireAliveEntry(
 }
 
 const survived = (startMatchday: number, upto: number) => Math.max(0, upto - startMatchday);
+
+/** Dynamic data for the admin control panel. */
+export async function getAdminOverview(): Promise<AdminOverview> {
+  await connectDB();
+  const game = await getCurrentGame();
+  const teamsSeeded = await Team.countDocuments({});
+
+  const finished = await Game.find({ status: "finished" }).sort({ createdAt: -1 }).limit(10).lean();
+  const winnerIds = finished.map((g) => g.winnerUserId).filter(Boolean);
+  const winners = await User.find({ _id: { $in: winnerIds } }).select("name").lean();
+  const winnerName = new Map(winners.map((w) => [String(w._id), w.name]));
+
+  const pastGames = await Promise.all(
+    finished.map(async (g) => {
+      const no = await Game.countDocuments({ createdAt: { $lte: g.createdAt } });
+      const weeks = g.currentMatchday - g.startMatchday + 1;
+      if (g.noWinner) {
+        return {
+          no,
+          outcome: `No winner. All out Week ${weeks}, restarted`,
+          tone: "out" as const,
+          weeks,
+        };
+      }
+      const name = g.winnerUserId ? winnerName.get(String(g.winnerUserId)) ?? "a player" : "a player";
+      return { no, outcome: `Won by ${name}`, tone: "safe" as const, weeks };
+    })
+  );
+
+  let current: AdminOverview["current"] = null;
+  if (game) {
+    const [no, playersTotal, playersAlive, deadline] = await Promise.all([
+      Game.countDocuments({ createdAt: { $lte: game.createdAt } }),
+      Entry.countDocuments({ gameId: game._id }),
+      Entry.countDocuments({ gameId: game._id, status: "alive" }),
+      getMatchdayDeadline(game.season, game.currentMatchday),
+    ]);
+    current = {
+      id: String(game._id),
+      no,
+      status: game.status,
+      season: game.season,
+      matchday: game.currentMatchday,
+      gameWeek: game.currentMatchday - game.startMatchday + 1,
+      playersTotal,
+      playersAlive,
+      deadline: deadline ? deadline.toISOString() : null,
+      locked: isLocked(deadline),
+    };
+  }
+
+  return { current, pastGames, teamsSeeded };
+}
 
 /** Everything the player-facing screens need for the current game. */
 export async function getGameStateForUser(userId: string): Promise<PortalState> {
@@ -144,6 +197,7 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
         status: e.status,
         lastTeamTla: last?.isWildcard ? "WC" : lastTeam?.tla ?? null,
         lastTeamName: last?.isWildcard ? "Wildcard" : lastTeam?.name ?? null,
+        lastTeamCrest: last?.isWildcard ? null : lastTeam?.crest ?? null,
       };
     })
     .sort((a, b) => {
@@ -164,6 +218,7 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
         gameWeek: p.matchday - game.startMatchday + 1,
         teamName: p.isWildcard ? null : team?.name ?? null,
         tla: p.isWildcard ? null : team?.tla ?? null,
+        crest: p.isWildcard ? null : team?.crest ?? null,
         result: p.result,
         isWildcard: p.isWildcard,
       };

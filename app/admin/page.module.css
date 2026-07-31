@@ -44,6 +44,12 @@
   font-size: var(--text-2xl);
 }
 
+.notice {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
 /* ---- Bento: current game spans two, others stack beside/under ---- */
 .grid {
   display: grid;

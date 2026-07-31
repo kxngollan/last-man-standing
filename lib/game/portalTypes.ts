@@ -16,6 +16,28 @@ export interface TeamOption {
   used: boolean;
 }
 
+export interface AdminOverview {
+  current: {
+    id: string;
+    no: number;
+    status: GameStatus;
+    season: number;
+    matchday: number;
+    gameWeek: number;
+    playersTotal: number;
+    playersAlive: number;
+    deadline: string | null;
+    locked: boolean;
+  } | null;
+  pastGames: Array<{
+    no: number;
+    outcome: string;
+    tone: "safe" | "out";
+    weeks: number;
+  }>;
+  teamsSeeded: number;
+}
+
 export interface PortalState {
   game: {
     id: string;
@@ -47,12 +69,14 @@ export interface PortalState {
     status: EntryStatus;
     lastTeamTla: string | null;
     lastTeamName: string | null;
+    lastTeamCrest: string | null;
   }>;
   history: Array<{
     matchday: number;
     gameWeek: number;
     teamName: string | null;
     tla: string | null;
+    crest: string | null;
     result: string;
     isWildcard: boolean;
   }>;

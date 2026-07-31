@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePortalState } from "@/components/portal/usePortalState";
-import { teamColor } from "@/lib/teamColor";
+import { TeamCrest } from "@/components/portal/TeamCrest";
 import styles from "./page.module.css";
 
 function useCountdown(targetIso: string | null) {
@@ -94,7 +94,7 @@ export default function MakeSelectionPage() {
         </h1>
         <p className="lms-state__body">
           {state.game.status === "registration"
-            ? "Registration is open — join from the dashboard to make your first pick."
+            ? "Registration is open. Join from the dashboard to make your first pick."
             : "This game already kicked off. You’ll be able to join the next one."}
         </p>
         <Link href="/dashboard" className="lms-btn lms-btn--primary">
@@ -198,7 +198,7 @@ export default function MakeSelectionPage() {
               Pick your <span className={styles.titleAccent}>Week {gameWeek}</span> team
             </h1>
             <p className={styles.lede}>
-              Choose one team to win. Win and you’re through to next week — draw or lose and
+              Choose one team to win. Win and you’re through to next week. Draw or lose and
               you’re out. Each team can only be used once.
             </p>
             <div className={styles.survived}>
@@ -262,7 +262,7 @@ export default function MakeSelectionPage() {
             <div className={styles.wildcardBody}>
               <h2>Tough week? Play your wildcard.</h2>
               <p>
-                It keeps you safe this week without picking a team — and doesn’t use one up. You
+                It keeps you safe this week without picking a team, and doesn’t use one up. You
                 have <b data-nums>{wildcardLeft}</b> wildcard{wildcardLeft === 1 ? "" : "s"} left.
               </p>
             </div>
@@ -312,13 +312,7 @@ export default function MakeSelectionPage() {
                     onChange={() => setSelected(team.apiId)}
                   />
                   <label className={styles.card} htmlFor={id} data-used={team.used && !isCurrent}>
-                    <span
-                      className={styles.crest}
-                      style={{ background: teamColor(team.tla) }}
-                      aria-hidden="true"
-                    >
-                      {team.tla}
-                    </span>
+                    <TeamCrest crest={team.crest} tla={team.tla} discClass={styles.crest} />
                     <span className={styles.teamMeta}>
                       <span className={styles.teamName}>{team.shortName || team.name}</span>
                       <span className={styles.fixture} data-nums>

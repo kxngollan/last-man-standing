@@ -67,6 +67,10 @@
 .status {
   margin-inline-start: auto;
 }
+.account {
+  position: relative;
+  flex: none;
+}
 .avatar {
   flex: none;
   width: 34px;
@@ -81,6 +85,93 @@
   font-family: var(--font-display);
   border: none;
   cursor: pointer;
+}
+
+.menu {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + var(--space-xs));
+  z-index: var(--z-dropdown);
+  min-width: 12rem;
+  max-width: min(16rem, calc(100vw - var(--space-lg)));
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lift);
+  padding: var(--space-xs);
+  animation: menuIn 140ms var(--ease-out);
+}
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu {
+    animation: none;
+  }
+}
+.menuHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
+  border-bottom: 1px solid var(--color-rule);
+  margin-bottom: var(--space-2xs);
+}
+.menuName {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+.menuEmail {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menuLink {
+  display: block;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+@media (hover: hover) and (pointer: fine) {
+  .menuLink:hover {
+    background: var(--color-paper-2);
+  }
+}
+.logout {
+  width: 100%;
+  text-align: start;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-out-ink);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+@media (hover: hover) and (pointer: fine) {
+  .logout:hover:not(:disabled) {
+    background: var(--color-out-wash);
+  }
+}
+.logout:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Mobile nav strip — shown only when the in-bar nav is hidden */

@@ -11,7 +11,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={styles.wrap}>
       <aside className={styles.brandPanel}>
-        <Link href="/" className={styles.brand} aria-label="Last Man Standing — home">
+        <Link href="/" className={styles.brand} aria-label="Last Man Standing home">
           <svg className={styles.mark} viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M12 2 3 5.5v6c0 5 3.8 8.6 9 10.5 5.2-1.9 9-5.5 9-10.5v-6L12 2Z"
