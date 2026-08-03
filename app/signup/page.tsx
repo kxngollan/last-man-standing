@@ -124,14 +124,13 @@ export default function SignupPage() {
               strokeLinejoin="round"
             />
           </svg>
-          <h1 className={styles.title}>Check your email</h1>
+          <h1 className={styles.title}>Account created</h1>
           <p className={styles.lede}>
-            We&rsquo;ve sent a confirmation link to <strong>{fields.email}</strong>. Click it to
-            verify your account &mdash; you&rsquo;ll be able to join the next game once
-            you&rsquo;re confirmed.
+            Your account for <strong>{fields.email}</strong> is verified and ready. Log in and
+            join the next game when registration opens.
           </p>
-          <Link href="/login" className="lms-btn lms-btn--ghost lms-btn--block">
-            Back to log in
+          <Link href="/login" className="lms-btn lms-btn--primary lms-btn--block">
+            Log in
           </Link>
         </div>
       </AuthShell>
