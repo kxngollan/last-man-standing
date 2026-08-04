@@ -145,7 +145,11 @@ export default function DashboardPage() {
           <Stat value={wildcardsLeft} label="wildcard left" on={ready} />
           <div className={styles.stat}>
             <div className={styles.pickNum}>
-              {myPick?.isWildcard ? "Wildcard" : myPick?.teamName ?? "Not set"}
+              {myPick?.teamName
+                ? `${myPick.teamName}${myPick.isWildcard ? " ★" : ""}`
+                : myPick?.isWildcard
+                  ? "Wildcard"
+                  : "Not set"}
             </div>
             <div className="lms-stat__label">your Week {pickGameWeek} pick</div>
           </div>

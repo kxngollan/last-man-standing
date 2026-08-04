@@ -218,9 +218,10 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
         you: String(e.userId) === String(userId),
         survivedWeeks: survived(game.startMatchday, e.eliminatedAtMatchday ?? md),
         status: e.status,
-        lastTeamTla: last?.isWildcard ? "WC" : lastTeam?.tla ?? null,
-        lastTeamName: last?.isWildcard ? "Wildcard" : lastTeam?.name ?? null,
-        lastTeamCrest: last?.isWildcard ? null : lastTeam?.crest ?? null,
+        // Wildcard picks carry a team now; "WC" is only the legacy teamless form.
+        lastTeamTla: lastTeam?.tla ?? (last?.isWildcard ? "WC" : null),
+        lastTeamName: lastTeam?.name ?? (last?.isWildcard ? "Wildcard" : null),
+        lastTeamCrest: lastTeam?.crest ?? null,
       };
     })
     .sort((a, b) => {
@@ -239,9 +240,9 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
       return {
         matchday: p.matchday,
         gameWeek: p.matchday - game.startMatchday + 1,
-        teamName: p.isWildcard ? null : team?.name ?? null,
-        tla: p.isWildcard ? null : team?.tla ?? null,
-        crest: p.isWildcard ? null : team?.crest ?? null,
+        teamName: team?.name ?? null,
+        tla: team?.tla ?? null,
+        crest: team?.crest ?? null,
         result: p.result,
         isWildcard: p.isWildcard,
       };

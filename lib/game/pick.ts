@@ -23,7 +23,7 @@ export async function makePick(userId: string, teamApiId: number): Promise<void>
   if (!fixture) throw new GameError("That team doesn’t play this game week.", 400);
 
   const existing = await Pick.findOne({ entryId: entry._id, matchday: md });
-  const prevTeam = existing && !existing.isWildcard ? existing.teamApiId : null;
+  const prevTeam = existing?.teamApiId ?? null;
 
   if (entry.usedTeamApiIds.includes(teamApiId) && prevTeam !== teamApiId) {
     throw new GameError("You’ve already used that team this game.", 409);
@@ -39,7 +39,9 @@ export async function makePick(userId: string, teamApiId: number): Promise<void>
         teamApiId,
         fixtureApiId: fixture.apiId,
         result: "pending",
-        isWildcard: false,
+        // Changing team keeps an armed wildcard armed — it protects whatever
+        // the week's pick ends up being.
+        isWildcard: existing?.isWildcard ?? false,
         autoPicked: false,
       },
     },
@@ -53,7 +55,12 @@ export async function makePick(userId: string, teamApiId: number): Promise<void>
   await entry.save();
 }
 
-/** Spend this game's single wildcard on the open game week. */
+/**
+ * Play this game's single wildcard on the open game week's pick. The wildcard
+ * protects the pick: a draw counts as going through, so only a loss knocks the
+ * player out. It requires a team pick to attach to, and can be undone with
+ * `undoWildcard` any time before the deadline.
+ */
 export async function useWildcard(userId: string): Promise<void> {
   await connectDB();
   const game = await getPlayableGame();
@@ -65,30 +72,41 @@ export async function useWildcard(userId: string): Promise<void> {
   if (window.locked) throw new GameError("There’s no open game week to pick right now.", 409);
 
   const existing = await Pick.findOne({ entryId: entry._id, matchday: md });
-  const prevTeam = existing && !existing.isWildcard ? existing.teamApiId : null;
-
-  await Pick.updateOne(
-    { entryId: entry._id, matchday: md },
-    {
-      $set: {
-        gameId: game._id,
-        userId,
-        matchday: md,
-        teamApiId: null,
-        fixtureApiId: null,
-        result: "safe",
-        isWildcard: true,
-        autoPicked: false,
-      },
-    },
-    { upsert: true }
-  );
-
-  if (prevTeam) {
-    const used = new Set(entry.usedTeamApiIds);
-    used.delete(prevTeam);
-    entry.usedTeamApiIds = [...used];
+  if (!existing || existing.teamApiId == null) {
+    throw new GameError("Pick a team first — the wildcard protects your pick.", 409);
   }
+
+  existing.isWildcard = true;
+  await existing.save();
+
   entry.wildcardUsed = true;
+  await entry.save();
+}
+
+/** Take back a played wildcard, any time before the week locks. */
+export async function undoWildcard(userId: string): Promise<void> {
+  await connectDB();
+  const game = await getPlayableGame();
+  const entry = await requireAliveEntry(game._id, userId);
+
+  const window = await getPickWindow(game.season, game.currentMatchday);
+  const md = window.matchday;
+  if (window.locked) throw new GameError("This week is locked — the wildcard is already in play.", 409);
+
+  const existing = await Pick.findOne({ entryId: entry._id, matchday: md });
+  if (!existing?.isWildcard) {
+    throw new GameError("You haven’t played your wildcard this week.", 409);
+  }
+
+  if (existing.teamApiId == null) {
+    // Legacy skip-the-week wildcard with no team attached — remove the row so
+    // the player can pick fresh.
+    await existing.deleteOne();
+  } else {
+    existing.isWildcard = false;
+    await existing.save();
+  }
+
+  entry.wildcardUsed = false;
   await entry.save();
 }

@@ -52,7 +52,7 @@ export default function MakeSelectionPage() {
 
   // Sync local selection to the saved pick when data loads.
   useEffect(() => {
-    if (myPick && !myPick.isWildcard && myPick.teamApiId != null) {
+    if (myPick && myPick.teamApiId != null) {
       setSelected(myPick.teamApiId);
     }
   }, [myPick]);
@@ -122,8 +122,8 @@ export default function MakeSelectionPage() {
     );
   }
 
-  // Wildcard already played this week.
-  if (myPick?.isWildcard) {
+  // Legacy skip-the-week wildcard (no team attached) from the old rules.
+  if (myPick?.isWildcard && myPick.teamApiId == null) {
     return (
       <StateShell>
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -149,8 +149,9 @@ export default function MakeSelectionPage() {
 
   const { game, entry, teams, players } = state;
   const locked = state.locked;
+  const wildcardArmed = !!myPick?.isWildcard;
   const wildcardLeft = entry.wildcardUsed ? 0 : 1;
-  const confirmedTeamId = myPick && !myPick.isWildcard ? myPick.teamApiId : null;
+  const confirmedTeamId = myPick?.teamApiId ?? null;
   const dirty = selected != null && selected !== confirmedTeamId;
   const selectedTeam = teams.find((t) => t.apiId === selected) ?? null;
 
@@ -176,6 +177,17 @@ export default function MakeSelectionPage() {
     const res = await fetch("/api/picks/wildcard", { method: "POST" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) setActionError(data.error ?? "Couldn’t play your wildcard.");
+    await refetch();
+    setConfirming(false);
+  }
+
+  async function takeBackWildcard() {
+    if (confirming) return;
+    setConfirming(true);
+    setActionError("");
+    const res = await fetch("/api/picks/wildcard", { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) setActionError(data.error ?? "Couldn’t undo your wildcard.");
     await refetch();
     setConfirming(false);
   }
@@ -268,21 +280,47 @@ export default function MakeSelectionPage() {
               <circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" />
             </svg>
             <div className={styles.wildcardBody}>
-              <h2>Tough week? Play your wildcard.</h2>
-              <p>
-                It keeps you safe this week without picking a team, and doesn’t use one up. You
-                have <b data-nums>{wildcardLeft}</b> wildcard{wildcardLeft === 1 ? "" : "s"} left.
-              </p>
+              {wildcardArmed ? (
+                <>
+                  <h2>Wildcard armed on this pick.</h2>
+                  <p>
+                    Win <b>or draw</b> this week and you’re through — only a loss knocks you out.
+                    You can take it back any time before the deadline.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2>Tough week? Play your wildcard.</h2>
+                  <p>
+                    It protects your pick: win <b>or draw</b> and you’re through. One per game
+                    {confirmedTeamId == null && wildcardLeft > 0 ? " — pick a team first" : ""}.
+                    You have <b data-nums>{wildcardLeft}</b> wildcard
+                    {wildcardLeft === 1 ? "" : "s"} left.
+                  </p>
+                </>
+              )}
             </div>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnWild}`}
-              onClick={playWildcard}
-              disabled={wildcardLeft < 1 || confirming}
-              aria-disabled={wildcardLeft < 1 || confirming}
-            >
-              {wildcardLeft < 1 ? "No wildcards left" : "Play wildcard"}
-            </button>
+            {wildcardArmed ? (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnWild}`}
+                onClick={takeBackWildcard}
+                disabled={confirming}
+                aria-disabled={confirming}
+              >
+                Undo wildcard
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnWild}`}
+                onClick={playWildcard}
+                disabled={wildcardLeft < 1 || confirmedTeamId == null || confirming}
+                aria-disabled={wildcardLeft < 1 || confirmedTeamId == null || confirming}
+              >
+                {wildcardLeft < 1 ? "No wildcards left" : "Play wildcard"}
+              </button>
+            )}
           </section>
         )}
 
@@ -361,7 +399,12 @@ export default function MakeSelectionPage() {
             ) : confirmedTeamId != null && !dirty ? (
               <>
                 <b>Pick confirmed: {myPick?.teamName}</b>{" "}
-                <span>&middot; change any time before the deadline</span>
+                <span>
+                  &middot;{" "}
+                  {wildcardArmed
+                    ? "wildcard armed — a draw is enough"
+                    : "change any time before the deadline"}
+                </span>
               </>
             ) : selectedTeam ? (
               <>

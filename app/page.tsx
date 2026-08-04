@@ -107,7 +107,7 @@ const STEPS = [
 const STEP_ART = [JerseyArt, ShieldCheckArt, NoRepeatArt, TrophyArt];
 
 const RULES = [
-  { k: "Wildcard", v: "One per game. Play it on a tough week to stay safe without picking." },
+  { k: "Wildcard", v: "One per game. Play it with your pick and a draw is enough to go through." },
   { k: "Postponed?", v: "If your team’s match is called off, you’re safe and go through." },
   { k: "All out?", v: "If everyone falls in the same week, nobody wins and a new game begins." },
 ];

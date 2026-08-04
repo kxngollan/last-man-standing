@@ -16,6 +16,32 @@ const RESULT_META: Record<string, { chip: string; label: string; detail: string 
   pending: { chip: "lms-chip--neutral", label: "This week", detail: "Awaiting this week’s result." },
 };
 
+/** Wildcard weeks read differently: a draw is a save, not an exit. */
+function wildcardMeta(p: { tla: string | null; result: string }) {
+  if (!p.tla) {
+    // Legacy teamless wildcard (skip-the-week rules).
+    return { chip: "lms-chip--wild", label: "Wildcard", detail: "Wildcard played. Safe this week." };
+  }
+  switch (p.result) {
+    case "pending":
+      return {
+        chip: "lms-chip--wild",
+        label: "Wildcard on",
+        detail: "Wildcard played — win or draw and you’re through.",
+      };
+    case "draw":
+      return {
+        chip: "lms-chip--wild",
+        label: "Wildcard save",
+        detail: "Drew — the wildcard kept you in.",
+      };
+    case "win":
+      return { chip: "lms-chip--safe", label: "Won", detail: "Won — the wildcard wasn’t needed." };
+    default:
+      return RESULT_META[p.result] ?? RESULT_META.pending;
+  }
+}
+
 function StateShell({ children }: { children: React.ReactNode }) {
   return (
     <main className={styles.main}>
@@ -63,7 +89,9 @@ export default function TeamPage() {
   }
 
   const { game, entry, history, pickGameWeek } = state;
-  const used = history.filter((h) => !h.isWildcard && h.tla);
+  // Wildcard picks consume their team like any other pick; only the legacy
+  // teamless wildcard rows (no tla) are excluded.
+  const used = history.filter((h) => h.tla);
   const alive = entry.status === "alive";
 
   return (
@@ -85,9 +113,7 @@ export default function TeamPage() {
       ) : (
         <ol className={styles.timeline}>
           {history.map((p) => {
-            const meta = p.isWildcard
-              ? { chip: "lms-chip--wild", label: "Wildcard", detail: "Wildcard played. Safe this week." }
-              : RESULT_META[p.result] ?? RESULT_META.pending;
+            const meta = p.isWildcard ? wildcardMeta(p) : RESULT_META[p.result] ?? RESULT_META.pending;
             return (
               <li key={p.matchday} className={styles.entry} data-pending={p.result === "pending"}>
                 <div className={styles.marker} aria-hidden="true">
@@ -97,13 +123,15 @@ export default function TeamPage() {
                 </div>
                 <div className={`lms-panel ${styles.card}`}>
                   <TeamCrest
-                    crest={p.isWildcard ? null : p.crest}
-                    tla={p.isWildcard ? "WC" : p.tla}
+                    crest={p.crest}
+                    tla={p.tla ?? (p.isWildcard ? "WC" : null)}
                     size="lg"
                   />
                   <div className={styles.body}>
                     <div className={styles.teamLine}>
-                      <span className={styles.team}>{p.isWildcard ? "Wildcard" : p.teamName}</span>
+                      <span className={styles.team}>
+                        {p.teamName ?? (p.isWildcard ? "Wildcard" : "—")}
+                      </span>
                     </div>
                     <p className={styles.detail}>{meta.detail}</p>
                   </div>

@@ -46,7 +46,7 @@ export const SITE_FAQS = [
   },
   {
     q: "What is the wildcard?",
-    a: "You get one wildcard per game. Play it on a tough week to stay safe without picking a team, and it does not use a team up.",
+    a: "You get one wildcard per game. Play it with your weekly pick and a draw is enough to go through — only a loss knocks you out. You can take it back any time before the deadline.",
   },
   {
     q: "Is Last Man Standing free to play?",

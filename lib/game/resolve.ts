@@ -81,7 +81,13 @@ export async function resolveMatchday(gameId: string): Promise<ResolveResult> {
   }
 
   const md = game.currentMatchday;
-  await syncFixtures(game.season, md); // pull latest results
+  try {
+    await syncFixtures(game.season, md); // pull latest results
+  } catch (err) {
+    // API hiccup — resolve from the last-synced fixtures. The stillPlaying
+    // guard below still blocks resolution until every fixture is final.
+    console.warn("[resolve] fixture sync failed, using stored results:", (err as Error).message);
+  }
   const fixtures = await Fixture.find({ season: game.season, matchday: md }).lean();
   if (fixtures.length === 0) {
     return { complete: false, matchday: md, message: "No fixtures loaded for this matchday." };
@@ -110,7 +116,8 @@ export async function resolveMatchday(gameId: string): Promise<ResolveResult> {
       continue;
     }
 
-    if (pick.isWildcard) {
+    if (pick.isWildcard && pick.teamApiId == null) {
+      // Legacy skip-the-week wildcard (no team attached) — unconditionally safe.
       pick.result = "safe";
       await pick.save();
       continue;
@@ -127,12 +134,15 @@ export async function resolveMatchday(gameId: string): Promise<ResolveResult> {
     const isHome = f.homeTeamApiId === pick.teamApiId;
     const won =
       (f.winner === "HOME_TEAM" && isHome) || (f.winner === "AWAY_TEAM" && !isHome);
+    const drew = f.winner === "DRAW";
 
-    if (won) {
-      pick.result = "win";
+    // The wildcard protects the pick: a draw is enough to go through, so only
+    // a loss knocks a wildcard player out.
+    if (won || (drew && pick.isWildcard)) {
+      pick.result = won ? "win" : "draw";
       await pick.save();
     } else {
-      pick.result = f.winner === "DRAW" ? "draw" : "loss";
+      pick.result = drew ? "draw" : "loss";
       await pick.save();
       entry.status = "eliminated";
       entry.eliminatedAtMatchday = md;

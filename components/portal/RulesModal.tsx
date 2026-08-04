@@ -29,7 +29,7 @@ const STEPS = [
 const EXTRAS = [
   {
     k: "Wildcard",
-    v: "You get one per game. Play it on a tricky week to stay safe without picking a team, and it doesn’t use a team up.",
+    v: "You get one per game. Play it with your pick on a tricky week and a draw is enough to go through — only a loss knocks you out. You can take it back any time before the deadline.",
   },
   {
     k: "Postponed match",
