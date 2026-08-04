@@ -22,11 +22,16 @@ export default function ForgotForm() {
     }
     setSubmitting(true)
     try {
-      await fetch('/api/auth/forgot', {
+      const res = await fetch('/api/auth/forgot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error ?? 'Something went wrong. Please try again.')
+        return
+      }
       setSent(true)
     } catch {
       setError('Network error. Please try again.')
@@ -51,8 +56,8 @@ export default function ForgotForm() {
           </svg>
           <h1 className={styles.title}>Check your email</h1>
           <p className={styles.lede}>
-            If an account exists for <strong>{email}</strong>, we&rsquo;ve sent a link to reset your password. It
-            expires in 1 hour.
+            We&rsquo;ve sent a password reset link to <strong>{email}</strong>. It expires in 1
+            hour.
           </p>
           <Link href='/login' className='lms-btn lms-btn--ghost lms-btn--block'>
             Back to log in
