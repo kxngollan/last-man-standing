@@ -47,14 +47,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        // Email verification is disabled for now — allow login without a
-        // confirmed email. Re-enable this block when the email sender is on.
-        // if (!user.emailVerified) {
-        //   console.warn(
-        //     `[auth] login rejected: ${email} hasn't confirmed their email (check the signup verification link)`
-        //   );
-        //   return null;
-        // }
+        if (!user.emailVerified) {
+          console.warn(
+            `[auth] login rejected: ${email} hasn't confirmed their email (check the signup verification link)`
+          );
+          return null;
+        }
 
         console.log(`[auth] login ok: ${email}`);
         return {

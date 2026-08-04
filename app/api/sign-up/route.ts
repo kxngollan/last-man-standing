@@ -4,10 +4,8 @@ import { User } from "@/models/User";
 import { signupSchema } from "@/lib/validation";
 import { hashPassword } from "@/lib/password";
 import { isOldEnough } from "@/lib/age";
-// Email verification is disabled for now — re-enable these (and the block below,
-// plus emailVerified: false) when the email sender is turned back on.
-// import { createVerificationToken } from "@/lib/verification";
-// import { sendVerificationEmail } from "@/lib/email";
+import { createVerificationToken } from "@/lib/verification";
+import { sendVerificationEmail } from "@/lib/email";
 import { readJson, errorResponse } from "@/lib/api";
 
 export async function POST(request: Request) {
@@ -57,7 +55,7 @@ export async function POST(request: Request) {
         email: emailLc,
         passwordHash,
         dob: dobDate,
-        emailVerified: true, // TODO: revert to false once email verification is re-enabled
+        emailVerified: false,
         isAdmin: adminEmails.includes(emailLc),
       });
     } catch (err: unknown) {
@@ -70,11 +68,17 @@ export async function POST(request: Request) {
       throw err;
     }
 
-    // Email verification is disabled for now — accounts are usable immediately.
-    // Re-enable to send the confirmation link when the email sender is turned on:
-    // const token = await createVerificationToken(String(user._id));
-    // const base = process.env.APP_URL ?? "http://localhost:3000";
-    // await sendVerificationEmail(emailLc, `${base}/verify?token=${token}`);
+    // Send the confirmation link. If it can't be sent, roll the account back
+    // so the player can simply sign up again — with no resend flow, an
+    // unverified account with no email would be permanently locked out.
+    try {
+      const token = await createVerificationToken(String(user._id));
+      const base = process.env.APP_URL ?? "http://localhost:3000";
+      await sendVerificationEmail(emailLc, `${base}/verify?token=${token}`);
+    } catch (err) {
+      await User.deleteOne({ _id: user._id });
+      throw err;
+    }
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {

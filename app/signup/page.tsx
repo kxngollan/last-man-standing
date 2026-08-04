@@ -124,10 +124,10 @@ export default function SignupPage() {
               strokeLinejoin="round"
             />
           </svg>
-          <h1 className={styles.title}>Account created</h1>
+          <h1 className={styles.title}>Check your inbox</h1>
           <p className={styles.lede}>
-            Your account for <strong>{fields.email}</strong> is verified and ready. Log in and
-            join the next game when registration opens.
+            We&rsquo;ve sent a confirmation link to <strong>{fields.email}</strong>. Click it to
+            verify your account, then log in and join the next game.
           </p>
           <Link href="/login" className="lms-btn lms-btn--primary lms-btn--block">
             Log in

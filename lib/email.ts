@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import nodemailer, { type Transporter } from "nodemailer";
 
@@ -28,13 +29,12 @@ function getTransporter(): Transporter | null {
 const FROM = process.env.SMTP_FROM ?? "Last Man Standing <no-reply@lastmanstanding.app>";
 
 // Brand logo, embedded as an inline attachment (CID) — remote images get
-// blocked by most clients and Gmail strips data: URIs.
+// blocked by most clients and Gmail strips data: URIs. If the file goes
+// missing the emails still send, just without the logo.
 const LOGO_CID = "logo@lastmanstanding";
-const LOGO_ATTACHMENT = {
-  filename: "logo.png",
-  path: path.join(process.cwd(), "public", "email-logo.png"),
-  cid: LOGO_CID,
-};
+const LOGO_PATH = path.join(process.cwd(), "public", "images", "email-logo.png");
+const logoAttachments = () =>
+  existsSync(LOGO_PATH) ? [{ filename: "logo.png", path: LOGO_PATH, cid: LOGO_CID }] : [];
 
 /* Hallmark · macrostructure: Poster/flyer (centered card) · theme: Hum (email-safe)
  * genre: playful · design-system: tokens.css translation · pre-emit critique: P4 H5 E4 S4 R4 V4
@@ -68,7 +68,7 @@ function flyerHtml(opts: {
           <table role="presentation" cellpadding="0" cellspacing="0" style="width:520px;max-width:100%;border-collapse:separate">
             <tr>
               <td align="center" style="background:#fffcf5;border:2px solid #2b241c;border-top:6px solid #d1563b;border-radius:14px;padding:40px 32px 32px">
-                <img src="cid:${LOGO_CID}" width="56" height="56" alt="Last Man Standing" style="display:block;margin:0 auto 20px">
+                ${existsSync(LOGO_PATH) ? `<img src="cid:${LOGO_CID}" width="56" height="56" alt="Last Man Standing" style="display:block;margin:0 auto 20px">` : ""}
                 <p style="margin:0 0 14px;font-family:${FONT_MONO};font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#b8442b">Last&nbsp;Man&nbsp;Standing</p>
                 <h1 style="margin:0 0 14px;font-family:${FONT_DISPLAY};font-weight:900;font-style:normal;font-size:32px;line-height:1.08;text-transform:uppercase;letter-spacing:-0.5px;color:#2b241c">${headline}</h1>
                 <p style="margin:0 auto 28px;max-width:34em;font-family:${FONT_BODY};font-size:16px;line-height:1.5;color:#4a4137">${body}</p>
@@ -116,7 +116,7 @@ export async function sendVerificationEmail(to: string, link: string): Promise<v
     to,
     subject: "Confirm your Last Man Standing account",
     text: `You're on the team sheet!\n\nConfirm your email and your place in the game is locked in:\n${link}\n\nThis link expires in 24 hours. Didn't sign up? Ignore this email and nothing happens.`,
-    attachments: [LOGO_ATTACHMENT],
+    attachments: logoAttachments(),
     html: flyerHtml({
       preheader: "One tap to confirm your email — then you're in the game.",
       headline: "You&rsquo;re on the team&nbsp;sheet",
@@ -140,7 +140,7 @@ export async function sendPasswordResetEmail(to: string, link: string): Promise<
     to,
     subject: "Reset your Last Man Standing password",
     text: `We received a request to reset your password.\n\nSet a new one here:\n${link}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email and your password stays as it is.`,
-    attachments: [LOGO_ATTACHMENT],
+    attachments: logoAttachments(),
     html: flyerHtml({
       preheader: "Set a new password and get back in the game.",
       headline: "Pick a new password",
