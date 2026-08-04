@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
 import "./ui.css";
+import ConsentBanner from "@/components/ConsentBanner";
 import SessionWrapper from "@/components/SessionWrapper";
 import {
   SITE_URL,
@@ -90,6 +91,9 @@ export default function RootLayout({
     <html lang="en-GB" className={`${jakarta.variable} ${spaceMono.variable}`}>
       <body className="min-h-full flex flex-col">
         <SessionWrapper>{children}</SessionWrapper>
+        {/* Consent-gated Google Analytics 4 (gtag.js) — the tag only loads
+            after the player explicitly allows it (UK GDPR / PECR). */}
+        <ConsentBanner gaId="G-380QF7XJ4P" />
       </body>
     </html>
   );

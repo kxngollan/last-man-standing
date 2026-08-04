@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/policy" },
 };
 
-const LAST_UPDATED = "31 July 2026";
+const LAST_UPDATED = "4 August 2026";
 
 function Section({
   id,
@@ -87,7 +87,8 @@ export default function PolicyPage() {
           </ul>
           <p className={styles.p}>
             We do not collect payment details, because the game is free to play. We do not use
-            advertising or analytics trackers.
+            advertising trackers. If you choose to allow it, we use Google Analytics to understand
+            how the game is used — it never runs unless you opt in via the cookie banner.
           </p>
         </Section>
 
@@ -106,9 +107,15 @@ export default function PolicyPage() {
 
         <Section id="cookies" title="Cookies">
           <p className={styles.p}>
-            We use a single essential cookie to keep you signed in while you play. It is not used for
-            advertising or tracking, and the game will not work without it. We do not use third party
-            advertising or analytics cookies.
+            We use a single essential cookie to keep you signed in while you play. It is not used
+            for advertising or tracking, and the game will not work without it.
+          </p>
+          <p className={styles.p}>
+            If you allow analytics via the cookie banner, Google Analytics sets its own cookies to
+            measure how the game is used (pages visited, general location, device type). Declining
+            changes nothing about how the game works. You can change your mind at any time by
+            clearing this site&rsquo;s data in your browser, which brings the banner back. We do not
+            use advertising cookies.
           </p>
         </Section>
 

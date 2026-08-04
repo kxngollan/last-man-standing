@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PitchPlanArt } from "@/components/ui/FootballArt";
+import { BuntingArt, FloodlitPitchArt, NightMatchArt } from "@/components/ui/FootballArt";
 import styles from "./AuthShell.module.css";
 
 const POINTS = [
@@ -36,6 +36,10 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
           <span className={styles.name}>Last Man Standing</span>
         </Link>
 
+        <BuntingArt className={styles.bunting} />
+
+        <NightMatchArt className={styles.night} />
+
         <p className={styles.tagline}>
           One team. One week.
           <br />
@@ -48,7 +52,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
           ))}
         </ul>
 
-        <PitchPlanArt className={styles.pitch} />
+        <FloodlitPitchArt className={styles.pitch} />
       </aside>
 
       <main className={styles.formArea}>

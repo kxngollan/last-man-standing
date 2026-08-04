@@ -1,5 +1,6 @@
 /* Hallmark · genre: playful · macrostructure: Auth form (centred split) · theme: Hum
- * enrichment: E5 hand-built SVG football set (tier B) — ghosted pitch plan on the brand panel
+ * enrichment: E5 hand-built SVG football set (tier B) — bunting, night-match goal scene,
+ * floodlit pitch ghost on the brand panel
  */
 .wrap {
   min-height: 100dvh;
@@ -18,18 +19,16 @@
   flex-direction: column;
   gap: var(--space-lg);
 }
-/* Half-pitch plan ghosted into the panel's bottom corner — paper-tone lines on ink. */
+/* Floodlit pitch plan anchored to the panel's bottom corner — paper-tone lines on ink. */
 .pitch {
   position: absolute;
   z-index: -1;
-  bottom: -22%;
-  inset-inline-end: -12%;
-  width: clamp(240px, 60%, 420px);
+  bottom: -14%;
+  inset-inline-end: -10%;
+  width: clamp(280px, 68%, 460px);
   height: auto;
-  transform: rotate(8deg);
   color: var(--color-paper);
-  --art-accent: var(--color-paper);
-  opacity: 0.14;
+  opacity: 0.3;
   pointer-events: none;
 }
 .brand {
@@ -50,6 +49,21 @@
   font-size: var(--text-sm);
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+/* Bunting hangs just under the wordmark — colour pops on the ink panel */
+.bunting {
+  width: min(300px, 88%);
+  height: auto;
+  margin-top: calc(-1 * var(--space-sm));
+  --art-line: var(--color-paper);
+  opacity: 0.95;
+}
+/* Night-match goal scene fills the panel's middle */
+.night {
+  width: min(330px, 82%);
+  height: auto;
+  align-self: center;
+  margin-block: auto;
 }
 .tagline {
   font-family: var(--font-display);

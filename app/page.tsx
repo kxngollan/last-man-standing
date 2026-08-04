@@ -5,7 +5,15 @@ import AppBar from "@/components/portal/AppBar";
 import { connectDB } from "@/database/connect";
 import { Team } from "@/models/Team";
 import { TeamCrest } from "@/components/portal/TeamCrest";
-import { PitchPlanArt, GoalArt } from "@/components/ui/FootballArt";
+import {
+  StadiumArt,
+  GoalArt,
+  BuntingArt,
+  JerseyArt,
+  ShieldCheckArt,
+  NoRepeatArt,
+  TrophyArt,
+} from "@/components/ui/FootballArt";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_FAQS } from "@/lib/site";
 import styles from "./page.module.css";
 
@@ -95,6 +103,9 @@ const STEPS = [
   { n: "04", title: "Last one wins", body: "When a single player is left standing, they win the whole game." },
 ];
 
+// Spot illustration per step, index-aligned with STEPS.
+const STEP_ART = [JerseyArt, ShieldCheckArt, NoRepeatArt, TrophyArt];
+
 const RULES = [
   { k: "Wildcard", v: "One per game. Play it on a tough week to stay safe without picking." },
   { k: "Postponed?", v: "If your team’s match is called off, you’re safe and go through." },
@@ -132,9 +143,8 @@ export default async function LandingPage() {
         </header>
       )}
 
-      {/* Marquee hero — half-pitch plan as a faint backdrop, biased right */}
+      {/* Marquee hero — copy left, matchday stadium illustration right */}
       <section className={styles.hero}>
-        <PitchPlanArt className={styles.heroPitch} />
         <div className={styles.heroCopy}>
           <h1 className={styles.title}>
             One team. One week.
@@ -171,6 +181,8 @@ export default async function LandingPage() {
           </p>
         </div>
 
+        <StadiumArt className={styles.heroArt} />
+
         <div className={styles.marquee} aria-hidden="true">
           <div className={styles.track}>
             {[...crests, ...crests].map((c, i) => (
@@ -186,20 +198,25 @@ export default async function LandingPage() {
           <h2 className={styles.h2}>How it works</h2>
         </div>
         <ol className={styles.steps}>
-          {STEPS.map((s) => (
-            <li key={s.n} className={styles.step}>
-              <span className={styles.stepN} data-nums aria-hidden="true">
-                {s.n}
-              </span>
-              <h3 className={styles.stepTitle}>{s.title}</h3>
-              <p className={styles.stepBody}>{s.body}</p>
-            </li>
-          ))}
+          {STEPS.map((s, i) => {
+            const Art = STEP_ART[i];
+            return (
+              <li key={s.n} className={styles.step}>
+                {Art && <Art className={styles.stepArt} />}
+                <span className={styles.stepN} data-nums aria-hidden="true">
+                  {s.n}
+                </span>
+                <h3 className={styles.stepTitle}>{s.title}</h3>
+                <p className={styles.stepBody}>{s.body}</p>
+              </li>
+            );
+          })}
         </ol>
       </section>
 
-      {/* Rules strip */}
+      {/* Rules strip — pennant bunting hangs from the card's top edge */}
       <section className={styles.rules}>
+        <BuntingArt className={styles.bunting} />
         {RULES.map((r) => (
           <div key={r.k} className={styles.rule}>
             <h3 className={styles.ruleK}>{r.k}</h3>

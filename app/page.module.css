@@ -1,6 +1,7 @@
 /* Hallmark · genre: playful · macrostructure: Marquee Hero · theme: Hum · nav: N7 brutal slab · footer: Ft8 marquee
  * motion: marquee scroll · CTA hover-lift (2 primitives) · contrast: pass · mobile: pass
- * enrichment: E5 hand-built SVG football set (tier B) — hero pitch plan + CTA goal scene, both static
+ * enrichment: E5 hand-built SVG football set (tier B) — stadium hero scene, step spot
+ * illustrations, rules bunting, CTA goal scene. All static.
  */
 
 .page {
@@ -54,32 +55,36 @@
 
 /* ---------------- Marquee hero ---------------- */
 .hero {
-  position: relative;
-  isolation: isolate;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
   padding: clamp(var(--space-2xl), 8vw, var(--space-3xl))
     clamp(var(--space-md), 5vw, var(--space-2xl)) var(--space-2xl);
   overflow: hidden;
 }
-/* Half-pitch plan behind the copy — large, right-biased, cropped by the hero.
- * Lines are rule-tone on paper: a watermark, never competing with the headline. */
-.heroPitch {
-  position: absolute;
-  z-index: 0;
-  top: -8%;
-  right: -14%;
-  width: clamp(310px, 46vw, 640px);
-  height: auto;
-  transform: rotate(-7deg);
-  color: var(--color-rule-2);
-  opacity: 0.55;
-  pointer-events: none;
-}
-.hero > :not(.heroPitch) {
-  position: relative;
-  z-index: 1;
-}
 .heroCopy {
   max-width: 40rem;
+}
+/* Matchday stadium illustration — the hero's second column on wide screens,
+ * a centred figure between copy and marquee on small ones. */
+.heroArt {
+  width: min(340px, 78vw);
+  height: auto;
+  justify-self: center;
+}
+@media (min-width: 56rem) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-2xl);
+  }
+  .heroArt {
+    width: clamp(330px, 36vw, 520px);
+    justify-self: end;
+  }
+  .marquee {
+    grid-column: 1 / -1;
+  }
 }
 .title {
   font-size: var(--text-display);
@@ -109,7 +114,7 @@
 }
 
 .marquee {
-  margin-top: var(--space-2xl);
+  margin-top: var(--space-md);
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
@@ -148,8 +153,16 @@
   gap: var(--space-lg);
 }
 .step {
+  position: relative;
   border-top: 2px solid var(--color-ink);
   padding-top: var(--space-md);
+}
+.stepArt {
+  position: absolute;
+  top: var(--space-md);
+  inset-inline-end: 0;
+  width: 60px;
+  height: 60px;
 }
 .stepN {
   font-family: var(--font-mono);
@@ -171,6 +184,7 @@
 
 /* ---------------- Rules strip ---------------- */
 .rules {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: var(--space-lg);
@@ -179,6 +193,16 @@
   margin-inline: auto;
   background: var(--color-paper-2);
   border-radius: var(--radius-card);
+}
+/* Pennant bunting hanging from the card's top edge */
+.bunting {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, 78%);
+  height: auto;
+  pointer-events: none;
 }
 .rule {
   min-width: 0;
@@ -210,9 +234,8 @@
   max-width: 18ch;
 }
 .ctaGoal {
-  width: clamp(170px, 28vw, 250px);
+  width: clamp(220px, 34vw, 320px);
   height: auto;
-  color: var(--color-ink-2);
 }
 
 /* ---------------- Ft8 marquee footer ---------------- */
