@@ -7,6 +7,7 @@ import { authConfig } from "@/auth.config";
 const { auth } = NextAuth(authConfig);
 
 const PORTAL_PREFIXES = ["/dashboard", "/make-selection", "/team"];
+const AUTH_PAGES = ["/login", "/signup"];
 
 export default auth((req) => {
   const { nextUrl } = req;
@@ -16,6 +17,12 @@ export default auth((req) => {
 
   const isPortal = PORTAL_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
   const isAdminArea = path === "/admin" || path.startsWith("/admin/");
+  const isAuthPage = AUTH_PAGES.some((p) => path === p || path.startsWith(`${p}/`));
+
+  // Already signed in — login/signup have nothing to offer, go home.
+  if (isAuthPage && isLoggedIn) {
+    return NextResponse.redirect(new URL("/", nextUrl));
+  }
 
   if ((isPortal || isAdminArea) && !isLoggedIn) {
     const url = new URL("/login", nextUrl);
@@ -36,5 +43,7 @@ export const config = {
     "/make-selection/:path*",
     "/team/:path*",
     "/admin/:path*",
+    "/login",
+    "/signup",
   ],
 };
