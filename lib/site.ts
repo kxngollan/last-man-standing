@@ -29,3 +29,31 @@ export const SITE_KEYWORDS = [
 
 /** The publicly indexable routes. Everything else is app/private surface. */
 export const PUBLIC_ROUTES = ["/", "/signup", "/login", "/policy"] as const;
+
+/**
+ * The site FAQ — single source for both the visible FAQ section on the
+ * landing page and the FAQPage JSON-LD, so the structured data always
+ * matches the on-page content (a Google requirement for rich results).
+ */
+export const SITE_FAQS = [
+  {
+    q: "How do you play Last Man Standing?",
+    a: "Each game week, pick one Premier League team you think will win. If they win you go through. If they draw or lose, you are knocked out.",
+  },
+  {
+    q: "Can I pick the same team twice?",
+    a: "No. You can only use each team once per game, so save your strongest sides for the tough weeks.",
+  },
+  {
+    q: "What is the wildcard?",
+    a: "You get one wildcard per game. Play it on a tough week to stay safe without picking a team, and it does not use a team up.",
+  },
+  {
+    q: "Is Last Man Standing free to play?",
+    a: "Yes. It is free to play, for ages 16 and over, with no stakes, just bragging rights.",
+  },
+  {
+    q: "Who wins the game?",
+    a: "When a single player is left standing, they win the whole game. If everyone falls in the same week, nobody wins and a new game begins.",
+  },
+] as const;

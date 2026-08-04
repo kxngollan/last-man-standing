@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePortalState } from "@/components/portal/usePortalState";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { CornerFlagArt } from "@/components/ui/FootballArt";
 import { TEAMS_PER_GAME } from "@/lib/game/constants";
 import styles from "./page.module.css";
 
@@ -67,7 +68,8 @@ export default function TeamPage() {
 
   return (
     <main className={styles.main}>
-      <div className="lms-head">
+      <div className={`lms-head ${styles.headWithArt}`}>
+        <CornerFlagArt className={styles.headArt} />
         <p className={styles.kicker} data-nums>
           Game {game.no}
         </p>

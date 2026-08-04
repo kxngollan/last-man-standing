@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PitchPlanArt } from "@/components/ui/FootballArt";
 import styles from "./AuthShell.module.css";
 
 const POINTS = [
@@ -46,6 +47,8 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
             <li key={p}>{p}</li>
           ))}
         </ul>
+
+        <PitchPlanArt className={styles.pitch} />
       </aside>
 
       <main className={styles.formArea}>

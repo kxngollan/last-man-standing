@@ -1,3 +1,6 @@
+/* Hallmark · genre: playful · macrostructure: Auth form (centred split) · theme: Hum
+ * enrichment: E5 hand-built SVG football set (tier B) — ghosted pitch plan on the brand panel
+ */
 .wrap {
   min-height: 100dvh;
   display: grid;
@@ -5,12 +8,29 @@
 }
 
 .brandPanel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: var(--color-ink);
   color: var(--color-paper);
   padding: clamp(var(--space-lg), 5vw, var(--space-2xl));
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+}
+/* Half-pitch plan ghosted into the panel's bottom corner — paper-tone lines on ink. */
+.pitch {
+  position: absolute;
+  z-index: -1;
+  bottom: -22%;
+  inset-inline-end: -12%;
+  width: clamp(240px, 60%, 420px);
+  height: auto;
+  transform: rotate(8deg);
+  color: var(--color-paper);
+  --art-accent: var(--color-paper);
+  opacity: 0.14;
+  pointer-events: none;
 }
 .brand {
   display: flex;

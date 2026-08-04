@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { WhistleArt } from "@/components/ui/FootballArt";
 import type { FixturesWeek, FixtureRow } from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
 
@@ -125,7 +126,8 @@ export default function FixturesPage() {
 
   return (
     <main className={styles.main}>
-      <div className="lms-head">
+      <div className={`lms-head ${styles.headWithArt}`}>
+        <WhistleArt className={styles.headArt} />
         <p className={styles.kicker} data-nums>
           Premier League &middot; {seasonLabel}
         </p>

@@ -78,7 +78,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${spaceMono.variable}`}>
+    <html lang="en-GB" className={`${jakarta.variable} ${spaceMono.variable}`}>
       <body className="min-h-full flex flex-col">
         <SessionWrapper>{children}</SessionWrapper>
       </body>

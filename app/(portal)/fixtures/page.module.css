@@ -1,4 +1,21 @@
-/* Hallmark · theme: Hum · Fixtures — week selector + symmetric home/away rows. */
+/* Hallmark · theme: Hum · Fixtures — week selector + symmetric home/away rows.
+ * enrichment: E5 hand-built SVG football set (tier B) — whistle ornament in the head */
+
+.headWithArt {
+  position: relative;
+  /* reserve the ornament's column so the hint never runs beneath it */
+  padding-inline-end: calc(clamp(44px, 8vw, 60px) + var(--space-md));
+}
+.headArt {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  width: clamp(44px, 8vw, 60px);
+  height: auto;
+  color: var(--color-ink-2);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
 
 .main {
   width: 100%;

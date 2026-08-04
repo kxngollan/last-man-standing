@@ -1,6 +1,22 @@
 /* Hallmark · genre: playful · macrostructure: Long Document · theme: Hum · nav: app-shell bar · footer: none
  * motion: none (Long Document is motion-off) · contrast: pass · mobile: pass
+ * enrichment: E5 hand-built SVG football set (tier B) — corner-flag ornament in the head
  */
+
+.headWithArt {
+  position: relative;
+  /* reserve the ornament's column so the hint never runs beneath it */
+  padding-inline-end: calc(clamp(40px, 7vw, 56px) + var(--space-md));
+}
+.headArt {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  width: clamp(40px, 7vw, 56px);
+  height: auto;
+  color: var(--color-ink-2);
+  pointer-events: none;
+}
 
 .main {
   width: 100%;

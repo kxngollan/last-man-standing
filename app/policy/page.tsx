@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "./page.module.css";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How Last Man Standing collects, uses, and protects your personal data.",
+  alternates: { canonical: "/policy" },
 };
 
 const LAST_UPDATED = "31 July 2026";

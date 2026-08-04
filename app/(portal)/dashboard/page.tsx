@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePortalState } from "@/components/portal/usePortalState";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { BallArt } from "@/components/ui/FootballArt";
 import styles from "./page.module.css";
 
 function useCountUp(target: number, on: boolean) {
@@ -81,6 +82,7 @@ export default function DashboardPage() {
     return (
       <main className={styles.main}>
         <div className="lms-state">
+          <BallArt className={styles.stateBall} />
           <h1 className="lms-state__title">No game running</h1>
           <p className="lms-state__body">
             There isn’t a game on right now. Check back soon. A new one starts when the admin
@@ -158,7 +160,10 @@ export default function DashboardPage() {
 
       <section aria-label="Standings">
         <div className="lms-head">
-          <h2 className="lms-head__title">Standings</h2>
+          <h2 className={`lms-head__title ${styles.standingsTitle}`}>
+            <BallArt className={styles.standingsBall} />
+            Standings
+          </h2>
           <p className="lms-head__hint">
             Survive each week to climb. When one player is left, they win the game.
           </p>

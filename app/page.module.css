@@ -1,5 +1,6 @@
 /* Hallmark · genre: playful · macrostructure: Marquee Hero · theme: Hum · nav: N7 brutal slab · footer: Ft8 marquee
  * motion: marquee scroll · CTA hover-lift (2 primitives) · contrast: pass · mobile: pass
+ * enrichment: E5 hand-built SVG football set (tier B) — hero pitch plan + CTA goal scene, both static
  */
 
 .page {
@@ -53,9 +54,29 @@
 
 /* ---------------- Marquee hero ---------------- */
 .hero {
+  position: relative;
+  isolation: isolate;
   padding: clamp(var(--space-2xl), 8vw, var(--space-3xl))
     clamp(var(--space-md), 5vw, var(--space-2xl)) var(--space-2xl);
   overflow: hidden;
+}
+/* Half-pitch plan behind the copy — large, right-biased, cropped by the hero.
+ * Lines are rule-tone on paper: a watermark, never competing with the headline. */
+.heroPitch {
+  position: absolute;
+  z-index: 0;
+  top: -8%;
+  right: -14%;
+  width: clamp(310px, 46vw, 640px);
+  height: auto;
+  transform: rotate(-7deg);
+  color: var(--color-rule-2);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.hero > :not(.heroPitch) {
+  position: relative;
+  z-index: 1;
 }
 .heroCopy {
   max-width: 40rem;
@@ -188,6 +209,11 @@
   font-size: var(--text-2xl);
   max-width: 18ch;
 }
+.ctaGoal {
+  width: clamp(170px, 28vw, 250px);
+  height: auto;
+  color: var(--color-ink-2);
+}
 
 /* ---------------- Ft8 marquee footer ---------------- */
 .footer {
@@ -244,4 +270,57 @@
   .footTrack {
     animation: none;
   }
+}
+
+/* ---------------- FAQ (content parity with the FAQPage JSON-LD) ---------------- */
+.faq {
+  padding: var(--space-2xl) clamp(var(--space-md), 5vw, var(--space-2xl));
+  max-width: 46rem;
+  margin-inline: auto;
+}
+.faqList {
+  display: flex;
+  flex-direction: column;
+}
+.faqItem {
+  border-top: 1px solid var(--color-rule);
+}
+.faqItem:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+.faqQ {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+.faqQ::-webkit-details-marker {
+  display: none;
+}
+.faqQ::after {
+  content: "+";
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-accent-strong);
+  flex-shrink: 0;
+}
+.faqItem[open] .faqQ::after {
+  content: "–";
+}
+.faqQ:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.faqA {
+  margin: 0;
+  padding: 0 0 var(--space-md);
+  max-width: 60ch;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-ink-2);
 }

@@ -5,7 +5,8 @@ import AppBar from "@/components/portal/AppBar";
 import { connectDB } from "@/database/connect";
 import { Team } from "@/models/Team";
 import { TeamCrest } from "@/components/portal/TeamCrest";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
+import { PitchPlanArt, GoalArt } from "@/components/ui/FootballArt";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_FAQS } from "@/lib/site";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -42,48 +43,13 @@ const JSON_LD = {
     {
       "@type": "FAQPage",
       "@id": `${SITE_URL}/#faq`,
-      mainEntity: [
-        {
-          "@type": "Question",
-          name: "How do you play Last Man Standing?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Each game week, pick one Premier League team you think will win. If they win you go through. If they draw or lose, you are knocked out.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Can I pick the same team twice?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "No. You can only use each team once per game, so save your strongest sides for the tough weeks.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "What is the wildcard?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "You get one wildcard per game. Play it on a tough week to stay safe without picking a team, and it does not use a team up.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Is Last Man Standing free to play?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "Yes. It is free to play, for ages 16 and over, with no stakes, just bragging rights.",
-          },
-        },
-        {
-          "@type": "Question",
-          name: "Who wins the game?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "When a single player is left standing, they win the whole game. If everyone falls in the same week, nobody wins and a new game begins.",
-          },
-        },
-      ],
+      // Built from the same constant as the visible FAQ section below, so
+      // the structured data can never drift from the on-page content.
+      mainEntity: SITE_FAQS.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
     },
   ],
 };
@@ -140,6 +106,8 @@ export default async function LandingPage() {
   const isLoggedIn = !!session?.user;
   return (
     <div className={styles.page}>
+      {/* Team crests in the hero marquee load from this host — warm the connection early. */}
+      <link rel="preconnect" href="https://crests.football-data.org" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
@@ -164,8 +132,9 @@ export default async function LandingPage() {
         </header>
       )}
 
-      {/* Marquee hero */}
+      {/* Marquee hero — half-pitch plan as a faint backdrop, biased right */}
       <section className={styles.hero}>
+        <PitchPlanArt className={styles.heroPitch} />
         <div className={styles.heroCopy}>
           <h1 className={styles.title}>
             One team. One week.
@@ -239,8 +208,26 @@ export default async function LandingPage() {
         ))}
       </section>
 
+      {/* FAQ — same content as the FAQPage JSON-LD above (rich-result parity) */}
+      <section className={styles.faq} id="faq" aria-labelledby="faq-title">
+        <div className="lms-head">
+          <h2 className={styles.h2} id="faq-title">
+            Questions
+          </h2>
+        </div>
+        <div className={styles.faqList}>
+          {SITE_FAQS.map((f) => (
+            <details key={f.q} className={styles.faqItem}>
+              <summary className={styles.faqQ}>{f.q}</summary>
+              <p className={styles.faqA}>{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       {/* CTA band */}
       <section className={styles.cta}>
+        <GoalArt className={styles.ctaGoal} />
         <h2 className={styles.ctaTitle}>Think you can outlast everyone?</h2>
         {isLoggedIn ? (
           <Link href="/make-selection" className="lms-btn lms-btn--primary">

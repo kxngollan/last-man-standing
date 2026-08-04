@@ -1,5 +1,6 @@
 /* Hallmark · genre: playful · macrostructure: Stat-Led · theme: Hum · nav: app-shell bar · footer: none
  * motion: number-reveal · CTA hover-lift · row hover · contrast: pass · mobile: pass
+ * enrichment: E5 hand-built SVG football set (tier B) — ball ornament in standings head + empty state
  */
 
 .main {
@@ -28,6 +29,26 @@
 }
 .title {
   font-size: var(--text-2xl);
+}
+
+/* ---- Football ornaments (decorative, static) ---- */
+.standingsTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.standingsBall {
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+  color: var(--color-ink);
+  transform: rotate(-12deg);
+}
+.stateBall {
+  width: 56px;
+  height: 56px;
+  color: var(--color-ink-2);
+  transform: rotate(10deg);
 }
 
 /* ---- Stat row (asymmetric, not four identical tiles) ---- */
