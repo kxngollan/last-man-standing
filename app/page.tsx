@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { auth } from "@/auth";
+import AppBar from "@/components/portal/AppBar";
 import { connectDB } from "@/database/connect";
 import { Team } from "@/models/Team";
 import { TeamCrest } from "@/components/portal/TeamCrest";
@@ -134,28 +136,33 @@ const RULES = [
 ];
 
 export default async function LandingPage() {
-  const crests = await marqueeCrests();
+  const [session, crests] = await Promise.all([auth(), marqueeCrests()]);
+  const isLoggedIn = !!session?.user;
   return (
     <div className={styles.page}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
-      {/* N7 brutal-slab nav */}
-      <header className={styles.nav}>
-        <span className={styles.wordmark}>Last Man Standing</span>
-        <nav className={styles.navLinks} aria-label="Primary">
-          <a href="#how" className={styles.navLink}>
-            How it works
-          </a>
-          <Link href="/login" className={styles.navLink}>
-            Log in
-          </Link>
-          <Link href="/signup" className="lms-btn lms-btn--primary lms-btn--sm">
-            Sign up
-          </Link>
-        </nav>
-      </header>
+      {/* Signed in → the app's nav bar; signed out → N7 brutal-slab marketing nav */}
+      {isLoggedIn ? (
+        <AppBar />
+      ) : (
+        <header className={styles.nav}>
+          <span className={styles.wordmark}>Last Man Standing</span>
+          <nav className={styles.navLinks} aria-label="Primary">
+            <a href="#how" className={styles.navLink}>
+              How it works
+            </a>
+            <Link href="/login" className={styles.navLink}>
+              Log in
+            </Link>
+            <Link href="/signup" className="lms-btn lms-btn--primary lms-btn--sm">
+              Sign up
+            </Link>
+          </nav>
+        </header>
+      )}
 
       {/* Marquee hero */}
       <section className={styles.hero}>
@@ -170,12 +177,25 @@ export default async function LandingPage() {
             Be the last player left and take the crown.
           </p>
           <div className={styles.heroCta}>
-            <Link href="/signup" className="lms-btn lms-btn--primary">
-              Create your account
-            </Link>
-            <Link href="/login" className="lms-btn lms-btn--ghost">
-              Log in
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link href="/dashboard" className="lms-btn lms-btn--primary">
+                  Go to my dashboard
+                </Link>
+                <Link href="/make-selection" className="lms-btn lms-btn--ghost">
+                  Make this week&rsquo;s pick
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/signup" className="lms-btn lms-btn--primary">
+                  Create your account
+                </Link>
+                <Link href="/login" className="lms-btn lms-btn--ghost">
+                  Log in
+                </Link>
+              </>
+            )}
           </div>
           <p className={styles.free}>
             Free to play &middot; 16+ &middot; no stakes, just bragging rights
@@ -222,9 +242,15 @@ export default async function LandingPage() {
       {/* CTA band */}
       <section className={styles.cta}>
         <h2 className={styles.ctaTitle}>Think you can outlast everyone?</h2>
-        <Link href="/signup" className="lms-btn lms-btn--primary">
-          Create your account
-        </Link>
+        {isLoggedIn ? (
+          <Link href="/make-selection" className="lms-btn lms-btn--primary">
+            Make this week&rsquo;s pick
+          </Link>
+        ) : (
+          <Link href="/signup" className="lms-btn lms-btn--primary">
+            Create your account
+          </Link>
+        )}
       </section>
 
       {/* Ft8 marquee footer */}
@@ -240,8 +266,17 @@ export default async function LandingPage() {
         </div>
         <div className={styles.footBar}>
           <span className={styles.footLinks}>
-            <Link href="/signup">Sign up</Link>
-            <Link href="/login">Log in</Link>
+            {isLoggedIn ? (
+              <>
+                <Link href="/dashboard">Dashboard</Link>
+                <Link href="/team">My picks</Link>
+              </>
+            ) : (
+              <>
+                <Link href="/signup">Sign up</Link>
+                <Link href="/login">Log in</Link>
+              </>
+            )}
             <Link href="/policy">Privacy</Link>
           </span>
           <span className={styles.copy} data-nums>

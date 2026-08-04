@@ -9,6 +9,9 @@ const isDev = process.env.NODE_ENV !== "production";
  */
 function friendlyMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
+  if (/^SMTP:/.test(msg)) {
+    return "Couldn’t send the email. Check the SMTP_* settings in .env.local.";
+  }
   if (/MONGO_DB_URI/i.test(msg)) {
     return "The database isn’t configured. Set MONGO_DB_URI in .env.local, then restart the dev server.";
   }
