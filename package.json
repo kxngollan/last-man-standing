@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node --env-file=.env.local --import tsx scripts/seed.ts"
   },
   "dependencies": {
     "@next/third-parties": "^16.3.0",
@@ -30,6 +31,7 @@
     "eslint": "^10.8.0",
     "eslint-config-next": "^0.2.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.8",
     "typescript": "^5"
   },
   "overrides": {

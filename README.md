@@ -1,5 +1,25 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Local setup
+
+1. Copy `.env.example` to `.env.local` and fill in at least `MONGO_DB_URI`, `MONGO_DB_NAME`, and `AUTH_SECRET`. Add `FOOTBALL_API` (free key from [football-data.org](https://www.football-data.org/)) if you want real fixtures and the league table.
+2. Seed the database:
+
+```bash
+npm run seed
+```
+
+This creates two verified dev accounts (idempotent — safe to re-run):
+
+| Account | Email | Password |
+| --- | --- | --- |
+| Player | `player@dev.local` | `password123` |
+| Admin | `admin@dev.local` | `password123` |
+
+Override the password with `SEED_PASSWORD=… npm run seed`. With `FOOTBALL_API` set it also syncs the Premier League teams and the full season's fixtures.
+
+Then log in as the admin and start a game from `/admin`, or as the player to make picks. The script refuses to run with `NODE_ENV=production` unless you pass `--force`.
+
 ## Getting Started
 
 First, run the development server:
