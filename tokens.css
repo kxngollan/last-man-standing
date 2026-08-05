@@ -4,6 +4,8 @@
  * Font faces (--font-jakarta / --font-space-mono) are injected by next/font in app/layout.tsx.
  */
 :root {
+  color-scheme: light;
+
   /* ---- Type families (2 + 1: Jakarta display+body, Space Mono outlier) ---- */
   --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
@@ -89,4 +91,81 @@
   --z-sticky: 200;
   --z-modal: 400;
   --z-toast: 500;
+}
+
+/* ---- Dark theme · Hum after dark · warm near-black paper, lifted coral ----
+ * Applied two ways with IDENTICAL values (keep both blocks in sync):
+ *   1. [data-theme="dark"]  — player chose dark (theme cookie, set pre-paint
+ *      by the inline script in app/layout.tsx and by the nav ThemeToggle).
+ *   2. prefers-color-scheme — device default, unless the player forced light.
+ * Non-colour tokens (type, spacing, radii, motion, z) inherit from :root.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-paper: oklch(21% 0.012 75);
+  --color-paper-2: oklch(25% 0.014 75);
+  --color-paper-3: oklch(29% 0.016 75);
+  --color-rule: oklch(34% 0.014 75);
+  --color-rule-2: oklch(44% 0.015 75);
+  --color-ink: oklch(93% 0.012 85);
+  --color-ink-2: oklch(84% 0.013 84);
+  --color-muted: oklch(69% 0.014 80);
+  --color-neutral: oklch(76% 0.013 80);
+
+  --color-accent: oklch(68% 0.16 32);
+  --color-accent-strong: oklch(74% 0.15 34);
+  --color-accent-ink: oklch(18% 0.04 35);
+  --color-accent-wash: oklch(33% 0.055 35);
+
+  --color-safe: oklch(70% 0.14 150);
+  --color-safe-ink: oklch(80% 0.12 150);
+  --color-safe-wash: oklch(30% 0.05 150);
+  --color-out: oklch(62% 0.18 25);
+  --color-out-ink: oklch(76% 0.13 27);
+  --color-out-wash: oklch(30% 0.06 25);
+  --color-wild: oklch(80% 0.13 80);
+  --color-wild-ink: oklch(83% 0.11 78);
+  --color-wild-wash: oklch(31% 0.045 80);
+
+  --color-focus: oklch(74% 0.15 34);
+
+  --shadow-card: 0 8px 24px -14px oklch(5% 0.01 75 / 0.6);
+  --shadow-lift: 0 14px 32px -14px oklch(5% 0.01 75 / 0.7);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --color-paper: oklch(21% 0.012 75);
+    --color-paper-2: oklch(25% 0.014 75);
+    --color-paper-3: oklch(29% 0.016 75);
+    --color-rule: oklch(34% 0.014 75);
+    --color-rule-2: oklch(44% 0.015 75);
+    --color-ink: oklch(93% 0.012 85);
+    --color-ink-2: oklch(84% 0.013 84);
+    --color-muted: oklch(69% 0.014 80);
+    --color-neutral: oklch(76% 0.013 80);
+
+    --color-accent: oklch(68% 0.16 32);
+    --color-accent-strong: oklch(74% 0.15 34);
+    --color-accent-ink: oklch(18% 0.04 35);
+    --color-accent-wash: oklch(33% 0.055 35);
+
+    --color-safe: oklch(70% 0.14 150);
+    --color-safe-ink: oklch(80% 0.12 150);
+    --color-safe-wash: oklch(30% 0.05 150);
+    --color-out: oklch(62% 0.18 25);
+    --color-out-ink: oklch(76% 0.13 27);
+    --color-out-wash: oklch(30% 0.06 25);
+    --color-wild: oklch(80% 0.13 80);
+    --color-wild-ink: oklch(83% 0.11 78);
+    --color-wild-wash: oklch(31% 0.045 80);
+
+    --color-focus: oklch(74% 0.15 34);
+
+    --shadow-card: 0 8px 24px -14px oklch(5% 0.01 75 / 0.6);
+    --shadow-lift: 0 14px 32px -14px oklch(5% 0.01 75 / 0.7);
+  }
 }

@@ -79,8 +79,19 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f7f3ea",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f3ea" },
+    { media: "(prefers-color-scheme: dark)", color: "#211d16" },
+  ],
 };
+
+// Runs before anything paints: apply the theme cookie (set by ThemeToggle) to
+// <html data-theme="…">. No cookie → no attribute → tokens.css falls back to
+// the device's prefers-color-scheme. Inline (not next/script) and first in
+// <body> so a stored choice can never flash the wrong theme. Kept out of the
+// server render on purpose — reading cookies() here would opt every static
+// page into dynamic rendering.
+const THEME_INIT = `try{var m=document.cookie.match(/(?:^|; )theme=(dark|light)/);if(m)document.documentElement.dataset.theme=m[1]}catch(e){}`;
 
 export default function RootLayout({
   children,
@@ -88,8 +99,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-GB" className={`${jakarta.variable} ${spaceMono.variable}`}>
+    // suppressHydrationWarning is attribute-level and <html>-only: the theme
+    // script above sets data-theme before hydration, which React would
+    // otherwise report as a server/client mismatch.
+    <html
+      lang="en-GB"
+      className={`${jakarta.variable} ${spaceMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
         <SessionWrapper>{children}</SessionWrapper>
         {/* Consent-gated Google Analytics 4 (gtag.js) — the tag only loads
             after the player explicitly allows it (UK GDPR / PECR). */}

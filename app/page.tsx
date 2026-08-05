@@ -5,6 +5,7 @@ import AppBar from "@/components/portal/AppBar";
 import { connectDB } from "@/database/connect";
 import { Team } from "@/models/Team";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 import {
   StadiumArt,
   GoalArt,
@@ -139,6 +140,7 @@ export default async function LandingPage() {
             <Link href="/signup" className="lms-btn lms-btn--primary lms-btn--sm">
               Sign up
             </Link>
+            <ThemeToggle />
           </nav>
         </header>
       )}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import RulesModal from "./RulesModal";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 import styles from "./AppBar.module.css";
 
 const NAV = [
@@ -145,6 +146,7 @@ export default function AppBar() {
           <span className="lms-dot" aria-hidden="true" />
           Still in
         </span>
+        <ThemeToggle />
         <RulesModal />
         <AccountMenu />
       </header>

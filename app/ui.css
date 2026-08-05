@@ -333,8 +333,35 @@ textarea.lms-field__control {
   height: 100%;
   border-radius: 50%;
   /* Badges are transparent and often non-square — contain (not cover) keeps
-     the whole crest visible; the light backing lets it read in dark mode. */
+     the whole crest visible; the backing stays near-white in BOTH themes
+     (on-disc, not paper) so dark-ink crests still read in dark mode. */
   object-fit: contain;
   padding: 12%;
-  background: var(--color-paper);
+  background: var(--color-on-disc);
+}
+
+/* ---- Theme toggle (top nav, light/dark) ---- */
+.lms-theme-toggle {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-rule-2);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    border-color var(--dur-short) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lms-theme-toggle:hover {
+    background: var(--color-paper-2);
+    border-color: var(--color-ink-2);
+  }
+}
+.lms-theme-toggle:active {
+  transform: translateY(1px);
 }
