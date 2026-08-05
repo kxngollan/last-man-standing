@@ -16,6 +16,9 @@ const NAV = [
   { href: "/fixtures", label: "Fixtures" },
 ];
 
+// Table and fixtures are public — the only destinations shown signed-out.
+const PUBLIC_NAV = NAV.filter((i) => i.href === "/table" || i.href === "/fixtures");
+
 function initialsOf(name?: string | null): string {
   if (!name) return "?";
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -97,11 +100,19 @@ function AccountMenu() {
 
 export default function AppBar() {
   const pathname = usePathname();
+  const { status } = useSession();
+  const isAuthed = status === "authenticated";
+  const isGuest = status === "unauthenticated";
+  const nav = isAuthed ? NAV : PUBLIC_NAV;
 
   return (
     <>
       <header className={styles.bar}>
-        <Link href="/dashboard" className={styles.brand} aria-label="Last Man Standing home">
+        <Link
+          href={isAuthed ? "/dashboard" : "/"}
+          className={styles.brand}
+          aria-label="Last Man Standing home"
+        >
           <svg className={styles.mark} viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M12 2 3 5.5v6c0 5 3.8 8.6 9 10.5 5.2-1.9 9-5.5 9-10.5v-6L12 2Z"
@@ -126,7 +137,7 @@ export default function AppBar() {
         </Link>
 
         <nav className={styles.nav} aria-label="Primary">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
@@ -142,17 +153,33 @@ export default function AppBar() {
           })}
         </nav>
 
-        <span className={`lms-chip lms-chip--safe ${styles.status}`}>
-          <span className="lms-dot" aria-hidden="true" />
-          Still in
-        </span>
+        {isAuthed ? (
+          <span className={`lms-chip lms-chip--safe ${styles.status}`}>
+            <span className="lms-dot" aria-hidden="true" />
+            Still in
+          </span>
+        ) : (
+          // Keeps the right-hand cluster right-aligned when the status chip
+          // (which normally carries the auto margin) isn't rendered.
+          <span className={styles.spacer} aria-hidden="true" />
+        )}
         <ThemeToggle />
         <RulesModal />
-        <AccountMenu />
+        {isAuthed && <AccountMenu />}
+        {isGuest && (
+          <span className={styles.guestActions}>
+            <Link href="/login" className={styles.link}>
+              Log in
+            </Link>
+            <Link href="/signup" className="lms-btn lms-btn--primary lms-btn--sm">
+              Sign up
+            </Link>
+          </span>
+        )}
       </header>
 
       <nav className={styles.mobileNav} aria-label="Primary (mobile)">
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const active = pathname === item.href;
           return (
             <Link

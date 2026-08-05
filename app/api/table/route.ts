@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/authz";
 import { getLeagueTable } from "@/lib/game/browse";
 import { errorResponse } from "@/lib/api";
 
-// The Premier League table for the current season (players only).
+// The Premier League table for the current season. Public — read-only
+// football data, no game or player state.
 export async function GET() {
   try {
-    await requireUser();
     const table = await getLeagueTable();
     return NextResponse.json(table);
   } catch (err) {

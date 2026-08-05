@@ -72,8 +72,16 @@
   background: var(--color-paper-3);
 }
 
-.status {
+.status,
+.spacer {
   margin-inline-start: auto;
+}
+.guestActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: none;
+  white-space: nowrap;
 }
 .account {
   position: relative;
@@ -207,7 +215,8 @@
   .nav {
     display: flex;
   }
-  .status {
+  .status,
+  .spacer {
     margin-inline-start: 0;
   }
   .mobileNav {
