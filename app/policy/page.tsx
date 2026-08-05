@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/policy" },
 };
 
-const LAST_UPDATED = "4 August 2026";
+const LAST_UPDATED = "5 August 2026";
 
 function Section({
   id,
@@ -87,8 +87,8 @@ export default function PolicyPage() {
           </ul>
           <p className={styles.p}>
             We do not collect payment details, because the game is free to play. We do not use
-            advertising trackers. If you choose to allow it, we use Google Analytics to understand
-            how the game is used — it never runs unless you opt in via the cookie banner.
+            advertising trackers. We use Google Analytics to understand how the game is used —
+            see the cookies section below.
           </p>
         </Section>
 
@@ -111,11 +111,19 @@ export default function PolicyPage() {
             for advertising or tracking, and the game will not work without it.
           </p>
           <p className={styles.p}>
-            If you allow analytics via the cookie banner, Google Analytics sets its own cookies to
-            measure how the game is used (pages visited, general location, device type). Declining
-            changes nothing about how the game works. You can change your mind at any time by
-            clearing this site&rsquo;s data in your browser, which brings the banner back. We do not
-            use advertising cookies.
+            We also use Google Analytics, which sets its own cookies to measure how the game is
+            used (pages visited, general location, device type). This helps us understand and
+            improve the game. If you would rather not be included, you can block these cookies in
+            your browser settings or use Google&rsquo;s{" "}
+            <a
+              href="https://tools.google.com/dlpage/gaoptout"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.link}
+            >
+              Analytics opt-out browser add-on
+            </a>
+            . We do not use advertising cookies.
           </p>
         </Section>
 
