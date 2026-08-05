@@ -1,0 +1,249 @@
+/* Hallmark · theme: Hum · Club fixtures — featured next game, then the season
+ * either side of it. Shares the fixtures page's row vocabulary. */
+
+.main {
+  width: 100%;
+  max-width: 52rem;
+  margin-inline: auto;
+  padding: clamp(var(--space-lg), 4vw, var(--space-2xl))
+    clamp(var(--space-md), 4vw, var(--space-xl)) var(--space-3xl);
+}
+
+.back {
+  display: inline-block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--color-muted);
+  margin-bottom: var(--space-lg);
+  transition: color var(--dur-short) var(--ease-out);
+}
+.back:hover {
+  color: var(--color-ink);
+}
+
+/* ---- Club header ---- */
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+.headCrest {
+  width: 64px;
+  height: 64px;
+  font-size: 1.1rem;
+}
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-strong);
+  margin-bottom: var(--space-2xs);
+}
+.title {
+  font-size: var(--text-2xl);
+}
+
+/* ---- Featured next/live fixture ---- */
+.feature {
+  border: 1px solid var(--color-rule-2);
+  border-top: 4px solid var(--color-accent);
+  border-radius: var(--radius-card);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-lg) var(--space-md) var(--space-xl);
+  margin-bottom: var(--space-xl);
+}
+.feature[data-state="live"] {
+  border-color: var(--color-accent);
+}
+.featureMeta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+.featureTag {
+  font-weight: 700;
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+  padding: 2px var(--space-sm);
+}
+
+/* ---- Match line (shared by feature card and rows) ---- */
+.match {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-sm);
+}
+.side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+.homeSide {
+  justify-content: flex-end;
+  text-align: end;
+}
+.awaySide {
+  justify-content: flex-start;
+  text-align: start;
+}
+.sideName {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-ink-2);
+}
+.sideName[data-me="true"] {
+  color: var(--color-ink);
+}
+.matchBig .sideName {
+  font-size: var(--text-md);
+}
+/* The featured card stacks each side vertically on phones so two full club
+ * names + large crests never fight for one row. */
+@media (max-width: 33.99rem) {
+  .matchBig .side {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  .matchBig .homeSide {
+    text-align: center;
+    flex-direction: column-reverse;
+  }
+  .matchBig .awaySide {
+    text-align: center;
+  }
+  .matchBig .sideName {
+    white-space: normal;
+    font-size: var(--text-sm);
+  }
+}
+
+/* ---- Centre column ---- */
+.centre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 3.5rem;
+}
+.score {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.matchBig .score {
+  font-size: var(--text-xl);
+}
+.dash {
+  color: var(--color-muted);
+  padding-inline: 3px;
+}
+.time {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+.matchBig .time {
+  font-size: var(--text-lg);
+}
+.vs {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+.liveTag {
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+.featureTag.liveTag {
+  color: var(--color-accent-ink);
+}
+
+/* ---- Upcoming / Results ---- */
+.block {
+  margin-top: var(--space-xl);
+}
+.blockTitle {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--color-rule);
+  margin-bottom: var(--space-sm);
+}
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+.row[data-state="live"] {
+  border-color: var(--color-accent);
+}
+.rowMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+.resultChip {
+  flex: none;
+}
+
+.notice {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-md) 0;
+  text-align: center;
+}

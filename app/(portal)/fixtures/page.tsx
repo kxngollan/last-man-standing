@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { TeamCrest } from "@/components/portal/TeamCrest";
 import { WhistleArt } from "@/components/ui/FootballArt";
-import type { FixturesWeek, FixtureRow } from "@/lib/game/portalTypes";
+import type { FixturesWeek, FixtureRow, TeamInfo } from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
 
 function StateShell({ children }: { children: React.ReactNode }) {
@@ -79,6 +80,25 @@ export default function FixturesPage() {
   const [week, setWeek] = useState<FixturesWeek | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [teams, setTeams] = useState<TeamInfo[]>([]);
+
+  // The by-team strip is enrichment — if it fails, the week view still works.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/teams", { cache: "no-store" });
+        if (!res.ok) return;
+        const list = (await res.json()) as TeamInfo[];
+        if (!cancelled) setTeams(list);
+      } catch {
+        /* strip simply doesn't render */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = useCallback(async (matchday: number | null) => {
     setLoading(true);
@@ -177,6 +197,27 @@ export default function FixturesPage() {
           Next ›
         </button>
       </div>
+
+      {teams.length > 0 && (
+        <nav className={styles.teamsNav} aria-label="Fixtures by team">
+          <p className={styles.teamsLabel}>Or follow one club</p>
+          <div className={styles.teamsRow}>
+            {teams.map((t) => (
+              <Link
+                key={t.tla}
+                href={`/fixtures/${t.tla}`}
+                className={styles.teamBtn}
+                title={`${t.name} fixtures`}
+              >
+                <TeamCrest crest={t.crest} tla={t.tla} />
+                <span className={styles.teamBtnTla} data-nums>
+                  {t.tla}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      )}
 
       {fixtures.length === 0 ? (
         <p className={styles.notice}>No fixtures scheduled for this game week yet.</p>

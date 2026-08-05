@@ -46,6 +46,7 @@ export type FixtureState = "scheduled" | "live" | "finished" | "postponed";
 /** One fixture in the browsable fixtures view. */
 export interface FixtureRow {
   apiId: number;
+  matchday: number;
   kickoff: string; // ISO
   state: FixtureState;
   statusLabel: string; // human label, e.g. "FT", "19:00", "Postponed"
@@ -62,6 +63,26 @@ export interface FixturesWeek {
   currentMatchday: number;
   totalMatchdays: number;
   fixtures: FixtureRow[];
+}
+
+/** A club, as shown in team pickers and the by-team fixtures view. */
+export interface TeamInfo {
+  name: string;
+  shortName: string;
+  tla: string;
+  crest: string | null;
+}
+
+/** A single club's season, split around its next meaningful game. */
+export interface TeamFixtures {
+  season: number;
+  team: TeamInfo;
+  /** The live game if one is on, else the next scheduled fixture. */
+  next: FixtureRow | null;
+  /** Everything still to play after `next`, kickoff order (includes postponed). */
+  upcoming: FixtureRow[];
+  /** Finished games, most recent first. */
+  past: FixtureRow[];
 }
 
 export interface AdminOverview {

@@ -44,16 +44,25 @@
   border-radius: var(--radius-sm);
   border-left: 3px solid transparent;
 }
+/* Rows are links to each club's fixtures page. */
 .list .row {
   background: var(--color-paper);
   border: 1px solid var(--color-rule);
   border-left: 3px solid transparent;
-  transition: border-color var(--dur-short) var(--ease-out);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color var(--dur-short) var(--ease-out),
+    background-color var(--dur-short) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
   .list .row:hover {
     border-color: var(--color-rule-2);
+    background: var(--color-paper-2);
   }
+}
+.list .row:active {
+  transform: translateY(1px);
 }
 
 .headRow {
@@ -89,11 +98,26 @@
   gap: var(--space-sm);
   min-width: 0;
 }
+.clubText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 .clubName {
   min-width: 0;
   display: flex;
   align-items: baseline;
   gap: var(--space-xs);
+}
+/* Narrow-screen home for the last-5 dots (smaller discs). */
+.clubFormSm {
+  display: flex;
+}
+.clubFormSm .formDot {
+  width: 13px;
+  height: 13px;
+  font-size: 0.52rem;
 }
 .clubFull {
   font-weight: 700;
@@ -128,23 +152,28 @@
   display: none;
 }
 
-/* Recent form squares (optional data). */
-.form {
+/* Last-5 column (end of the row) — revealed on roomier screens. */
+.formCell {
   display: none;
+  justify-content: flex-end;
+}
+.form {
+  display: inline-flex;
   gap: 3px;
-  margin-inline-start: auto;
-  padding-inline-start: var(--space-sm);
 }
 .formDot {
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  color: var(--color-on-disc);
+  line-height: 1;
+  /* paper flips with the theme, so the glyph stays readable on both the
+     light-mode (dark) and dark-mode (light) result fills */
+  color: var(--color-paper);
 }
 .formDot[data-r="W"] {
   background: var(--color-safe-ink);
@@ -192,7 +221,7 @@
   padding: var(--space-md) 0 var(--space-xl);
 }
 
-/* Roomier screens: reveal W/D/L, the TLA, and recent form. */
+/* Roomier screens: reveal W/D/L and the TLA. */
 @media (min-width: 34rem) {
   .row {
     grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2rem 2rem 2rem 2.75rem 2.5rem;
@@ -204,8 +233,15 @@
     display: inline;
   }
 }
+/* Wider still: the Last-5 column joins at the end (and leaves the club cell). */
 @media (min-width: 48rem) {
-  .form {
-    display: inline-flex;
+  .row {
+    grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2rem 2rem 2rem 2.75rem 2.5rem auto;
+  }
+  .formCell {
+    display: flex;
+  }
+  .clubFormSm {
+    display: none;
   }
 }

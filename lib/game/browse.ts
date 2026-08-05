@@ -9,6 +9,8 @@ import type {
   FixturesWeek,
   FixtureRow,
   FixtureState,
+  TeamInfo,
+  TeamFixtures,
 } from "./portalTypes";
 
 /** The season players browse: the current game's season, or the configured default. */
@@ -173,6 +175,41 @@ function fixtureState(status: string): { state: FixtureState; label: string } {
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
+type SideOf = (apiId: number) => FixtureRow["home"];
+
+/** Build the `side` lookup and row mapper shared by the fixtures views. */
+function rowMapper(teams: { apiId: number; name: string; shortName: string; tla: string; crest?: string }[]): {
+  side: SideOf;
+  toRow: (f: IFixture) => FixtureRow;
+} {
+  const teamById = new Map(teams.map((t) => [t.apiId, t]));
+  const side: SideOf = (apiId: number) => {
+    const t = teamById.get(apiId);
+    return {
+      name: t?.name ?? "TBD",
+      shortName: t?.shortName ?? "TBD",
+      tla: t?.tla ?? "",
+      crest: t?.crest ?? null,
+    };
+  };
+  const toRow = (f: IFixture): FixtureRow => {
+    const { state, label } = fixtureState(f.status);
+    return {
+      apiId: f.apiId,
+      matchday: f.matchday,
+      kickoff: new Date(f.utcKickoff).toISOString(),
+      state,
+      statusLabel: label,
+      home: side(f.homeTeamApiId),
+      away: side(f.awayTeamApiId),
+      homeScore: f.homeScore,
+      awayScore: f.awayScore,
+      winner: f.winner,
+    };
+  };
+  return { side, toRow };
+}
+
 /** Fixtures for one matchday of the browsed season, with team names and crests. */
 export async function getFixturesForMatchday(matchday?: number): Promise<FixturesWeek> {
   await connectDB();
@@ -183,16 +220,7 @@ export async function getFixturesForMatchday(matchday?: number): Promise<Fixture
     Fixture.find({ season }).lean<IFixture[]>(),
     Team.find({}).lean(),
   ]);
-  const teamById = new Map(teams.map((t) => [t.apiId, t]));
-  const side = (apiId: number) => {
-    const t = teamById.get(apiId);
-    return {
-      name: t?.name ?? "TBD",
-      shortName: t?.shortName ?? "TBD",
-      tla: t?.tla ?? "",
-      crest: t?.crest ?? null,
-    };
-  };
+  const { toRow } = rowMapper(teams);
 
   const currentMatchday = await defaultMatchday(season, all);
   const md = clamp(matchday ?? currentMatchday, 1, TOTAL_MATCHDAYS);
@@ -200,20 +228,64 @@ export async function getFixturesForMatchday(matchday?: number): Promise<Fixture
   const fixtures: FixtureRow[] = all
     .filter((f) => f.matchday === md)
     .sort((a, b) => new Date(a.utcKickoff).getTime() - new Date(b.utcKickoff).getTime())
-    .map((f) => {
-      const { state, label } = fixtureState(f.status);
-      return {
-        apiId: f.apiId,
-        kickoff: new Date(f.utcKickoff).toISOString(),
-        state,
-        statusLabel: label,
-        home: side(f.homeTeamApiId),
-        away: side(f.awayTeamApiId),
-        homeScore: f.homeScore,
-        awayScore: f.awayScore,
-        winner: f.winner,
-      };
-    });
+    .map(toRow);
 
   return { season, matchday: md, currentMatchday, totalMatchdays: TOTAL_MATCHDAYS, fixtures };
+}
+
+/** All clubs of the browsed season, A–Z — for the by-team picker. */
+export async function getTeams(): Promise<TeamInfo[]> {
+  await connectDB();
+  const teams = await Team.find({}).sort({ name: 1 }).lean();
+  return teams.map((t) => ({
+    name: t.name,
+    shortName: t.shortName,
+    tla: t.tla,
+    crest: t.crest ?? null,
+  }));
+}
+
+/**
+ * One club's season, split around its next meaningful game: the live fixture
+ * (or next scheduled one) up top, the rest still to play, and finished games
+ * most recent first. Returns null for an unknown TLA.
+ */
+export async function getFixturesForTeam(tla: string): Promise<TeamFixtures | null> {
+  await connectDB();
+  const season = await browseSeason();
+  await ensureSeasonFixtures(season);
+
+  const [team, teams] = await Promise.all([
+    Team.findOne({ tla: tla.toUpperCase() }).lean(),
+    Team.find({}).lean(),
+  ]);
+  if (!team) return null;
+
+  const all = await Fixture.find({
+    season,
+    $or: [{ homeTeamApiId: team.apiId }, { awayTeamApiId: team.apiId }],
+  }).lean<IFixture[]>();
+
+  const { toRow } = rowMapper(teams);
+  const rows = all
+    .sort((a, b) => new Date(a.utcKickoff).getTime() - new Date(b.utcKickoff).getTime())
+    .map(toRow);
+
+  const live = rows.find((r) => r.state === "live");
+  const next = live ?? rows.find((r) => r.state === "scheduled") ?? null;
+  const upcoming = rows.filter((r) => r.state !== "finished" && r !== next);
+  const past = rows.filter((r) => r.state === "finished").reverse();
+
+  return {
+    season,
+    team: {
+      name: team.name,
+      shortName: team.shortName,
+      tla: team.tla,
+      crest: team.crest ?? null,
+    },
+    next,
+    upcoming,
+    past,
+  };
 }
