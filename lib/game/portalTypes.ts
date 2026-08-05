@@ -119,6 +119,40 @@ export interface AdminOverview {
   teamsSeeded: number;
 }
 
+/** One row of the game standings, ranked server-side. */
+export interface StandingRow {
+  rank: number;
+  name: string;
+  you: boolean;
+  survivedWeeks: number;
+  status: EntryStatus;
+  lastTeamTla: string | null;
+  lastTeamName: string | null;
+  lastTeamCrest: string | null;
+}
+
+/** A page of standings — the board loads these lazily as the player scrolls. */
+export interface StandingsPage {
+  total: number;
+  offset: number;
+  rows: StandingRow[];
+}
+
+/** How many players picked each team for the current pick week. */
+export interface PickSummary {
+  gameWeek: number;
+  matchday: number;
+  totalPicks: number;
+  teams: Array<{
+    teamApiId: number;
+    name: string;
+    shortName: string;
+    tla: string;
+    crest: string | null;
+    count: number;
+  }>;
+}
+
 export interface PortalState {
   game: {
     id: string;
@@ -148,15 +182,12 @@ export interface PortalState {
     isWildcard: boolean;
     result: string;
   } | null;
-  standings: Array<{
-    name: string;
-    you: boolean;
-    survivedWeeks: number;
-    status: EntryStatus;
-    lastTeamTla: string | null;
-    lastTeamName: string | null;
-    lastTeamCrest: string | null;
-  }>;
+  /** First page only — fetch more from /api/standings (see StandingsPage). */
+  standings: StandingRow[];
+  /** Total entries in the game, so the client knows how many pages remain. */
+  standingsTotal: number;
+  /** The signed-in player's own row (with true rank) — pinned first in the UI. */
+  myStanding: StandingRow | null;
   history: Array<{
     matchday: number;
     gameWeek: number;

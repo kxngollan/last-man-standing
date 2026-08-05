@@ -10,9 +10,19 @@ import { publicName } from "@/lib/displayName";
 import { getMatchdayDeadline, isLocked } from "./deadline";
 import { getPickWindow } from "./pickWindow";
 import { GameError } from "./errors";
-import type { TeamOption, PortalState, AdminOverview } from "./portalTypes";
+import type {
+  TeamOption,
+  PortalState,
+  AdminOverview,
+  StandingRow,
+  StandingsPage,
+  PickSummary,
+} from "./portalTypes";
 
 export type { TeamOption, PortalState, AdminOverview } from "./portalTypes";
+
+/** Standings rows per request — the board fetches further pages lazily. */
+export const STANDINGS_PAGE_SIZE = 25;
 
 /** The single global game currently open (registration or active), if any. */
 export async function getCurrentGame(): Promise<HydratedDocument<IGame> | null> {
@@ -107,6 +117,174 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   return { current, pastGames, teamsSeeded };
 }
 
+/* ---- Standings (paginated) ----------------------------------------------
+ * Ordering (matches the old in-memory sort, plus a stable tie-break):
+ *   1. alive entries first (winners have no alive rivals, so they top a
+ *      finished game naturally),
+ *   2. then by weeks survived, descending — encoded as eliminatedAtMatchday
+ *      descending with null (never eliminated) treated as +inf,
+ *   3. then by join time, so pagination never shuffles equal rows.
+ */
+const STANDINGS_SORT_FIELDS = {
+  outRank: { $cond: [{ $eq: ["$status", "alive"] }, 0, 1] },
+  elimSort: { $ifNull: ["$eliminatedAtMatchday", 9999] },
+} as const;
+
+/** Build display rows for a slice of entries (already in rank order). */
+async function buildStandingRows(
+  game: HydratedDocument<IGame>,
+  entriesSlice: IEntry[],
+  userId: string,
+  firstRank: number
+): Promise<StandingRow[]> {
+  const md = game.currentMatchday;
+  const entryIds = entriesSlice.map((e) => e._id);
+  const userIds = entriesSlice.map((e) => e.userId);
+
+  const [users, teams, picks] = await Promise.all([
+    User.find({ _id: { $in: userIds } })
+      .select("name firstName lastName")
+      .lean(),
+    Team.find({}).lean(),
+    Pick.find({ entryId: { $in: entryIds } })
+      .sort({ matchday: -1 })
+      .lean(),
+  ]);
+  // Standings are public — show "First L.", never the full surname.
+  const nameById = new Map(users.map((u) => [String(u._id), publicName(u)]));
+  const teamById = new Map(teams.map((t) => [t.apiId, t]));
+  const lastPickByEntry = new Map<string, (typeof picks)[number]>();
+  for (const p of picks) {
+    const key = String(p.entryId);
+    if (!lastPickByEntry.has(key)) lastPickByEntry.set(key, p);
+  }
+
+  return entriesSlice.map((e, i) => {
+    const last = lastPickByEntry.get(String(e._id));
+    const lastTeam = last?.teamApiId ? teamById.get(last.teamApiId) : null;
+    return {
+      rank: firstRank + i,
+      name: nameById.get(String(e.userId)) ?? "Player",
+      you: String(e.userId) === String(userId),
+      survivedWeeks: survived(game.startMatchday, e.eliminatedAtMatchday ?? md),
+      status: e.status,
+      // Wildcard picks carry a team now; "WC" is only the legacy teamless form.
+      lastTeamTla: lastTeam?.tla ?? (last?.isWildcard ? "WC" : null),
+      lastTeamName: lastTeam?.name ?? (last?.isWildcard ? "Wildcard" : null),
+      lastTeamCrest: lastTeam?.crest ?? null,
+    };
+  });
+}
+
+/** One page of the current game's standings, ranked and sorted in the DB. */
+async function standingsPageForGame(
+  game: HydratedDocument<IGame>,
+  userId: string,
+  offset: number,
+  limit: number
+): Promise<StandingsPage> {
+  const [total, pageEntries] = await Promise.all([
+    Entry.countDocuments({ gameId: game._id }),
+    Entry.aggregate<IEntry>([
+      { $match: { gameId: game._id } },
+      { $addFields: STANDINGS_SORT_FIELDS },
+      { $sort: { outRank: 1, elimSort: -1, createdAt: 1 } },
+      { $skip: offset },
+      { $limit: limit },
+    ]),
+  ]);
+  const rows = await buildStandingRows(game, pageEntries, userId, offset + 1);
+  return { total, offset, rows };
+}
+
+/** The player's own row with its true rank — pinned on top of the board. */
+async function myStandingRow(
+  game: HydratedDocument<IGame>,
+  entry: HydratedDocument<IEntry>,
+  userId: string
+): Promise<StandingRow> {
+  const myOut = entry.status === "alive" ? 0 : 1;
+  const myElim = entry.eliminatedAtMatchday ?? 9999;
+  const ahead = await Entry.aggregate<{ n: number }>([
+    { $match: { gameId: game._id } },
+    { $addFields: STANDINGS_SORT_FIELDS },
+    {
+      $match: {
+        $expr: {
+          $or: [
+            { $lt: ["$outRank", myOut] },
+            { $and: [{ $eq: ["$outRank", myOut] }, { $gt: ["$elimSort", myElim] }] },
+            {
+              $and: [
+                { $eq: ["$outRank", myOut] },
+                { $eq: ["$elimSort", myElim] },
+                { $lt: ["$createdAt", entry.createdAt] },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    { $count: "n" },
+  ]);
+  const rank = (ahead[0]?.n ?? 0) + 1;
+  const [row] = await buildStandingRows(game, [entry.toObject()], userId, rank);
+  return row;
+}
+
+/** Public entry point for the lazy-loading board: one page of standings. */
+export async function getStandingsPage(
+  userId: string,
+  offset: number,
+  limit: number
+): Promise<StandingsPage> {
+  await connectDB();
+  const game = await getCurrentGame();
+  if (!game) return { total: 0, offset: 0, rows: [] };
+  return standingsPageForGame(game, userId, offset, limit);
+}
+
+/** How many players picked each team for the week currently being picked. */
+export async function getPickSummary(): Promise<PickSummary | null> {
+  await connectDB();
+  const game = await getCurrentGame();
+  if (!game) return null;
+
+  const pick = await getPickWindow(game.season, game.currentMatchday);
+  const pickMd = pick.matchday;
+
+  const [counts, teams] = await Promise.all([
+    Pick.aggregate<{ _id: number; count: number }>([
+      { $match: { gameId: game._id, matchday: pickMd, teamApiId: { $ne: null } } },
+      { $group: { _id: "$teamApiId", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]),
+    Team.find({}).lean(),
+  ]);
+  const teamById = new Map(teams.map((t) => [t.apiId, t]));
+
+  const rows = counts
+    .filter((c) => teamById.has(c._id))
+    .map((c) => {
+      const t = teamById.get(c._id)!;
+      return {
+        teamApiId: t.apiId,
+        name: t.name,
+        shortName: t.shortName,
+        tla: t.tla,
+        crest: t.crest ?? null,
+        count: c.count,
+      };
+    });
+
+  return {
+    gameWeek: pickMd - game.startMatchday + 1,
+    matchday: pickMd,
+    totalPicks: rows.reduce((sum, r) => sum + r.count, 0),
+    teams: rows,
+  };
+}
+
 /** Everything the player-facing screens need for the current game. */
 export async function getGameStateForUser(userId: string): Promise<PortalState> {
   await connectDB();
@@ -124,6 +302,8 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
       teams: [],
       myPick: null,
       standings: [],
+      standingsTotal: 0,
+      myStanding: null,
       history: [],
     };
   }
@@ -138,11 +318,12 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
   const pickMd = pick.matchday;
   const pickGameWeek = pickMd - game.startMatchday + 1;
 
-  const [teams, fixtures, entry, entries] = await Promise.all([
+  const [teams, fixtures, entry, playersTotal, playersAlive] = await Promise.all([
     Team.find({}).lean(),
     Fixture.find({ season: game.season, matchday: pickMd }).lean(),
     Entry.findOne({ gameId: game._id, userId }),
-    Entry.find({ gameId: game._id }).lean(),
+    Entry.countDocuments({ gameId: game._id }),
+    Entry.countDocuments({ gameId: game._id, status: "alive" }),
   ]);
   const deadline = pick.deadline;
 
@@ -197,43 +378,12 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
     }
   }
 
-  // Standings.
-  const userIds = entries.map((e) => e.userId);
-  const users = await User.find({ _id: { $in: userIds } })
-    .select("name firstName lastName")
-    .lean();
-  // Standings are public — show "First L.", never the full surname.
-  const nameById = new Map(users.map((u) => [String(u._id), publicName(u)]));
-  const lastPicks = await Pick.find({ gameId: game._id })
-    .sort({ matchday: -1 })
-    .lean();
-  const lastPickByEntry = new Map<string, (typeof lastPicks)[number]>();
-  for (const p of lastPicks) {
-    const key = String(p.entryId);
-    if (!lastPickByEntry.has(key)) lastPickByEntry.set(key, p);
-  }
-
-  const standings = entries
-    .map((e) => {
-      const last = lastPickByEntry.get(String(e._id));
-      const lastTeam = last?.teamApiId ? teamById.get(last.teamApiId) : null;
-      return {
-        name: nameById.get(String(e.userId)) ?? "Player",
-        you: String(e.userId) === String(userId),
-        survivedWeeks: survived(game.startMatchday, e.eliminatedAtMatchday ?? md),
-        status: e.status,
-        // Wildcard picks carry a team now; "WC" is only the legacy teamless form.
-        lastTeamTla: lastTeam?.tla ?? (last?.isWildcard ? "WC" : null),
-        lastTeamName: lastTeam?.name ?? (last?.isWildcard ? "Wildcard" : null),
-        lastTeamCrest: lastTeam?.crest ?? null,
-      };
-    })
-    .sort((a, b) => {
-      // alive first, then by weeks survived desc
-      if (a.status === "alive" && b.status !== "alive") return -1;
-      if (b.status === "alive" && a.status !== "alive") return 1;
-      return b.survivedWeeks - a.survivedWeeks;
-    });
+  // Standings: first page only — the board lazy-loads the rest — plus the
+  // player's own ranked row so the UI can pin it on top.
+  const [standingsPage, myStanding] = await Promise.all([
+    standingsPageForGame(game, userId, 0, STANDINGS_PAGE_SIZE),
+    entry ? myStandingRow(game, entry, userId) : Promise.resolve(null),
+  ]);
 
   // History (this player's picks).
   let history: PortalState["history"] = [];
@@ -275,12 +425,14 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
     pickGameWeek,
     pickAhead: pick.ahead,
     players: {
-      total: entries.length,
-      alive: entries.filter((e) => e.status === "alive").length,
+      total: playersTotal,
+      alive: playersAlive,
     },
     teams: teamOptions,
     myPick,
-    standings,
+    standings: standingsPage.rows,
+    standingsTotal: standingsPage.total,
+    myStanding,
     history,
   };
 }

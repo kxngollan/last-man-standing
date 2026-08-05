@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePortalState } from "@/components/portal/usePortalState";
 import { TeamCrest } from "@/components/portal/TeamCrest";
 import { BallArt } from "@/components/ui/FootballArt";
+import type { StandingRow, StandingsPage, PickSummary } from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
 
 function useCountUp(target: number, on: boolean) {
@@ -30,6 +31,97 @@ function useCountUp(target: number, on: boolean) {
   return value;
 }
 
+function StandingRowItem({ p }: { p: StandingRow }) {
+  return (
+    <li className={styles.row} data-you={p.you} data-out={p.status !== "alive"}>
+      <span className={styles.rank} data-nums aria-hidden="true">
+        {p.rank}
+      </span>
+      <span className={styles.player}>
+        <span className={styles.pname}>
+          {p.name}
+          {p.you && <span className={styles.youTag}>you</span>}
+        </span>
+        <span className={styles.psub} data-nums>
+          survived {p.survivedWeeks} {p.survivedWeeks === 1 ? "week" : "weeks"}
+        </span>
+      </span>
+      <span className={styles.lastPick}>
+        {p.lastTeamTla ? (
+          <>
+            <TeamCrest crest={p.lastTeamCrest} tla={p.lastTeamTla} />
+            <span className={styles.pickName}>{p.lastTeamName}</span>
+          </>
+        ) : (
+          <span className={styles.pickName}>—</span>
+        )}
+      </span>
+      <span className={`lms-chip ${p.status === "alive" ? "lms-chip--safe" : "lms-chip--out"}`}>
+        <span className="lms-dot" aria-hidden="true" />
+        {p.status === "winner" ? "Winner" : p.status === "alive" ? "In" : "Out"}
+      </span>
+    </li>
+  );
+}
+
+/** Top teams this week by pick count — the full list lives at /picks. */
+function TopPicks({ gameWeek }: { gameWeek: number }) {
+  const [summary, setSummary] = useState<PickSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/picks/summary", { cache: "no-store" });
+        if (!res.ok) return;
+        const body = (await res.json()) as PickSummary;
+        if (!cancelled) setSummary(body);
+      } catch {
+        /* quietly absent — the dashboard works without it */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [gameWeek]);
+
+  if (!summary || summary.totalPicks === 0) return null;
+  const top = summary.teams.slice(0, 3);
+  const max = top[0]?.count ?? 1;
+
+  return (
+    <section aria-label="Most picked teams">
+      <div className="lms-head">
+        <h2 className="lms-head__title">Week {summary.gameWeek} picks</h2>
+        <p className="lms-head__hint">
+          What the field is backing this week — {summary.totalPicks}{" "}
+          {summary.totalPicks === 1 ? "pick" : "picks"} in so far.
+        </p>
+      </div>
+      <ol className={styles.topPicks}>
+        {top.map((t) => (
+          <li key={t.teamApiId} className={styles.topPickRow}>
+            <TeamCrest crest={t.crest} tla={t.tla} />
+            <span className={styles.topPickName}>{t.shortName || t.name}</span>
+            <span className={styles.topPickBar} aria-hidden="true">
+              <span
+                className={styles.topPickFill}
+                style={{ width: `${Math.max(8, (t.count / max) * 100)}%` }}
+              />
+            </span>
+            <span className={styles.topPickCount} data-nums>
+              {t.count}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <Link href="/picks" className={styles.allPicksLink}>
+        {`See all Week ${summary.gameWeek} picks `}&rsaquo;
+      </Link>
+    </section>
+  );
+}
+
 function Stat({ value, label, on }: { value: number; label: string; on: boolean }) {
   const shown = useCountUp(value, on);
   return (
@@ -52,6 +144,45 @@ export default function DashboardPage() {
   useEffect(() => {
     if (state) setReady(true);
   }, [state]);
+
+  // Lazy-loaded standings pages beyond the first (which arrives with the state).
+  const [extraRows, setExtraRows] = useState<StandingRow[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const firstPage = state?.standings ?? [];
+  const standingsTotal = state?.standingsTotal ?? 0;
+  const loadedCount = firstPage.length + extraRows.length;
+  const hasMore = loadedCount < standingsTotal;
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/standings?offset=${loadedCount}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const page = (await res.json()) as StandingsPage;
+      setExtraRows((rows) => [...rows, ...page.rows]);
+    } catch {
+      /* the button stays — the player can retry */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, loadedCount]);
+
+  // Auto-load the next page when the end of the board scrolls into view.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: "300px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore]);
 
   if (loading) {
     return (
@@ -93,7 +224,9 @@ export default function DashboardPage() {
     );
   }
 
-  const { game, entry, players, standings, myPick, pickGameWeek } = state;
+  const { game, entry, players, myPick, myStanding, pickGameWeek } = state;
+  // Own row is pinned on top, so drop it from the pages that contain it.
+  const boardRows = [...firstPage, ...extraRows].filter((r) => !r.you);
 
   async function join() {
     setJoining(true);
@@ -162,6 +295,8 @@ export default function DashboardPage() {
         </p>
       )}
 
+      <TopPicks gameWeek={pickGameWeek} />
+
       <section aria-label="Standings">
         <div className="lms-head">
           <h2 className={`lms-head__title ${styles.standingsTitle}`}>
@@ -173,48 +308,38 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {standings.length === 0 ? (
+        {standingsTotal === 0 ? (
           <p className={styles.notice}>No players yet. Be the first to join.</p>
         ) : (
-          <ul className={styles.board}>
-            {standings.map((p, i) => (
-              <li
-                key={`${p.name}-${i}`}
-                className={styles.row}
-                data-you={p.you}
-                data-out={p.status !== "alive"}
-              >
-                <span className={styles.rank} data-nums aria-hidden="true">
-                  {i + 1}
-                </span>
-                <span className={styles.player}>
-                  <span className={styles.pname}>
-                    {p.name}
-                    {p.you && <span className={styles.youTag}>you</span>}
-                  </span>
-                  <span className={styles.psub} data-nums>
-                    survived {p.survivedWeeks} {p.survivedWeeks === 1 ? "week" : "weeks"}
-                  </span>
-                </span>
-                <span className={styles.lastPick}>
-                  {p.lastTeamTla ? (
+          <>
+            <ul className={styles.board}>
+              {/* Your row first, always — then everyone else in rank order. */}
+              {myStanding && <StandingRowItem p={myStanding} />}
+              {boardRows.map((p) => (
+                <StandingRowItem key={p.rank} p={p} />
+              ))}
+            </ul>
+
+            {hasMore && (
+              <div className={styles.loadMore} ref={sentinelRef}>
+                <button
+                  className="lms-btn lms-btn--ghost lms-btn--sm"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                  aria-disabled={loadingMore}
+                >
+                  {loadingMore ? (
                     <>
-                      <TeamCrest crest={p.lastTeamCrest} tla={p.lastTeamTla} />
-                      <span className={styles.pickName}>{p.lastTeamName}</span>
+                      <span className="lms-spinner" aria-hidden="true" />
+                      Loading&hellip;
                     </>
                   ) : (
-                    <span className={styles.pickName}>—</span>
+                    `Show more players (${standingsTotal - loadedCount} to go)`
                   )}
-                </span>
-                <span
-                  className={`lms-chip ${p.status === "alive" ? "lms-chip--safe" : "lms-chip--out"}`}
-                >
-                  <span className="lms-dot" aria-hidden="true" />
-                  {p.status === "winner" ? "Winner" : p.status === "alive" ? "In" : "Out"}
-                </span>
-              </li>
-            ))}
-          </ul>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </main>
