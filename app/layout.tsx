@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Space_Mono } from 'next/font/google'
 import './globals.css'
 import './ui.css'
 import { GoogleAnalytics } from '@next/third-parties/google'
+import { Analytics } from '@vercel/analytics/next'
 import CookieNotice from '@/components/CookieNotice'
 import SessionWrapper from '@/components/SessionWrapper'
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_KEYWORDS } from '@/lib/site'
@@ -106,6 +107,7 @@ export default function RootLayout({
         <CookieNotice />
       </body>
       <GoogleAnalytics gaId={gid} />
+      <Analytics />
     </html>
   )
 }
