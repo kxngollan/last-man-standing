@@ -85,6 +85,18 @@ export interface TeamFixtures {
   past: FixtureRow[];
 }
 
+/** One player row in the admin Players panel. */
+export interface AdminUserRow {
+  id: string;
+  /** Prefilled from the legacy `name` split for pre-split accounts. */
+  firstName: string;
+  lastName: string;
+  email: string;
+  emailVerified: boolean;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
 export interface AdminOverview {
   current: {
     id: string;

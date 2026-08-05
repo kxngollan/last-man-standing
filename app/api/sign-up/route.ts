@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, email, password, dob } = parsed.data;
+    const { firstName, lastName, email, password, dob } = parsed.data;
     const dobDate = new Date(dob);
     if (Number.isNaN(dobDate.getTime())) {
       return NextResponse.json({ error: "Enter a valid date of birth." }, { status: 400 });
@@ -52,7 +52,10 @@ export async function POST(request: Request) {
     let user;
     try {
       user = await User.create({
-        name,
+        firstName,
+        lastName,
+        // `name` mirrors the split fields — the auth session and legacy code read it.
+        name: `${firstName} ${lastName}`,
         email: emailLc,
         passwordHash,
         dob: dobDate,

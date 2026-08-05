@@ -2,8 +2,153 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { AdminOverview } from "@/lib/game/portalTypes";
+import type { AdminOverview, AdminUserRow } from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
+
+type NameEdit = { firstName: string; lastName: string };
+
+/** Player accounts — rename, verify/unverify. */
+function PlayersPanel() {
+  const [users, setUsers] = useState<AdminUserRow[] | null>(null);
+  const [error, setError] = useState("");
+  const [edits, setEdits] = useState<Record<string, NameEdit>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/users", { cache: "no-store" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((body as { error?: string }).error ?? "Failed to load players.");
+      setUsers(body as AdminUserRow[]);
+      setError("");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function patch(u: AdminUserRow, payload: Partial<NameEdit> & { emailVerified?: boolean }) {
+    setBusy(u.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError((body as { error?: string }).error ?? "Update failed.");
+        return;
+      }
+      const row = body as AdminUserRow;
+      setUsers((list) => (list ?? []).map((x) => (x.id === row.id ? row : x)));
+      setEdits(({ [u.id]: _dropped, ...rest }) => rest);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className={`lms-panel ${styles.users}`}>
+      <h2 className={styles.panelTitle}>Players</h2>
+      <p className={styles.panelHint}>
+        Rename a player or verify their email by hand (e.g. when the confirmation email never
+        arrived). Everyone sees players as first name + last initial.
+      </p>
+
+      {error && (
+        <p className={styles.notice} role="alert" style={{ color: "var(--color-out-ink)" }}>
+          {error}
+        </p>
+      )}
+
+      {!users ? (
+        <p className={styles.panelHint}>
+          <span className="lms-spinner" aria-hidden="true" /> Loading players…
+        </p>
+      ) : users.length === 0 ? (
+        <p className={styles.panelHint}>No accounts yet.</p>
+      ) : (
+        <ul className={styles.userRows}>
+          {users.map((u) => {
+            const edit = edits[u.id] ?? { firstName: u.firstName, lastName: u.lastName };
+            const dirty = edit.firstName !== u.firstName || edit.lastName !== u.lastName;
+            const rowBusy = busy === u.id;
+            return (
+              <li key={u.id} className={styles.userRow}>
+                <span className={styles.userNames}>
+                  <input
+                    className={`lms-field__control ${styles.userInput}`}
+                    aria-label={`First name for ${u.email}`}
+                    value={edit.firstName}
+                    onChange={(e) =>
+                      setEdits((m) => ({ ...m, [u.id]: { ...edit, firstName: e.target.value } }))
+                    }
+                    disabled={rowBusy}
+                  />
+                  <input
+                    className={`lms-field__control ${styles.userInput}`}
+                    aria-label={`Last name for ${u.email}`}
+                    value={edit.lastName}
+                    onChange={(e) =>
+                      setEdits((m) => ({ ...m, [u.id]: { ...edit, lastName: e.target.value } }))
+                    }
+                    disabled={rowBusy}
+                  />
+                </span>
+
+                <span className={styles.userEmail} title={u.email}>
+                  {u.email}
+                </span>
+
+                <span className={styles.userChips}>
+                  {u.isAdmin && <span className="lms-chip lms-chip--mono">Admin</span>}
+                  <span
+                    className={`lms-chip ${u.emailVerified ? "lms-chip--safe" : "lms-chip--wild"}`}
+                  >
+                    {u.emailVerified ? "Verified" : "Unverified"}
+                  </span>
+                </span>
+
+                <span className={styles.userActions}>
+                  {dirty && (
+                    <button
+                      className="lms-btn lms-btn--primary lms-btn--sm"
+                      disabled={
+                        rowBusy || !edit.firstName.trim() || !edit.lastName.trim()
+                      }
+                      onClick={() =>
+                        patch(u, {
+                          firstName: edit.firstName.trim(),
+                          lastName: edit.lastName.trim(),
+                        })
+                      }
+                    >
+                      {rowBusy ? "Saving…" : "Save name"}
+                    </button>
+                  )}
+                  <button
+                    className="lms-btn lms-btn--ghost lms-btn--sm"
+                    disabled={rowBusy}
+                    onClick={() => patch(u, { emailVerified: !u.emailVerified })}
+                  >
+                    {rowBusy ? "…" : u.emailVerified ? "Unverify" : "Verify"}
+                  </button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 export default function AdminPage() {
   const [data, setData] = useState<AdminOverview | null>(null);
@@ -298,6 +443,9 @@ export default function AdminPage() {
               </ul>
             )}
           </section>
+
+          {/* Player accounts */}
+          <PlayersPanel />
         </div>
       </main>
     </div>

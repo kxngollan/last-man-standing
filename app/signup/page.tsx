@@ -8,7 +8,8 @@ import { useCooldown } from "@/components/auth/useCooldown";
 import styles from "@/components/auth/authContent.module.css";
 
 type Fields = {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirm: string;
@@ -33,7 +34,9 @@ function ageFrom(dob: string): number | null {
 
 function validate(f: Fields): Errors {
   const e: Errors = {};
-  if (!f.name.trim()) e.name = "Enter your name so other players can see who they’re up against.";
+  if (!f.firstName.trim())
+    e.firstName = "Enter your first name — it’s how other players will see you.";
+  if (!f.lastName.trim()) e.lastName = "Enter your last name.";
   if (!f.email.trim()) e.email = "Enter your email. We’ll send a confirmation link.";
   else if (!EMAIL_RE.test(f.email)) e.email = "That doesn’t look like a valid email address.";
   if (!f.password) e.password = "Choose a password.";
@@ -49,7 +52,8 @@ function validate(f: Fields): Errors {
 
 export default function SignupPage() {
   const [fields, setFields] = useState<Fields>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirm: "",
@@ -81,7 +85,15 @@ export default function SignupPage() {
     setServerError("");
     const errs = validate(fields);
     setErrors(errs);
-    setTouched({ name: true, email: true, password: true, confirm: true, dob: true, agree: true });
+    setTouched({
+      firstName: true,
+      lastName: true,
+      email: true,
+      password: true,
+      confirm: true,
+      dob: true,
+      agree: true,
+    });
     if (Object.keys(errs).length > 0) return;
 
     setSubmitting(true);
@@ -90,7 +102,8 @@ export default function SignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: fields.name,
+          firstName: fields.firstName,
+          lastName: fields.lastName,
           email: fields.email,
           password: fields.password,
           dob: fields.dob,
@@ -187,24 +200,48 @@ export default function SignupPage() {
       <p className={styles.lede}>Free to play. You must be 16 or older to sign up.</p>
 
       <form className={styles.form} onSubmit={submit} noValidate>
-        <div className={`lms-field ${errors.name ? "lms-field--error" : ""}`}>
-          <label className="lms-field__label" htmlFor="name">
-            Name<span className="lms-field__req" aria-hidden="true">*</span>
+        <div className={`lms-field ${errors.firstName ? "lms-field--error" : ""}`}>
+          <label className="lms-field__label" htmlFor="firstName">
+            First name<span className="lms-field__req" aria-hidden="true">*</span>
           </label>
           <input
             className="lms-field__control"
-            id="name"
+            id="firstName"
             type="text"
-            autoComplete="name"
-            value={fields.name}
-            onChange={(e) => update("name", e.target.value)}
-            onBlur={() => blur("name")}
-            aria-invalid={!!errors.name}
-            aria-describedby="name-help"
+            autoComplete="given-name"
+            value={fields.firstName}
+            onChange={(e) => update("firstName", e.target.value)}
+            onBlur={() => blur("firstName")}
+            aria-invalid={!!errors.firstName}
+            aria-describedby="firstName-help"
             aria-required="true"
           />
-          <p className="lms-field__help" id="name-help">
-            {errors.name ?? ""}
+          <p className="lms-field__help" id="firstName-help">
+            {errors.firstName ?? ""}
+          </p>
+        </div>
+
+        <div className={`lms-field ${errors.lastName ? "lms-field--error" : ""}`}>
+          <label className="lms-field__label" htmlFor="lastName">
+            Last name<span className="lms-field__req" aria-hidden="true">*</span>
+          </label>
+          <input
+            className="lms-field__control"
+            id="lastName"
+            type="text"
+            autoComplete="family-name"
+            value={fields.lastName}
+            onChange={(e) => update("lastName", e.target.value)}
+            onBlur={() => blur("lastName")}
+            aria-invalid={!!errors.lastName}
+            aria-describedby="lastName-help"
+            aria-required="true"
+          />
+          <p className="lms-field__help" id="lastName-help">
+            {errors.lastName ?? ""}
+          </p>
+          <p className="lms-field__help">
+            Other players see your first name and last initial, e.g. “Sam K.”
           </p>
         </div>
 

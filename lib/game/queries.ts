@@ -6,6 +6,7 @@ import { Pick } from "@/models/Pick";
 import { Team } from "@/models/Team";
 import { Fixture } from "@/models/Fixture";
 import { User } from "@/models/User";
+import { publicName } from "@/lib/displayName";
 import { getMatchdayDeadline, isLocked } from "./deadline";
 import { getPickWindow } from "./pickWindow";
 import { GameError } from "./errors";
@@ -59,8 +60,10 @@ export async function getAdminOverview(): Promise<AdminOverview> {
 
   const finished = await Game.find({ status: "finished" }).sort({ createdAt: -1 }).limit(10).lean();
   const winnerIds = finished.map((g) => g.winnerUserId).filter(Boolean);
-  const winners = await User.find({ _id: { $in: winnerIds } }).select("name").lean();
-  const winnerName = new Map(winners.map((w) => [String(w._id), w.name]));
+  const winners = await User.find({ _id: { $in: winnerIds } })
+    .select("name firstName lastName")
+    .lean();
+  const winnerName = new Map(winners.map((w) => [String(w._id), publicName(w)]));
 
   const pastGames = await Promise.all(
     finished.map(async (g) => {
@@ -197,9 +200,10 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
   // Standings.
   const userIds = entries.map((e) => e.userId);
   const users = await User.find({ _id: { $in: userIds } })
-    .select("name")
+    .select("name firstName lastName")
     .lean();
-  const nameById = new Map(users.map((u) => [String(u._id), u.name]));
+  // Standings are public — show "First L.", never the full surname.
+  const nameById = new Map(users.map((u) => [String(u._id), publicName(u)]));
   const lastPicks = await Pick.find({ gameId: game._id })
     .sort({ matchday: -1 })
     .lean();

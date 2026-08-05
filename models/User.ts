@@ -2,7 +2,11 @@ import { Schema, model, models, type Model, type Types } from "mongoose";
 
 export interface IUser {
   _id: Types.ObjectId;
+  /** Full name ("First Last"). Kept in sync with firstName/lastName so the
+   * auth session and legacy accounts (created before the split) keep working. */
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   passwordHash: string;
   dob: Date;
@@ -15,6 +19,8 @@ export interface IUser {
 const UserSchema = new Schema<IUser>(
   {
     name: { type: String, required: true, trim: true },
+    firstName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
     email: {
       type: String,
       required: true,

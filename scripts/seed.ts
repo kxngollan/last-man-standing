@@ -30,15 +30,17 @@ import mongoose from "mongoose";
 const PASSWORD = process.env.SEED_PASSWORD ?? "password123";
 
 const DEV_USERS = [
-  { email: "player@dev.local", name: "Dev Player", isAdmin: false },
-  { email: "admin@dev.local", name: "Dev Admin", isAdmin: true },
+  { email: "player@dev.local", firstName: "Dev", lastName: "Player", isAdmin: false },
+  { email: "admin@dev.local", firstName: "Dev", lastName: "Admin", isAdmin: true },
 ];
 
 async function ensureUser(u: (typeof DEV_USERS)[number]): Promise<"created" | "exists"> {
   const existing = await User.findOne({ email: u.email });
   if (existing) return "exists";
   await User.create({
-    name: u.name,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    name: `${u.firstName} ${u.lastName}`,
     email: u.email,
     passwordHash: await hashPassword(PASSWORD),
     dob: new Date("1990-01-01"),
