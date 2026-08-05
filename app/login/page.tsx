@@ -95,6 +95,13 @@ export default function LoginPage() {
         </button>
       </form>
 
+      {error && (
+        <p className={styles.alt}>
+          Haven&rsquo;t confirmed your email yet?{" "}
+          <Link href="/resend">Resend the confirmation link</Link>
+        </p>
+      )}
+
       <p className={styles.alt}>
         New here? <Link href="/signup">Create an account</Link>
       </p>

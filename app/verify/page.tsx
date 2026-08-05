@@ -1,9 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import AuthShell from "@/components/auth/AuthShell";
 import styles from "@/components/auth/authContent.module.css";
 import { consumeVerificationToken, type VerifyOutcome } from "@/lib/verification";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Confirm email",
   robots: { index: false, follow: false },
 };
@@ -45,7 +46,7 @@ export default async function VerifyPage({
     },
     invalid: {
       title: "Link expired or invalid",
-      lede: "This confirmation link didn’t work. It may have expired, so request a new one from the login page.",
+      lede: "This confirmation link didn’t work. It may have expired — request a new one and we’ll email you a fresh link.",
     },
     error: {
       title: "Couldn’t confirm right now",
@@ -82,7 +83,17 @@ export default async function VerifyPage({
         )}
         <h1 className={styles.title}>{title}</h1>
         <p className={styles.lede}>{lede}</p>
-        <Link href="/login" className="lms-btn lms-btn--primary lms-btn--block">
+        {outcome === "invalid" && (
+          <Link href="/resend" className="lms-btn lms-btn--primary lms-btn--block">
+            Request a new link
+          </Link>
+        )}
+        <Link
+          href="/login"
+          className={`lms-btn lms-btn--block ${
+            outcome === "invalid" ? "lms-btn--ghost" : "lms-btn--primary"
+          }`}
+        >
           {ok ? "Log in" : "Back to log in"}
         </Link>
       </div>

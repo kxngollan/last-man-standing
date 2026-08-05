@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import AuthShell from "@/components/auth/AuthShell";
 import PasswordInput from "@/components/ui/PasswordInput";
+import { useCooldown } from "@/components/auth/useCooldown";
 import styles from "@/components/auth/authContent.module.css";
 
 type Fields = {
@@ -60,6 +61,9 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendError, setResendError] = useState("");
+  const { remaining, start } = useCooldown();
 
   function update<K extends keyof Fields>(key: K, value: Fields[K]) {
     const next = { ...fields, [key]: value };
@@ -110,6 +114,28 @@ export default function SignupPage() {
     }
   }
 
+  async function resend() {
+    setResendError("");
+    setResending(true);
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: fields.email }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setResendError(data.error ?? "Couldn’t resend the email. Please try again.");
+        return;
+      }
+      start(30);
+    } catch {
+      setResendError("Network error. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  }
+
   if (done) {
     return (
       <AuthShell>
@@ -132,6 +158,24 @@ export default function SignupPage() {
           <Link href="/login" className="lms-btn lms-btn--primary lms-btn--block">
             Log in
           </Link>
+          {resendError && (
+            <p className={styles.alt} role="alert">
+              {resendError}
+            </p>
+          )}
+          <button
+            type="button"
+            className="lms-btn lms-btn--ghost lms-btn--block"
+            onClick={resend}
+            disabled={resending || remaining > 0}
+            aria-disabled={resending || remaining > 0}
+          >
+            {remaining > 0
+              ? `Email sent — resend in ${remaining}s`
+              : resending
+                ? "Sending…"
+                : "Didn’t get it? Resend email"}
+          </button>
         </div>
       </AuthShell>
     );

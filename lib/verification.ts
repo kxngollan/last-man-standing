@@ -21,6 +21,16 @@ export async function createVerificationToken(userId: string): Promise<string> {
   return raw;
 }
 
+/**
+ * Invalidate any outstanding verification tokens for a user and issue a fresh
+ * one. Used by the resend flow so only the most recently emailed link works.
+ */
+export async function rotateVerificationToken(userId: string): Promise<string> {
+  await connectDB();
+  await VerificationToken.deleteMany({ userId });
+  return createVerificationToken(userId);
+}
+
 export type VerifyOutcome = "verified" | "already" | "invalid";
 
 /** Consume a verification token, marking the user verified. Single-use. */
