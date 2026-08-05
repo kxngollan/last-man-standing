@@ -105,7 +105,7 @@ export default function RootLayout({
         <SessionWrapper>{children}</SessionWrapper>
         <CookieNotice />
       </body>
-      <GoogleAnalytics gaId='G-380QF7XJ4P' />
+      <GoogleAnalytics gaId={gid} />
     </html>
   )
 }
