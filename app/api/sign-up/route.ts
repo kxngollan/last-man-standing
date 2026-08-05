@@ -7,6 +7,7 @@ import { isOldEnough } from "@/lib/age";
 import { createVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/email";
 import { readJson, errorResponse } from "@/lib/api";
+import { SITE_URL } from "@/lib/site";
 
 export async function POST(request: Request) {
   try {
@@ -73,8 +74,7 @@ export async function POST(request: Request) {
     // unverified account with no email would be permanently locked out.
     try {
       const token = await createVerificationToken(String(user._id));
-      const base = process.env.APP_URL ?? "http://localhost:3000";
-      await sendVerificationEmail(emailLc, `${base}/verify?token=${token}`);
+      await sendVerificationEmail(emailLc, `${SITE_URL}/verify?token=${token}`);
     } catch (err) {
       await User.deleteOne({ _id: user._id });
       throw err;

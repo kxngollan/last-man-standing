@@ -6,9 +6,13 @@
  * Public base URL, no trailing slash. Reuses APP_URL (the same value used for
  * email links) so there is one source of truth. Set APP_URL to your real
  * https domain in production — canonical, sitemap, and social-share URLs all
- * derive from it.
+ * derive from it. A missing scheme (e.g. "www.example.com") is normalized to
+ * https so `new URL(SITE_URL)` in layout metadata can never throw at build.
  */
-export const SITE_URL = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+export const SITE_URL = (() => {
+  const raw = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+})();
 
 export const SITE_NAME = "Last Man Standing";
 export const SITE_TAGLINE = "Free Premier League Survival Game";

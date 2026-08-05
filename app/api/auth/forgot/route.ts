@@ -7,6 +7,7 @@ import isEmail from "@/lib/isEmail";
 import { readJson } from "@/lib/api";
 import { rateLimit } from "@/lib/rateLimit";
 import { PASSWORD_RESET_ENABLED } from "@/lib/features";
+import { SITE_URL } from "@/lib/site";
 
 // Deliberate tradeoff: this endpoint tells the caller when no account exists
 // (404) or the email couldn't be sent (502), so players never sit waiting for
@@ -41,8 +42,7 @@ export async function POST(request: Request) {
       );
     }
     const token = await createResetToken(String(user._id));
-    const base = process.env.APP_URL ?? "http://localhost:3000";
-    await sendPasswordResetEmail(email, `${base}/reset?token=${token}`);
+    await sendPasswordResetEmail(email, `${SITE_URL}/reset?token=${token}`);
   } catch (err) {
     console.error("[auth] forgot-password error:", (err as Error).message);
     return NextResponse.json(
