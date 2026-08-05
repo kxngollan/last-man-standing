@@ -2,6 +2,7 @@ import { connectDB } from "@/database/connect";
 import { Team } from "@/models/Team";
 import { Fixture, type IFixture } from "@/models/Fixture";
 import { syncSeasonFixtures } from "@/lib/football-api/sync";
+import { acquireLock, releaseLock } from "@/lib/locks";
 import { DEFAULT_SEASON, TOTAL_MATCHDAYS, INCOMPLETE_STATUSES } from "./constants";
 import { getCurrentGame } from "./queries";
 import type {
@@ -149,10 +150,24 @@ export async function getLeagueTable(): Promise<LeagueTable> {
   };
 }
 
-/** Populate the whole season's fixtures (one API call) the first time it's needed. */
+/**
+ * Bootstrap for a cold database only — the cron keeps fixtures fresh. When the
+ * season has no fixtures at all, exactly one caller syncs (lease-guarded);
+ * concurrent first requests render empty once instead of stampeding the
+ * rate-limited football API.
+ */
 async function ensureSeasonFixtures(season: number): Promise<void> {
   const have = await Fixture.countDocuments({ season });
-  if (have === 0) await syncSeasonFixtures(season);
+  if (have > 0) return;
+  const lock = `sync:season:${season}`;
+  if (!(await acquireLock(lock, 60_000))) return;
+  try {
+    await syncSeasonFixtures(season);
+  } catch {
+    /* non-fatal — the views render empty until fixtures load */
+  } finally {
+    await releaseLock(lock);
+  }
 }
 
 /** The matchday to show by default: the live game's, else the first unfinished week. */

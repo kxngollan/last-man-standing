@@ -62,6 +62,16 @@ export async function requireAliveEntry(
 
 const survived = (startMatchday: number, upto: number) => Math.max(0, upto - startMatchday);
 
+/**
+ * The most recent matchday whose picks are public. Picks are secret until
+ * their week's deadline passes — showing them earlier would let players see
+ * rivals' picks and counter-pick.
+ */
+async function latestLockedMatchday(game: HydratedDocument<IGame> | IGame): Promise<number> {
+  const window = await getPickWindow(game.season, game.currentMatchday);
+  return window.locked ? window.matchday : window.matchday - 1;
+}
+
 /** Dynamic data for the admin control panel. */
 export async function getAdminOverview(): Promise<AdminOverview> {
   await connectDB();
@@ -141,12 +151,15 @@ async function buildStandingRows(
   const entryIds = entriesSlice.map((e) => e._id);
   const userIds = entriesSlice.map((e) => e.userId);
 
+  // Only locked weeks' picks are public — never leak the open week's picks.
+  const maxPublicMd = await latestLockedMatchday(game);
+
   const [users, teams, picks] = await Promise.all([
     User.find({ _id: { $in: userIds } })
       .select("name firstName lastName")
       .lean(),
     Team.find({}).lean(),
-    Pick.find({ entryId: { $in: entryIds } })
+    Pick.find({ entryId: { $in: entryIds }, matchday: { $lte: maxPublicMd } })
       .sort({ matchday: -1 })
       .lean(),
   ]);
@@ -244,18 +257,23 @@ export async function getStandingsPage(
   return standingsPageForGame(game, userId, offset, limit);
 }
 
-/** How many players picked each team for the week currently being picked. */
+/**
+ * How many players picked each team for the latest LOCKED game week. The open
+ * week's counts stay hidden — even in aggregate they'd let players herd or
+ * fade the crowd before the deadline.
+ */
 export async function getPickSummary(): Promise<PickSummary | null> {
   await connectDB();
   const game = await getCurrentGame();
   if (!game) return null;
 
-  const pick = await getPickWindow(game.season, game.currentMatchday);
-  const pickMd = pick.matchday;
+  const lockedMd = await latestLockedMatchday(game);
+  const pickMd = Math.max(lockedMd, game.startMatchday);
 
   const [counts, teams] = await Promise.all([
     Pick.aggregate<{ _id: number; count: number }>([
-      { $match: { gameId: game._id, matchday: pickMd, teamApiId: { $ne: null } } },
+      // No week has locked yet → match nothing; the UI shows its empty state.
+      { $match: { gameId: game._id, matchday: lockedMd, teamApiId: { $ne: null } } },
       { $group: { _id: "$teamApiId", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
@@ -329,8 +347,12 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
 
   const teamById = new Map(teams.map((t) => [t.apiId, t]));
 
-  // Build the pickable team list for this matchday.
-  const usedSet = new Set(entry?.usedTeamApiIds ?? []);
+  // Build the pickable team list for this matchday. "Used" teams are derived
+  // from the entry's pick rows — the unique index there is the source of truth.
+  const usedTeamIds = entry
+    ? await Pick.distinct("teamApiId", { entryId: entry._id, teamApiId: { $ne: null } })
+    : [];
+  const usedSet = new Set<number>(usedTeamIds as number[]);
   const teamOptions: TeamOption[] = [];
   for (const f of fixtures) {
     const home = teamById.get(f.homeTeamApiId);

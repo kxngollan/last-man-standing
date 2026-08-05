@@ -9,7 +9,6 @@ export interface IEntry {
   status: EntryStatus;
   eliminatedAtMatchday: number | null;
   wildcardUsed: boolean;
-  usedTeamApiIds: number[]; // teams already spent this game (enforces once-per-game)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,13 +25,15 @@ const EntrySchema = new Schema<IEntry>(
     },
     eliminatedAtMatchday: { type: Number, default: null },
     wildcardUsed: { type: Boolean, default: false },
-    usedTeamApiIds: { type: [Number], default: [] },
   },
   { timestamps: true }
 );
 
 // One entry per user per game.
 EntrySchema.index({ gameId: 1, userId: 1 }, { unique: true });
+
+// Alive-count and standings queries run on every portal request.
+EntrySchema.index({ gameId: 1, status: 1 });
 
 export const Entry: Model<IEntry> =
   (models.Entry as Model<IEntry>) || model<IEntry>("Entry", EntrySchema);

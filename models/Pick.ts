@@ -39,5 +39,15 @@ const PickSchema = new Schema<IPick>(
 // One pick per entry per matchday.
 PickSchema.index({ entryId: 1, matchday: 1 }, { unique: true });
 
+// Once per game: the same team can never appear on two of an entry's picks.
+// Partial so legacy teamless wildcard rows (teamApiId: null) don't collide.
+PickSchema.index(
+  { entryId: 1, teamApiId: 1 },
+  { unique: true, partialFilterExpression: { teamApiId: { $type: "number" } } }
+);
+
+// The resolve/summary hot path: all of a game week's picks in one query.
+PickSchema.index({ gameId: 1, matchday: 1 });
+
 export const Pick: Model<IPick> =
   (models.Pick as Model<IPick>) || model<IPick>("Pick", PickSchema);

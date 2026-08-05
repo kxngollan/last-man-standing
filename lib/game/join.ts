@@ -13,7 +13,7 @@ export async function joinGame(userId: string): Promise<void> {
   if (existing) return; // already joined — idempotent
 
   try {
-    await Entry.create({ gameId: game._id, userId, status: "alive", usedTeamApiIds: [] });
+    await Entry.create({ gameId: game._id, userId, status: "alive" });
   } catch (err) {
     // Unique (gameId, userId) race — treat as already joined.
     const again = await Entry.findOne({ gameId: game._id, userId });

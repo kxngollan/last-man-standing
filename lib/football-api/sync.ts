@@ -5,11 +5,12 @@ import { fetchPLTeams, fetchPLMatchday, fetchPLSeasonMatches, type FdMatch } fro
 
 /** Upsert a batch of API matches into the Fixture collection. */
 async function upsertMatches(season: number, matches: FdMatch[]): Promise<number> {
-  await Promise.all(
-    matches.map((m) =>
-      Fixture.updateOne(
-        { apiId: m.id },
-        {
+  if (matches.length === 0) return 0;
+  await Fixture.bulkWrite(
+    matches.map((m) => ({
+      updateOne: {
+        filter: { apiId: m.id },
+        update: {
           $set: {
             apiId: m.id,
             season,
@@ -23,9 +24,9 @@ async function upsertMatches(season: number, matches: FdMatch[]): Promise<number
             winner: (m.score.winner ?? null) as FixtureWinner,
           },
         },
-        { upsert: true }
-      )
-    )
+        upsert: true,
+      },
+    }))
   );
   return matches.length;
 }
@@ -34,14 +35,17 @@ async function upsertMatches(season: number, matches: FdMatch[]): Promise<number
 export async function syncTeams(season?: number): Promise<number> {
   await connectDB();
   const teams = await fetchPLTeams(season);
-  await Promise.all(
-    teams.map((t) =>
-      Team.updateOne(
-        { apiId: t.id },
-        { $set: { apiId: t.id, name: t.name, shortName: t.shortName, tla: t.tla, crest: t.crest } },
-        { upsert: true }
-      )
-    )
+  if (teams.length === 0) return 0;
+  await Team.bulkWrite(
+    teams.map((t) => ({
+      updateOne: {
+        filter: { apiId: t.id },
+        update: {
+          $set: { apiId: t.id, name: t.name, shortName: t.shortName, tla: t.tla, crest: t.crest },
+        },
+        upsert: true,
+      },
+    }))
   );
   return teams.length;
 }

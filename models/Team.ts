@@ -13,7 +13,7 @@ const TeamSchema = new Schema<ITeam>({
   apiId: { type: Number, required: true, unique: true },
   name: { type: String, required: true },
   shortName: { type: String, required: true },
-  tla: { type: String, required: true },
+  tla: { type: String, required: true, index: true },
   crest: { type: String },
 });
 

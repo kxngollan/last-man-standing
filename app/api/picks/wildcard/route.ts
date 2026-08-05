@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/authz";
-import { useWildcard, undoWildcard } from "@/lib/game/pick";
+import { playWildcard, undoWildcard } from "@/lib/game/pick";
 import { errorResponse } from "@/lib/api";
 
 /** Play the wildcard on this week's pick (draw becomes enough to go through). */
 export async function POST() {
   try {
     const user = await requireUser();
-    await useWildcard(user.id);
+    await playWildcard(user.id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err);

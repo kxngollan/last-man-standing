@@ -35,5 +35,8 @@ const GameSchema = new Schema<IGame>(
   { timestamps: true }
 );
 
+// "The current open/active game" lookups sort newest-first by status.
+GameSchema.index({ status: 1, createdAt: -1 });
+
 export const Game: Model<IGame> =
   (models.Game as Model<IGame>) || model<IGame>("Game", GameSchema);

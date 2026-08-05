@@ -1,17 +1,27 @@
 import { Fixture } from "@/models/Fixture";
 import { syncFixtures } from "@/lib/football-api/sync";
+import { acquireLock, releaseLock } from "@/lib/locks";
 import { getMatchdayDeadline, isLocked } from "./deadline";
 import { TOTAL_MATCHDAYS } from "./constants";
 
-/** Make sure a matchday's fixtures are in the DB, fetching them once if missing. */
+/**
+ * Bootstrap for a cold database only — the cron keeps fixtures fresh, so user
+ * requests normally just read. When a matchday truly has no fixtures, exactly
+ * one caller syncs (lease-guarded, so a burst of first requests can't stampede
+ * the rate-limited football API); everyone else renders without a deadline
+ * until the data lands.
+ */
 export async function ensureMatchdayFixtures(season: number, matchday: number): Promise<void> {
   const count = await Fixture.countDocuments({ season, matchday });
-  if (count === 0) {
-    try {
-      await syncFixtures(season, matchday);
-    } catch {
-      /* non-fatal — the deadline just stays unknown until fixtures load */
-    }
+  if (count > 0) return;
+  const lock = `sync:md:${season}:${matchday}`;
+  if (!(await acquireLock(lock, 60_000))) return;
+  try {
+    await syncFixtures(season, matchday);
+  } catch {
+    /* non-fatal — the deadline just stays unknown until fixtures load */
+  } finally {
+    await releaseLock(lock);
   }
 }
 

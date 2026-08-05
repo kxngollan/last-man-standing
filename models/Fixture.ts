@@ -8,7 +8,8 @@ export type FixtureStatus =
   | "FINISHED"
   | "POSTPONED"
   | "SUSPENDED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "AWARDED"; // decided off the pitch (forfeit etc.) — counts as a final result
 
 export type FixtureWinner = "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
 
@@ -35,10 +36,25 @@ const FixtureSchema = new Schema<IFixture>(
     homeTeamApiId: { type: Number, required: true },
     awayTeamApiId: { type: Number, required: true },
     utcKickoff: { type: Date, required: true },
-    status: { type: String, required: true, default: "SCHEDULED" },
+    status: {
+      type: String,
+      enum: [
+        "SCHEDULED",
+        "TIMED",
+        "IN_PLAY",
+        "PAUSED",
+        "FINISHED",
+        "POSTPONED",
+        "SUSPENDED",
+        "CANCELLED",
+        "AWARDED",
+      ],
+      required: true,
+      default: "SCHEDULED",
+    },
     homeScore: { type: Number, default: null },
     awayScore: { type: Number, default: null },
-    winner: { type: String, default: null },
+    winner: { type: String, enum: ["HOME_TEAM", "AWAY_TEAM", "DRAW", null], default: null },
   },
   { timestamps: true }
 );

@@ -359,6 +359,7 @@ export default function AdminPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
   const [resolveMsg, setResolveMsg] = useState("");
+  const [forceArmed, setForceArmed] = useState(false);
   const [startWeek, setStartWeek] = useState("1");
   const [season, setSeason] = useState("");
 
@@ -534,9 +535,31 @@ export default function AdminPage() {
                   <button
                     className="lms-btn lms-btn--primary"
                     disabled={busy !== null}
-                    onClick={() => action("resolve", "/api/admin/resolve")}
+                    onClick={() => {
+                      setForceArmed(false);
+                      void action("resolve", "/api/admin/resolve");
+                    }}
                   >
                     {busy === "resolve" ? "Processing…" : `Process Week ${current.gameWeek} results`}
+                  </button>
+                  {/* Escape hatch for a week wedged by a fixture that will
+                      never finish (suspended/abandoned): unfinished fixtures
+                      score their picks as safe. Two clicks to fire. */}
+                  <button
+                    className="lms-btn lms-btn--ghost"
+                    disabled={busy !== null}
+                    onClick={() => {
+                      if (!forceArmed) {
+                        setForceArmed(true);
+                        return;
+                      }
+                      setForceArmed(false);
+                      void action("resolve", "/api/admin/resolve", { force: true });
+                    }}
+                  >
+                    {forceArmed
+                      ? "Click again to confirm — unfinished fixtures score safe"
+                      : "Force resolve stuck week"}
                   </button>
                 </div>
                 {resolveMsg && (

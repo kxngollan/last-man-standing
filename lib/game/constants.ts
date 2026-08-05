@@ -9,3 +9,11 @@ export const TOTAL_MATCHDAYS = 38;
 
 // Fixture statuses that mean the matchday isn't finished playing yet.
 export const INCOMPLETE_STATUSES = ["SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "SUSPENDED"];
+
+// Fixtures that won't produce a result this game week — auto-picks avoid
+// their teams, and picks stranded on them resolve as safe.
+export const UNPLAYABLE_STATUSES = ["POSTPONED", "CANCELLED", "SUSPENDED"];
+
+// A decided fixture has a final result: played to full time, or awarded by
+// the league (e.g. a forfeit) — an awarded winner eliminates like a real one.
+export const DECIDED_STATUSES = ["FINISHED", "AWARDED"];

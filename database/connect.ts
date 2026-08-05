@@ -9,7 +9,6 @@ interface MongooseCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var _mongooseCache: MongooseCache | undefined;
 }
 
@@ -21,9 +20,8 @@ if (!global._mongooseCache) global._mongooseCache = cache;
  * Connect to MongoDB, reusing a cached connection. Throws if MONGO_DB_URI is unset.
  */
 export async function connectDB(): Promise<typeof mongoose> {
-  if (!MONGO_DB_URI || !MONGO_DB_NAME) {
-    throw new Error("MONGO_DB_URI is not set. Add it to .env.local.");
-  }
+  if (!MONGO_DB_URI) throw new Error("MONGO_DB_URI is not set. Add it to .env.local.");
+  if (!MONGO_DB_NAME) throw new Error("MONGO_DB_NAME is not set. Add it to .env.local.");
   if (cache.conn) return cache.conn;
   if (!cache.promise) {
     cache.promise = mongoose.connect(MONGO_DB_URI, { bufferCommands: false, dbName:MONGO_DB_NAME });

@@ -12,8 +12,8 @@ function friendlyMessage(err: unknown): string {
   if (/^SMTP:/.test(msg)) {
     return "Couldn’t send the email. Check the SMTP_* settings in .env.local.";
   }
-  if (/MONGO_DB_URI/i.test(msg)) {
-    return "The database isn’t configured. Set MONGO_DB_URI in .env.local, then restart the dev server.";
+  if (/MONGO_DB_URI|MONGO_DB_NAME/i.test(msg)) {
+    return "The database isn’t configured. Set MONGO_DB_URI and MONGO_DB_NAME in .env.local, then restart the dev server.";
   }
   if (/ECONNREFUSED|ENOTFOUND|querySrv|getaddrinfo|ETIMEDOUT|serverSelection|topology/i.test(msg)) {
     return "Couldn’t reach the database. Check MONGO_DB_URI and that your cluster is running and your IP is allowlisted.";
