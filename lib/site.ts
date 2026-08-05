@@ -60,4 +60,8 @@ export const SITE_FAQS = [
     q: "Who wins the game?",
     a: "When a single player is left standing, they win the whole game. If everyone falls in the same week, nobody wins and a new game begins.",
   },
+  {
+    q:"Will there be other leages?",
+    a:"Currently we only support premier league, but we will be looking to do other leagues soon."
+  }
 ] as const;
