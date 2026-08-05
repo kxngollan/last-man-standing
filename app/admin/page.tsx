@@ -2,8 +2,210 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { AdminOverview, AdminUserRow } from "@/lib/game/portalTypes";
+import type {
+  AdminOverview,
+  AdminUserRow,
+  AdminFeedbackList,
+  AdminIssueList,
+  AdminIssueRow,
+} from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
+
+const ISSUE_LABEL: Record<AdminIssueRow["category"], string> = {
+  bug: "Bug",
+  scores: "Wrong result",
+  account: "Account",
+  other: "Other",
+};
+
+/** Bug and problem reports — open first, with a resolve toggle. */
+function IssuesPanel() {
+  const [data, setData] = useState<AdminIssueList | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/issues", { cache: "no-store" });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error((body as { error?: string }).error ?? "Failed to load issues.");
+        if (!cancelled) setData(body as AdminIssueList);
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function toggle(issue: AdminIssueRow) {
+    const next = issue.status === "open" ? "resolved" : "open";
+    setBusy(issue.id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/issues/${issue.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError((body as { error?: string }).error ?? "Update failed.");
+        return;
+      }
+      setData((d) =>
+        d
+          ? {
+              openCount: d.openCount + (next === "open" ? 1 : -1),
+              rows: d.rows.map((r) => (r.id === issue.id ? { ...r, status: next } : r)),
+            }
+          : d
+      );
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className={`lms-panel ${styles.issuesPanel}`}>
+      <h2 className={styles.panelTitle}>Issues</h2>
+      <p className={styles.panelHint}>
+        {data && data.rows.length > 0
+          ? data.openCount > 0
+            ? `${data.openCount} open ${data.openCount === 1 ? "report" : "reports"}.`
+            : "All reports resolved. Nice."
+          : "Bug and problem reports from players land here. Nothing yet."}
+      </p>
+
+      {error && (
+        <p className={styles.notice} role="alert" style={{ color: "var(--color-out-ink)" }}>
+          {error}
+        </p>
+      )}
+
+      {!data && !error ? (
+        <p className={styles.panelHint}>
+          <span className="lms-spinner" aria-hidden="true" /> Loading issues…
+        </p>
+      ) : data && data.rows.length > 0 ? (
+        <ul className={styles.issueRows}>
+          {data.rows.map((i) => (
+            <li key={i.id} className={styles.issueRow} data-resolved={i.status === "resolved"}>
+              <span className={styles.issueChips}>
+                <span
+                  className={`lms-chip ${i.status === "open" ? "lms-chip--out" : "lms-chip--safe"}`}
+                >
+                  {i.status === "open" ? "Open" : "Resolved"}
+                </span>
+                <span className="lms-chip lms-chip--neutral">{ISSUE_LABEL[i.category]}</span>
+              </span>
+              <span className={styles.issueBody}>
+                <span className={styles.issueMsg}>{i.message}</span>
+                <span className={styles.issueMeta} data-nums>
+                  {i.user.name} · {i.user.email}
+                  {i.page ? ` · on ${i.page}` : ""} ·{" "}
+                  {new Date(i.createdAt).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+              </span>
+              <button
+                className="lms-btn lms-btn--ghost lms-btn--sm"
+                disabled={busy === i.id}
+                onClick={() => toggle(i)}
+              >
+                {busy === i.id ? "…" : i.status === "open" ? "Resolve" : "Reopen"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+const RATING_CHIP = (rating: number) =>
+  rating >= 4 ? "lms-chip--safe" : rating === 3 ? "lms-chip--wild" : "lms-chip--out";
+
+/** Player feedback — ratings and comments, newest first. */
+function FeedbackPanel() {
+  const [data, setData] = useState<AdminFeedbackList | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/feedback", { cache: "no-store" });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error((body as { error?: string }).error ?? "Failed to load feedback.");
+        if (!cancelled) setData(body as AdminFeedbackList);
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <section className={`lms-panel ${styles.feedbackPanel}`}>
+      <h2 className={styles.panelTitle}>Feedback</h2>
+      <p className={styles.panelHint}>
+        {data && data.count > 0
+          ? `${data.count} ${data.count === 1 ? "response" : "responses"} · average ${
+              data.averageRating ?? "—"
+            }/5`
+          : "What players say when the feedback popup asks. Nothing yet."}
+      </p>
+
+      {error && (
+        <p className={styles.notice} role="alert" style={{ color: "var(--color-out-ink)" }}>
+          {error}
+        </p>
+      )}
+
+      {!data && !error ? (
+        <p className={styles.panelHint}>
+          <span className="lms-spinner" aria-hidden="true" /> Loading feedback…
+        </p>
+      ) : data && data.rows.length > 0 ? (
+        <ul className={styles.feedbackRows}>
+          {data.rows.map((f) => (
+            <li key={f.id} className={styles.feedbackRow}>
+              <span className={`lms-chip ${RATING_CHIP(f.rating)} ${styles.feedbackChip}`} data-nums>
+                {f.rating}/5
+              </span>
+              <span className={styles.feedbackBody}>
+                {f.message ? (
+                  <span className={styles.feedbackMsg}>{f.message}</span>
+                ) : (
+                  <span className={styles.feedbackEmpty}>No comment — rating only.</span>
+                )}
+                <span className={styles.feedbackMeta} data-nums>
+                  {f.user.name} · {f.user.email} ·{" "}
+                  {new Date(f.createdAt).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
 
 type NameEdit = { firstName: string; lastName: string };
 
@@ -446,6 +648,12 @@ export default function AdminPage() {
 
           {/* Player accounts */}
           <PlayersPanel />
+
+          {/* Bug reports */}
+          <IssuesPanel />
+
+          {/* Player feedback */}
+          <FeedbackPanel />
         </div>
       </main>
     </div>

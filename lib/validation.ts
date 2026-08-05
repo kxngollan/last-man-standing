@@ -31,6 +31,27 @@ export const loginSchema = z
   })
   .strict();
 
+/** An issue report: what kind of problem, and what happened. */
+export const issueSchema = z
+  .object({
+    category: z.enum(["bug", "scores", "account", "other"]),
+    message: z
+      .string()
+      .trim()
+      .min(1, "Tell us what happened.")
+      .max(2000, "Keep it under 2000 characters."),
+    page: z.string().trim().max(200).optional(),
+  })
+  .strict();
+
+/** Player feedback: a required 1–5 rating plus an optional comment. */
+export const feedbackSchema = z
+  .object({
+    rating: z.number().int().min(1, "Pick a rating.").max(5),
+    message: z.string().trim().max(1000, "Keep it under 1000 characters.").optional(),
+  })
+  .strict();
+
 export const pickSchema = z
   .object({
     teamApiId: z.number().int().positive(),

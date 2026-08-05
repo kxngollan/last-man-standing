@@ -167,6 +167,25 @@
     background: var(--color-paper-2);
   }
 }
+.feedbackItem {
+  width: 100%;
+  text-align: start;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+}
+@media (hover: hover) and (pointer: fine) {
+  .feedbackItem:hover {
+    background: var(--color-paper-2);
+  }
+}
+
 .logout {
   width: 100%;
   text-align: start;

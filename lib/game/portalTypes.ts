@@ -85,6 +85,39 @@ export interface TeamFixtures {
   past: FixtureRow[];
 }
 
+/** One issue report in the admin Issues panel. */
+export interface AdminIssueRow {
+  id: string;
+  category: "bug" | "scores" | "account" | "other";
+  message: string;
+  page: string;
+  status: "open" | "resolved";
+  user: { name: string; email: string };
+  createdAt: string;
+}
+
+/** The admin Issues panel payload. */
+export interface AdminIssueList {
+  openCount: number;
+  rows: AdminIssueRow[];
+}
+
+/** One feedback entry in the admin Feedback panel. */
+export interface AdminFeedbackRow {
+  id: string;
+  rating: number;
+  message: string;
+  user: { name: string; email: string };
+  createdAt: string;
+}
+
+/** The admin Feedback panel payload. */
+export interface AdminFeedbackList {
+  count: number;
+  averageRating: number | null;
+  rows: AdminFeedbackRow[];
+}
+
 /** One player row in the admin Players panel. */
 export interface AdminUserRow {
   id: string;

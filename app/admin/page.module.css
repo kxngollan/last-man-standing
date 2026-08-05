@@ -148,6 +148,99 @@
 .users {
   grid-column: 1 / -1;
 }
+
+/* ---- Issues panel ---- */
+.issuesPanel {
+  grid-column: 1 / -1;
+}
+.issueRows {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.issueRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--color-rule);
+}
+.issueRow[data-resolved="true"] .issueMsg {
+  color: var(--color-muted);
+}
+.issueChips {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  margin-top: 2px;
+}
+.issueBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+.issueMsg {
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.issueMeta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Feedback panel ---- */
+.feedbackPanel {
+  grid-column: 1 / -1;
+}
+.feedbackRows {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.feedbackRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--color-rule);
+}
+.feedbackChip {
+  flex: none;
+  margin-top: 2px;
+}
+.feedbackBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+.feedbackMsg {
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.feedbackEmpty {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  font-style: italic;
+}
+.feedbackMeta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
 .userRows {
   list-style: none;
   margin: var(--space-sm) 0 0;

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import RulesModal from "./RulesModal";
+import FeedbackModal, { type FeedbackModalHandle } from "./FeedbackModal";
+import ReportIssueModal, { type ReportIssueModalHandle } from "./ReportIssueModal";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import styles from "./AppBar.module.css";
 
@@ -26,7 +28,13 @@ function initialsOf(name?: string | null): string {
   return (letters || name[0] || "?").toUpperCase();
 }
 
-function AccountMenu() {
+function AccountMenu({
+  onFeedback,
+  onReportIssue,
+}: {
+  onFeedback?: () => void;
+  onReportIssue?: () => void;
+}) {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -83,6 +91,28 @@ function AccountMenu() {
           <button
             type="button"
             role="menuitem"
+            className={styles.feedbackItem}
+            onClick={() => {
+              setOpen(false);
+              onReportIssue?.();
+            }}
+          >
+            Report an issue
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.feedbackItem}
+            onClick={() => {
+              setOpen(false);
+              onFeedback?.();
+            }}
+          >
+            Give feedback
+          </button>
+          <button
+            type="button"
+            role="menuitem"
             className={styles.logout}
             disabled={signingOut}
             onClick={() => {
@@ -104,6 +134,8 @@ export default function AppBar() {
   const isAuthed = status === "authenticated";
   const isGuest = status === "unauthenticated";
   const nav = isAuthed ? NAV : PUBLIC_NAV;
+  const feedbackRef = useRef<FeedbackModalHandle>(null);
+  const issueRef = useRef<ReportIssueModalHandle>(null);
 
   return (
     <>
@@ -165,7 +197,15 @@ export default function AppBar() {
         )}
         <ThemeToggle />
         <RulesModal />
-        {isAuthed && <AccountMenu />}
+        {isAuthed && (
+          <AccountMenu
+            onFeedback={() => feedbackRef.current?.open()}
+            onReportIssue={() => issueRef.current?.open()}
+          />
+        )}
+        {/* Render nothing visible until prompted (or opened from the menu). */}
+        {isAuthed && <FeedbackModal ref={feedbackRef} />}
+        {isAuthed && <ReportIssueModal ref={issueRef} />}
         {isGuest && (
           <span className={styles.guestActions}>
             <Link href="/login" className={styles.link}>

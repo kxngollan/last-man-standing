@@ -1,0 +1,238 @@
+/* Hallmark · component: feedback dialog · genre: playful · theme: Hum
+ * states: default · hover · focus · active · disabled · loading · error · success
+ * Ticket-stub ask: bunting strung under the top rule, five kickable rating
+ * discs, one optional line of ink. Mechanics mirror RulesModal's native
+ * <dialog> (backdrop blur, entry rise, reduced-motion cut). */
+
+.dialog {
+  inset: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100dvh;
+  padding: var(--space-md);
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  place-items: center;
+  z-index: var(--z-modal);
+}
+.dialog[open] {
+  display: grid;
+}
+.dialog::backdrop {
+  background: oklch(24% 0.02 66 / 0.5);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 24rem;
+  max-height: 100%;
+  overflow: hidden auto;
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  border-top: 4px solid var(--color-accent);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lift);
+  animation: feedbackIn var(--dur-mid) var(--ease-out);
+}
+@keyframes feedbackIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+/* Pennants strung just under the accent rule — the party's still on. */
+.bunting {
+  width: 72%;
+  height: auto;
+  margin: var(--space-2xs) auto 0;
+  color: var(--color-ink);
+  pointer-events: none;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg) 0;
+}
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-strong);
+  margin-bottom: var(--space-2xs);
+}
+.title {
+  font-size: var(--text-lg);
+}
+.lede {
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+}
+
+.close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out);
+}
+.close svg {
+  width: 18px;
+  height: 18px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .close:hover {
+    background: var(--color-paper-2);
+    color: var(--color-ink);
+  }
+}
+.close:active {
+  transform: translateY(1px);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg) var(--space-lg);
+}
+
+/* ---- Rating discs: five kickable footballs, 1–5 ---- */
+.ratingRow {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding-top: var(--space-2xs);
+}
+.ratingDisc {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--color-ink-2);
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule-2);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    border-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out),
+    transform var(--dur-instant) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  /* Hover never restyles the already-selected disc — selection wins. */
+  .ratingDisc:hover:not(:disabled):not([data-selected="true"]) {
+    background: var(--color-paper-2);
+    border-color: var(--color-ink-2);
+  }
+}
+.ratingDisc:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.ratingDisc[data-selected="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent-strong);
+  color: var(--color-accent-ink);
+  transform: scale(1.06);
+  transition-timing-function: var(--ease-spring);
+}
+.ratingDisc:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Reserved line so the label appearing never shifts the layout. */
+.ratingWord {
+  min-height: 1.2em;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--color-muted);
+}
+.textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  font-family: var(--font-body);
+  line-height: 1.45;
+  padding-block: var(--space-xs);
+}
+
+.error {
+  color: var(--color-out-ink);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* Quiet dismiss under the primary action. */
+.later {
+  align-self: center;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  transition: color var(--dur-short) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .later:hover:not(:disabled) {
+    color: var(--color-ink);
+  }
+}
+
+/* ---- Thanks state ---- */
+.thanks {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-lg) var(--space-xl);
+}
+.thanksArt {
+  width: 72px;
+  height: auto;
+  color: var(--color-ink);
+}
