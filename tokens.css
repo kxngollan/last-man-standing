@@ -54,6 +54,9 @@
   /* near-white label on team-colour discs (tinted, not pure #fff) */
   --color-on-disc: oklch(98% 0.004 85);
 
+  /* dialog backdrop veil (shared by every modal's ::backdrop) */
+  --color-scrim: oklch(24% 0.02 66 / 0.5);
+
   /* ---- Spacing (4pt) ---- */
   --space-3xs: 0.125rem;
   --space-2xs: 0.25rem;
@@ -130,6 +133,8 @@
 
   --color-focus: oklch(74% 0.15 34);
 
+  --color-scrim: oklch(10% 0.012 75 / 0.65);
+
   --shadow-card: 0 8px 24px -14px oklch(5% 0.01 75 / 0.6);
   --shadow-lift: 0 14px 32px -14px oklch(5% 0.01 75 / 0.7);
 }
@@ -164,6 +169,8 @@
     --color-wild-wash: oklch(31% 0.045 80);
 
     --color-focus: oklch(74% 0.15 34);
+
+    --color-scrim: oklch(10% 0.012 75 / 0.65);
 
     --shadow-card: 0 8px 24px -14px oklch(5% 0.01 75 / 0.6);
     --shadow-lift: 0 14px 32px -14px oklch(5% 0.01 75 / 0.7);

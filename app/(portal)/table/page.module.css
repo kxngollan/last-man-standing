@@ -1,5 +1,6 @@
-/* Hallmark · theme: Hum · League table — responsive grid that keeps its columns
- * aligned as a table on desktop and sheds W/D/L on small screens. */
+/* Hallmark · genre: playful · macrostructure: Data table (zone-striped league grid) · theme: Hum · nav: app-shell bar · footer: none
+ * League table — responsive grid that keeps its columns aligned as a table on
+ * desktop and sheds W/D/L on small screens. Rows link to club fixtures. */
 
 .main {
   width: 100%;
@@ -37,7 +38,7 @@
 /* Shared grid for header + rows so columns line up exactly. */
 .row {
   display: grid;
-  grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2.75rem 2.5rem;
+  grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2.75rem 2.5rem 0.9rem;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
@@ -152,6 +153,21 @@
   display: none;
 }
 
+/* Rest-state link affordance — visible without hover, brightens with it. */
+.go {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  line-height: 1;
+  text-align: center;
+  color: var(--color-muted);
+  transition: color var(--dur-short) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .list .row:hover .go {
+    color: var(--color-ink);
+  }
+}
+
 /* Last-5 column (end of the row) — revealed on roomier screens. */
 .formCell {
   display: none;
@@ -224,7 +240,7 @@
 /* Roomier screens: reveal W/D/L and the TLA. */
 @media (min-width: 34rem) {
   .row {
-    grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2rem 2rem 2rem 2.75rem 2.5rem;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2rem 2rem 2rem 2.75rem 2.5rem 0.9rem;
   }
   .wide {
     display: block;
@@ -236,7 +252,7 @@
 /* Wider still: the Last-5 column joins at the end (and leaves the club cell). */
 @media (min-width: 48rem) {
   .row {
-    grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2rem 2rem 2rem 2.75rem 2.5rem auto;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 2rem 2rem 2rem 2rem 2.75rem 2.5rem auto 0.9rem;
   }
   .formCell {
     display: flex;

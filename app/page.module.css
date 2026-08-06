@@ -277,6 +277,12 @@
   width: max-content;
   animation: marquee 30s linear infinite;
 }
+/* Same courtesy as the hero crest marquee: hover pauses the scroll. */
+@media (hover: hover) {
+  .footMarquee:hover .footTrack {
+    animation-play-state: paused;
+  }
+}
 .footTag {
   font-family: var(--font-display);
   font-weight: 800;

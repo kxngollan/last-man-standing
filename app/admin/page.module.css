@@ -144,6 +144,17 @@
   grid-column: 1 / -1;
 }
 
+/* Notice tones (used with .notice / .resolved). */
+.noticeError {
+  color: var(--color-out-ink);
+}
+.noticeWarn {
+  color: var(--color-wild);
+}
+.seedBtn {
+  margin-bottom: var(--space-md);
+}
+
 /* ---- Players panel ---- */
 .users {
   grid-column: 1 / -1;

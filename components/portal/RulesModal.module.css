@@ -64,7 +64,7 @@
   display: grid;
 }
 .dialog::backdrop {
-  background: oklch(24% 0.02 66 / 0.5);
+  background: var(--color-scrim);
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }

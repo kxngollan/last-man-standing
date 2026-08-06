@@ -83,7 +83,7 @@ function IssuesPanel() {
       </p>
 
       {error && (
-        <p className={styles.notice} role="alert" style={{ color: "var(--color-out-ink)" }}>
+        <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
           {error}
         </p>
       )}
@@ -168,7 +168,7 @@ function FeedbackPanel() {
       </p>
 
       {error && (
-        <p className={styles.notice} role="alert" style={{ color: "var(--color-out-ink)" }}>
+        <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
           {error}
         </p>
       )}
@@ -265,7 +265,7 @@ function PlayersPanel() {
       </p>
 
       {error && (
-        <p className={styles.notice} role="alert" style={{ color: "var(--color-out-ink)" }}>
+        <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
           {error}
         </p>
       )}
@@ -475,7 +475,7 @@ export default function AdminPage() {
         </div>
 
         {actionError && (
-          <p className={styles.notice} role="alert" style={{ color: "var(--color-out-ink)" }}>
+          <p className={`${styles.notice} ${styles.noticeError}`} role="alert">
             {actionError}
           </p>
         )}
@@ -510,7 +510,7 @@ export default function AdminPage() {
                   </button>
                 </div>
                 {teamsSeeded === 0 && (
-                  <p className={styles.resolved} style={{ color: "var(--color-wild)" }}>
+                  <p className={`${styles.resolved} ${styles.noticeWarn}`}>
                     Seed the teams first (panel on the right).
                   </p>
                 )}
@@ -580,10 +580,9 @@ export default function AdminPage() {
                 : "No teams loaded yet. Seed them before starting a game."}
             </p>
             <button
-              className="lms-btn lms-btn--ghost lms-btn--block"
+              className={`lms-btn lms-btn--ghost lms-btn--block ${styles.seedBtn}`}
               disabled={busy !== null}
               onClick={() => action("seed", "/api/admin/seed", season ? { season: Number(season) } : {})}
-              style={{ marginBottom: "var(--space-md)" }}
             >
               {busy === "seed" ? "Seeding…" : teamsSeeded > 0 ? "Refresh teams" : "Seed teams"}
             </button>

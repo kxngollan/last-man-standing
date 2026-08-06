@@ -85,6 +85,7 @@ export default async function TablePage() {
             <span className={styles.num}>GD</span>
             <span className={styles.pts}>Pts</span>
             <span className={styles.formCell}>Last 5</span>
+            <span className={styles.go} />
           </div>
 
           <ol className={styles.list}>
@@ -126,6 +127,10 @@ export default async function TablePage() {
                   <Num label="Points" value={r.points} className={styles.pts} />
                   <span className={styles.formCell}>
                     <Form form={r.form} />
+                  </span>
+                  {/* Rest-state affordance: rows are links even without hover. */}
+                  <span className={styles.go} aria-hidden="true">
+                    &rsaquo;
                   </span>
                 </Link>
               </li>
