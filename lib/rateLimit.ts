@@ -1,22 +1,50 @@
-// Minimal in-memory fixed-window rate limiter. Per-instance only (resets on
-// deploy/restart and isn't shared across serverless instances) — fine as a
-// first line of defence for low-traffic auth endpoints.
-const buckets = new Map<string, { count: number; resetAt: number }>();
+import { connectDB } from "@/database/connect";
+import { RateLimit } from "@/models/RateLimit";
 
-/** Returns true if the call is allowed, false once `limit` is exceeded within the window. */
-export function rateLimit(key: string, limit: number, windowMs: number): boolean {
+/**
+ * Fixed-window rate limiter backed by MongoDB, so limits hold across
+ * serverless instances and deploys. One atomic upsert per check.
+ *
+ * Returns true while the call is allowed, false once `limit` is exceeded
+ * within the current window.
+ */
+export async function rateLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
+  await connectDB();
   const now = Date.now();
+  const windowStart = new Date(now - (now % windowMs));
 
-  // Opportunistic sweep so abandoned keys don't accumulate forever.
-  if (buckets.size > 1000) {
-    for (const [k, b] of buckets) if (b.resetAt < now) buckets.delete(k);
-  }
+  const bump = () =>
+    RateLimit.findOneAndUpdate(
+      { key, windowStart },
+      {
+        $inc: { count: 1 },
+        // Keep the bucket around for one extra window so a clock-skewed TTL
+        // sweep can never resurrect capacity mid-window.
+        $setOnInsert: { expireAt: new Date(windowStart.getTime() + windowMs * 2) },
+      },
+      { upsert: true, returnDocument: "after" }
+    );
 
-  const bucket = buckets.get(key);
-  if (!bucket || bucket.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
+  let doc;
+  try {
+    doc = await bump();
+  } catch (err) {
+    // Two first-requests raced the upsert — the loser retries as a plain $inc.
+    if ((err as { code?: number }).code !== 11000) throw err;
+    doc = await bump();
   }
-  bucket.count += 1;
-  return bucket.count <= limit;
+  return (doc?.count ?? 1) <= limit;
+}
+
+/**
+ * The client IP to key rate limits on. Vercel's proxy sets x-real-ip from the
+ * connection and it can't be spoofed by the caller; the first x-forwarded-for
+ * entry IS caller-controlled, so it's only a local-dev fallback.
+ */
+export function clientIp(request: Request): string {
+  return (
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "local"
+  );
 }

@@ -9,8 +9,9 @@ export async function GET(request: Request) {
   try {
     const param = new URL(request.url).searchParams.get("matchday");
     const matchday = param ? Number(param) : undefined;
+    // Non-integers fall back to the default week; the range is clamped inside.
     const week = await getFixturesForMatchday(
-      matchday !== undefined && Number.isFinite(matchday) ? matchday : undefined
+      matchday !== undefined && Number.isInteger(matchday) ? matchday : undefined
     );
     return NextResponse.json(week);
   } catch (err) {

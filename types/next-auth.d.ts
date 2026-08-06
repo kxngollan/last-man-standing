@@ -17,5 +17,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     isAdmin?: boolean;
+    /** When the claims were last re-read from the database (ms epoch). */
+    refreshedAt?: number;
   }
 }

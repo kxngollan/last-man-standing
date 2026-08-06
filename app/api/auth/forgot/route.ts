@@ -5,7 +5,7 @@ import { createResetToken } from "@/lib/passwordReset";
 import { sendPasswordResetEmail } from "@/lib/email";
 import isEmail from "@/lib/isEmail";
 import { readJson } from "@/lib/api";
-import { rateLimit } from "@/lib/rateLimit";
+import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { PASSWORD_RESET_ENABLED } from "@/lib/features";
 import { SITE_URL } from "@/lib/site";
 
@@ -24,8 +24,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  if (!rateLimit(`forgot:${ip}`, 5, 15 * 60 * 1000)) {
+  // Per IP against enumeration sweeps, and per target address so one victim
+  // can't be mail-bombed from many IPs.
+  const ipOk = await rateLimit(`forgot:ip:${clientIp(request)}`, 5, 15 * 60 * 1000);
+  const emailOk = await rateLimit(`forgot:email:${email}`, 3, 60 * 60 * 1000);
+  if (!ipOk || !emailOk) {
     return NextResponse.json(
       { error: "Too many reset requests. Please try again in a few minutes." },
       { status: 429 }

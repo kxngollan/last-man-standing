@@ -7,13 +7,20 @@ import { Team } from "@/models/Team";
 import { Fixture, type FixtureStatus, type FixtureWinner } from "@/models/Fixture";
 import { User } from "@/models/User";
 import { Lock } from "@/models/Lock";
+import { RateLimit } from "@/models/RateLimit";
+import { VerificationToken } from "@/models/VerificationToken";
+import { PasswordResetToken } from "@/models/PasswordResetToken";
 
 export const SEASON = 2025;
 
 /** Connect and build every model's indexes (unique constraints matter here). */
 export async function initDb(): Promise<void> {
   await connectDB();
-  await Promise.all([Game, Entry, Pick, Team, Fixture, User, Lock].map((m) => m.init()));
+  await Promise.all(
+    [Game, Entry, Pick, Team, Fixture, User, Lock, RateLimit, VerificationToken, PasswordResetToken].map(
+      (m) => m.init()
+    )
+  );
 }
 
 export async function clearDb(): Promise<void> {

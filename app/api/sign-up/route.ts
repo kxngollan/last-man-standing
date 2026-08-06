@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/database/connect";
 import { User } from "@/models/User";
+import { VerificationToken } from "@/models/VerificationToken";
 import { signupSchema } from "@/lib/validation";
 import { hashPassword } from "@/lib/password";
 import { isOldEnough } from "@/lib/age";
 import { createVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/email";
 import { readJson, errorResponse } from "@/lib/api";
+import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { SITE_URL } from "@/lib/site";
 
 export async function POST(request: Request) {
   try {
+    // Unauthenticated endpoint that hashes a password (CPU) and sends an
+    // email — metered per IP against bots and mailbox bombing.
+    if (!(await rateLimit(`signup:${clientIp(request)}`, 10, 60 * 60 * 1000))) {
+      return NextResponse.json(
+        { error: "Too many sign-up attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await readJson(request);
     if (!body) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
 
@@ -44,10 +55,6 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await hashPassword(password);
-    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
 
     let user;
     try {
@@ -60,7 +67,9 @@ export async function POST(request: Request) {
         passwordHash,
         dob: dobDate,
         emailVerified: false,
-        isAdmin: adminEmails.includes(emailLc),
+        // Never at signup — ADMIN_EMAILS grants admin at email verification,
+        // once inbox ownership is proven (lib/adminEmails.ts).
+        isAdmin: false,
       });
     } catch (err: unknown) {
       if (typeof err === "object" && err && (err as { code?: number }).code === 11000) {
@@ -79,6 +88,7 @@ export async function POST(request: Request) {
       const token = await createVerificationToken(String(user._id));
       await sendVerificationEmail(emailLc, `${SITE_URL}/verify?token=${token}`);
     } catch (err) {
+      await VerificationToken.deleteMany({ userId: user._id });
       await User.deleteOne({ _id: user._id });
       throw err;
     }

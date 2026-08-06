@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import { connectDB } from "@/database/connect";
 import { VerificationToken } from "@/models/VerificationToken";
 import { User } from "@/models/User";
+import { isAdminEmail } from "@/lib/adminEmails";
 
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -48,6 +49,8 @@ export async function consumeVerificationToken(raw: string): Promise<VerifyOutco
   if (user.emailVerified) return "already";
 
   user.emailVerified = true;
+  // Verification proves inbox ownership — the safe moment to grant admin.
+  if (isAdminEmail(user.email)) user.isAdmin = true;
   await user.save();
   return "verified";
 }

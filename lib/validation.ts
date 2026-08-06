@@ -7,7 +7,11 @@ export const signupSchema = z
     firstName: z.string().trim().min(1, "Enter your first name.").max(40),
     lastName: z.string().trim().min(1, "Enter your last name.").max(40),
     email: z.string().trim().regex(EMAIL_RE, "Enter a valid email address."),
-    password: z.string().min(8, "Password must be at least 8 characters.").max(200),
+    // bcrypt only reads the first 72 bytes — longer would silently truncate.
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters.")
+      .max(72, "Password must be 72 characters or fewer."),
     dob: z.string().min(1, "Enter your date of birth."), // ISO yyyy-mm-dd from the date input
   })
   .strict();
