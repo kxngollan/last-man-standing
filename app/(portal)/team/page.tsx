@@ -1,11 +1,17 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
-import { usePortalState } from "@/components/portal/usePortalState";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { StateShell } from "@/components/portal/StateShell";
 import { CornerFlagArt } from "@/components/ui/FootballArt";
+import { getGameStateForUser } from "@/lib/game/queries";
 import { TEAMS_PER_GAME } from "@/lib/game/constants";
 import styles from "./page.module.css";
+
+export const metadata: Metadata = {
+  title: "My picks",
+};
 
 const RESULT_META: Record<string, { chip: string; label: string; detail: string }> = {
   win: { chip: "lms-chip--safe", label: "Won", detail: "Won. Through to the next week." },
@@ -42,39 +48,15 @@ function wildcardMeta(p: { tla: string | null; result: string }) {
   }
 }
 
-function StateShell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className={styles.main}>
-      <div className="lms-state">{children}</div>
-    </main>
-  );
-}
+export default async function TeamPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login?next=/team");
 
-export default function TeamPage() {
-  const { state, loading, error, refetch } = usePortalState();
+  const state = await getGameStateForUser(session.user.id);
 
-  if (loading) {
-    return (
-      <StateShell>
-        <span className="lms-spinner lms-spinner--lg" aria-hidden="true" />
-        <p className="lms-state__body">Loading your picks…</p>
-      </StateShell>
-    );
-  }
-  if (error || !state) {
-    return (
-      <StateShell>
-        <h1 className="lms-state__title">Something went wrong</h1>
-        <p className="lms-state__body">{error ?? "Please try again."}</p>
-        <button className="lms-btn lms-btn--primary" onClick={() => refetch()}>
-          Retry
-        </button>
-      </StateShell>
-    );
-  }
   if (!state.game || !state.entry) {
     return (
-      <StateShell>
+      <StateShell className={styles.main}>
         <h1 className="lms-state__title">No picks yet</h1>
         <p className="lms-state__body">
           {state.game

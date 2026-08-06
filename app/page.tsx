@@ -286,7 +286,7 @@ export default async function LandingPage() {
             <Link href="/policy">Privacy</Link>
           </span>
           <span className={styles.copy} data-nums>
-            © 2026 Last Man Standing
+            © {new Date().getFullYear()} Last Man Standing
           </span>
         </div>
       </footer>

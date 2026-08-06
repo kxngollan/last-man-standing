@@ -365,3 +365,16 @@ textarea.lms-field__control {
 .lms-theme-toggle:active {
   transform: translateY(1px);
 }
+
+/* Screen-reader-only text — labels for data cells that sighted users read from context. */
+.lms-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

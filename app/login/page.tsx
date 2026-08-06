@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { PASSWORD_RESET_ENABLED } from "@/lib/features";
+import isEmail from "@/lib/isEmail";
 import styles from "@/components/auth/authContent.module.css";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Only same-origin paths — never an absolute URL someone pasted into ?next=. */
+function safeNext(next: string | null): string {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+}
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +30,7 @@ export default function LoginPage() {
       setError("Enter your email and password.");
       return;
     }
-    if (!EMAIL_RE.test(email)) {
+    if (!isEmail(email)) {
       setError("That doesn’t look like a valid email address.");
       return;
     }
@@ -38,7 +43,8 @@ export default function LoginPage() {
       );
       return;
     }
-    router.push("/dashboard");
+    // Deep links land where they were headed (the proxy sets ?next=).
+    router.push(safeNext(searchParams.get("next")));
     router.refresh();
   }
 
@@ -106,5 +112,15 @@ export default function LoginPage() {
         New here? <Link href="/signup">Create an account</Link>
       </p>
     </AuthShell>
+  );
+}
+
+// useSearchParams needs a Suspense boundary so the rest of the route can
+// still be statically rendered.
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

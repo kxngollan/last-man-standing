@@ -1,0 +1,7 @@
+/* Shared shell spacing for the portal group's loading/error states. */
+.stateMain {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--space-2xl, 3rem) var(--space-lg, 1.25rem);
+  width: 100%;
+}

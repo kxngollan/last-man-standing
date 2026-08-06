@@ -1,90 +1,21 @@
-"use client";
-
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { usePortalState } from "@/components/portal/usePortalState";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { StateShell } from "@/components/portal/StateShell";
 import { BallArt } from "@/components/ui/FootballArt";
-import type { StandingRow, StandingsPage, PickSummary } from "@/lib/game/portalTypes";
+import { getGameStateForUser, getPickSummary } from "@/lib/game/queries";
+import type { PickSummary } from "@/lib/game/portalTypes";
+import { Stat, JoinButton, StandingsBoard } from "./islands";
 import styles from "./page.module.css";
 
-function useCountUp(target: number, on: boolean) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!on) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      setValue(target);
-      return;
-    }
-    const start = performance.now();
-    const dur = 900;
-    let raf = 0;
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / dur);
-      setValue(Math.round((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, on]);
-  return value;
-}
+export const metadata: Metadata = {
+  title: "Standings",
+};
 
-function StandingRowItem({ p }: { p: StandingRow }) {
-  return (
-    <li className={styles.row} data-you={p.you} data-out={p.status !== "alive"}>
-      <span className={styles.rank} data-nums aria-hidden="true">
-        {p.rank}
-      </span>
-      <span className={styles.player}>
-        <span className={styles.pname}>
-          {p.name}
-          {p.you && <span className={styles.youTag}>you</span>}
-        </span>
-        <span className={styles.psub} data-nums>
-          survived {p.survivedWeeks} {p.survivedWeeks === 1 ? "week" : "weeks"}
-        </span>
-      </span>
-      <span className={styles.lastPick}>
-        {p.lastTeamTla ? (
-          <>
-            <TeamCrest crest={p.lastTeamCrest} tla={p.lastTeamTla} />
-            <span className={styles.pickName}>{p.lastTeamName}</span>
-          </>
-        ) : (
-          <span className={styles.pickName}>—</span>
-        )}
-      </span>
-      <span className={`lms-chip ${p.status === "alive" ? "lms-chip--safe" : "lms-chip--out"}`}>
-        <span className="lms-dot" aria-hidden="true" />
-        {p.status === "winner" ? "Winner" : p.status === "alive" ? "In" : "Out"}
-      </span>
-    </li>
-  );
-}
-
-/** Top teams this week by pick count — the full list lives at /picks. */
-function TopPicks({ gameWeek }: { gameWeek: number }) {
-  const [summary, setSummary] = useState<PickSummary | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/picks/summary", { cache: "no-store" });
-        if (!res.ok) return;
-        const body = (await res.json()) as PickSummary;
-        if (!cancelled) setSummary(body);
-      } catch {
-        /* quietly absent — the dashboard works without it */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [gameWeek]);
-
+/** Top teams from the last locked week by pick count — the full list lives at /picks. */
+function TopPicks({ summary }: { summary: PickSummary | null }) {
   if (!summary || summary.totalPicks === 0) return null;
   const top = summary.teams.slice(0, 3);
   const max = top[0]?.count ?? 1;
@@ -94,8 +25,8 @@ function TopPicks({ gameWeek }: { gameWeek: number }) {
       <div className="lms-head">
         <h2 className="lms-head__title">Week {summary.gameWeek} picks</h2>
         <p className="lms-head__hint">
-          What the field is backing this week — {summary.totalPicks}{" "}
-          {summary.totalPicks === 1 ? "pick" : "picks"} in so far.
+          What the field backed in Week {summary.gameWeek} — {summary.totalPicks}{" "}
+          {summary.totalPicks === 1 ? "pick" : "picks"} in all.
         </p>
       </div>
       <ol className={styles.topPicks}>
@@ -122,119 +53,30 @@ function TopPicks({ gameWeek }: { gameWeek: number }) {
   );
 }
 
-function Stat({ value, label, on }: { value: number; label: string; on: boolean }) {
-  const shown = useCountUp(value, on);
-  return (
-    <div className={styles.stat}>
-      <div className="lms-stat__num" data-nums aria-hidden="true">
-        {shown}
-      </div>
-      <div className="lms-stat__label">
-        <span className={styles.srOnly}>{value} </span>
-        {label}
-      </div>
-    </div>
-  );
-}
+export default async function DashboardPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login?next=/dashboard");
 
-export default function DashboardPage() {
-  const { state, loading, error, refetch } = usePortalState();
-  const [ready, setReady] = useState(false);
-  const [joining, setJoining] = useState(false);
-  useEffect(() => {
-    if (state) setReady(true);
-  }, [state]);
-
-  // Lazy-loaded standings pages beyond the first (which arrives with the state).
-  const [extraRows, setExtraRows] = useState<StandingRow[]>([]);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  const firstPage = state?.standings ?? [];
-  const standingsTotal = state?.standingsTotal ?? 0;
-  const loadedCount = firstPage.length + extraRows.length;
-  const hasMore = loadedCount < standingsTotal;
-
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      const res = await fetch(`/api/standings?offset=${loadedCount}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const page = (await res.json()) as StandingsPage;
-      setExtraRows((rows) => [...rows, ...page.rows]);
-    } catch {
-      /* the button stays — the player can retry */
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [loadingMore, hasMore, loadedCount]);
-
-  // Auto-load the next page when the end of the board scrolls into view.
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) void loadMore();
-      },
-      { rootMargin: "300px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loadMore]);
-
-  if (loading) {
-    return (
-      <main className={styles.main}>
-        <div className="lms-state">
-          <span className="lms-spinner lms-spinner--lg" aria-hidden="true" />
-          <p className="lms-state__body">Loading the game…</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !state) {
-    return (
-      <main className={styles.main}>
-        <div className="lms-state">
-          <h1 className="lms-state__title">Something went wrong</h1>
-          <p className="lms-state__body">{error ?? "Please try again."}</p>
-          <button className="lms-btn lms-btn--primary" onClick={() => refetch()}>
-            Retry
-          </button>
-        </div>
-      </main>
-    );
-  }
+  const [state, summary] = await Promise.all([
+    getGameStateForUser(session.user.id),
+    getPickSummary().catch(() => null), // enrichment — the dashboard works without it
+  ]);
 
   if (!state.game) {
     return (
-      <main className={styles.main}>
-        <div className="lms-state">
-          <BallArt className={styles.stateBall} />
-          <h1 className="lms-state__title">No game running</h1>
-          <p className="lms-state__body">
-            There isn’t a game on right now. Check back soon. A new one starts when the admin
-            opens registration.
-          </p>
-        </div>
-      </main>
+      <StateShell className={styles.main}>
+        <BallArt className={styles.stateBall} />
+        <h1 className="lms-state__title">No game running</h1>
+        <p className="lms-state__body">
+          There isn’t a game on right now. Check back soon. A new one starts when the admin
+          opens registration.
+        </p>
+      </StateShell>
     );
   }
 
-  const { game, entry, players, myPick, myStanding, pickGameWeek } = state;
-  // Own row is pinned on top, so drop it from the pages that contain it.
-  const boardRows = [...firstPage, ...extraRows].filter((r) => !r.you);
-
-  async function join() {
-    setJoining(true);
-    await fetch("/api/games/join", { method: "POST" });
-    await refetch();
-    setJoining(false);
-  }
-
+  const { game, entry, players, myPick, myStanding, pickGameWeek, standings, standingsTotal } =
+    state;
   const wildcardsLeft = entry ? (entry.wildcardUsed ? 0 : 1) : 0;
 
   return (
@@ -259,23 +101,14 @@ export default function DashboardPage() {
             Make your Week {pickGameWeek} pick
           </Link>
         )}
-        {!entry && game.status === "registration" && (
-          <button
-            className="lms-btn lms-btn--primary"
-            onClick={join}
-            disabled={joining}
-            aria-disabled={joining}
-          >
-            {joining ? "Joining…" : "Join this game"}
-          </button>
-        )}
+        {!entry && game.status === "registration" && <JoinButton />}
       </div>
 
       {entry && (
         <section className={styles.stats} aria-label="Your game at a glance">
-          <Stat value={players.alive} label={`of ${players.total} still standing`} on={ready} />
-          <Stat value={entry.survivedWeeks} label="weeks survived" on={ready} />
-          <Stat value={wildcardsLeft} label="wildcard left" on={ready} />
+          <Stat value={players.alive} label={`of ${players.total} still standing`} />
+          <Stat value={entry.survivedWeeks} label="weeks survived" />
+          <Stat value={wildcardsLeft} label="wildcard left" />
           <div className={styles.stat}>
             <div className={styles.pickNum}>
               {myPick?.teamName
@@ -295,7 +128,7 @@ export default function DashboardPage() {
         </p>
       )}
 
-      <TopPicks gameWeek={pickGameWeek} />
+      <TopPicks summary={summary} />
 
       <section aria-label="Standings">
         <div className="lms-head">
@@ -311,35 +144,7 @@ export default function DashboardPage() {
         {standingsTotal === 0 ? (
           <p className={styles.notice}>No players yet. Be the first to join.</p>
         ) : (
-          <>
-            <ul className={styles.board}>
-              {/* Your row first, always — then everyone else in rank order. */}
-              {myStanding && <StandingRowItem p={myStanding} />}
-              {boardRows.map((p) => (
-                <StandingRowItem key={p.rank} p={p} />
-              ))}
-            </ul>
-
-            {hasMore && (
-              <div className={styles.loadMore} ref={sentinelRef}>
-                <button
-                  className="lms-btn lms-btn--ghost lms-btn--sm"
-                  onClick={() => void loadMore()}
-                  disabled={loadingMore}
-                  aria-disabled={loadingMore}
-                >
-                  {loadingMore ? (
-                    <>
-                      <span className="lms-spinner" aria-hidden="true" />
-                      Loading&hellip;
-                    </>
-                  ) : (
-                    `Show more players (${standingsTotal - loadedCount} to go)`
-                  )}
-                </button>
-              </div>
-            )}
-          </>
+          <StandingsBoard firstPage={standings} myStanding={myStanding} total={standingsTotal} />
         )}
       </section>
     </main>

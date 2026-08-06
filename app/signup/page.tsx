@@ -5,6 +5,8 @@ import Link from "next/link";
 import AuthShell from "@/components/auth/AuthShell";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { useCooldown } from "@/components/auth/useCooldown";
+import isEmail from "@/lib/isEmail";
+import { ageFromDob, MIN_AGE } from "@/lib/age";
 import styles from "@/components/auth/authContent.module.css";
 
 type Fields = {
@@ -19,17 +21,11 @@ type Fields = {
 
 type Errors = Partial<Record<keyof Fields, string>>;
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function ageFrom(dob: string): number | null {
   if (!dob) return null;
   const d = new Date(dob);
   if (Number.isNaN(d.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - d.getFullYear();
-  const m = now.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
-  return age;
+  return ageFromDob(d);
 }
 
 function validate(f: Fields): Errors {
@@ -38,15 +34,15 @@ function validate(f: Fields): Errors {
     e.firstName = "Enter your first name — it’s how other players will see you.";
   if (!f.lastName.trim()) e.lastName = "Enter your last name.";
   if (!f.email.trim()) e.email = "Enter your email. We’ll send a confirmation link.";
-  else if (!EMAIL_RE.test(f.email)) e.email = "That doesn’t look like a valid email address.";
+  else if (!isEmail(f.email)) e.email = "That doesn’t look like a valid email address.";
   if (!f.password) e.password = "Choose a password.";
   else if (f.password.length < 8) e.password = "Use at least 8 characters.";
   if (f.confirm !== f.password) e.confirm = "Passwords don’t match.";
   const age = ageFrom(f.dob);
   if (!f.dob) e.dob = "Enter your date of birth.";
   else if (age === null) e.dob = "Enter a valid date.";
-  else if (age < 16) e.dob = "You must be 16 or older to play.";
-  if (!f.agree) e.agree = "Please confirm you’re 16 or older.";
+  else if (age < MIN_AGE) e.dob = `You must be ${MIN_AGE} or older to play.`;
+  if (!f.agree) e.agree = `Please confirm you’re ${MIN_AGE} or older.`;
   return e;
 }
 

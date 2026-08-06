@@ -1,38 +1,27 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import { TeamCrest } from "@/components/portal/TeamCrest";
-import type { TeamFixtures, FixtureRow } from "@/lib/game/portalTypes";
+import { getFixturesForTeam } from "@/lib/game/browse";
+import type { FixtureRow } from "@/lib/game/portalTypes";
+import { seasonLabel, kickoffTime, shortDate, longDate } from "@/lib/format";
 import styles from "./page.module.css";
 
-function StateShell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className={styles.main}>
-      <div className="lms-state">{children}</div>
-    </main>
-  );
-}
+export const dynamic = "force-dynamic";
 
-function kickoffTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-}
-
-function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function longDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ team: string }>;
+}): Promise<Metadata> {
+  const { team } = await params;
+  const tla = team.toUpperCase();
+  return {
+    title: `${tla} Fixtures & Results`,
+    alternates: { canonical: `/fixtures/${tla}` },
+    // Public club pages — override the portal layout's noindex.
+    robots: { index: true, follow: true },
+  };
 }
 
 /** The game's outcome from this club's point of view. */
@@ -122,71 +111,16 @@ function MatchRow({ f, tla }: { f: FixtureRow; tla: string }) {
   );
 }
 
-export default function TeamFixturesPage() {
-  const params = useParams<{ team: string }>();
-  const tla = (params.team ?? "").toUpperCase();
-
-  const [data, setData] = useState<TeamFixtures | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<"missing" | "failed" | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/fixtures/team/${tla}`, { cache: "no-store" });
-      if (res.status === 404) {
-        setError("missing");
-        return;
-      }
-      if (!res.ok) throw new Error(String(res.status));
-      setData((await res.json()) as TeamFixtures);
-      setError(null);
-    } catch {
-      setError("failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [tla]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (loading && !data) {
-    return (
-      <StateShell>
-        <span className="lms-spinner lms-spinner--lg" aria-hidden="true" />
-        <p className="lms-state__body">Loading the fixtures…</p>
-      </StateShell>
-    );
-  }
-  if (error === "missing") {
-    return (
-      <StateShell>
-        <h1 className="lms-state__title">Team not found</h1>
-        <p className="lms-state__body">
-          We don&rsquo;t know a club by &ldquo;{tla}&rdquo;. Pick one from the fixtures page.
-        </p>
-        <Link href="/fixtures" className="lms-btn lms-btn--primary">
-          All fixtures
-        </Link>
-      </StateShell>
-    );
-  }
-  if (error === "failed" || !data) {
-    return (
-      <StateShell>
-        <h1 className="lms-state__title">Something went wrong</h1>
-        <p className="lms-state__body">We couldn&rsquo;t load this team&rsquo;s fixtures. Please try again.</p>
-        <button className="lms-btn lms-btn--primary" onClick={() => void load()}>
-          Retry
-        </button>
-      </StateShell>
-    );
-  }
+export default async function TeamFixturesPage({
+  params,
+}: {
+  params: Promise<{ team: string }>;
+}) {
+  const { team: teamParam } = await params;
+  const data = await getFixturesForTeam(teamParam);
+  if (!data) notFound();
 
   const { team, next, upcoming, past, season } = data;
-  const seasonLabel = `${season}/${String((season + 1) % 100).padStart(2, "0")}`;
 
   return (
     <main className={styles.main}>
@@ -202,7 +136,7 @@ export default function TeamFixturesPage() {
         />
         <div>
           <p className={styles.kicker} data-nums>
-            Premier League &middot; {seasonLabel}
+            Premier League &middot; {seasonLabel(season)}
           </p>
           <h1 className={styles.title}>{team.name}</h1>
         </div>

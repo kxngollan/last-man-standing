@@ -1,0 +1,205 @@
+"use client";
+
+// The dashboard's interactive islands. Everything else on the page is
+// server-rendered; these hydrate with their data already in props.
+
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { TeamCrest } from "@/components/portal/TeamCrest";
+import type { StandingRow, StandingsPage } from "@/lib/game/portalTypes";
+import styles from "./page.module.css";
+
+function useCountUp(target: number) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const start = performance.now();
+    const dur = reduce ? 0 : 900;
+    let raf = requestAnimationFrame(function tick(t: number) {
+      const p = dur === 0 ? 1 : Math.min(1, (t - start) / dur);
+      setValue(Math.round((1 - Math.pow(1 - p, 3)) * target));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+  return value;
+}
+
+/** A headline number that counts up on arrival. */
+export function Stat({ value, label }: { value: number; label: string }) {
+  const shown = useCountUp(value);
+  return (
+    <div className={styles.stat}>
+      <div className="lms-stat__num" data-nums aria-hidden="true">
+        {shown}
+      </div>
+      <div className="lms-stat__label">
+        <span className={styles.srOnly}>{value} </span>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+/** Join the open game — surfaces the server's error instead of failing silently. */
+export function JoinButton() {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState("");
+  const busy = joining || pending;
+
+  async function join() {
+    setJoining(true);
+    setError("");
+    try {
+      const res = await fetch("/api/games/join", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError((data as { error?: string }).error ?? "Couldn’t join the game. Please try again.");
+        return;
+      }
+      startTransition(() => router.refresh());
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setJoining(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        className="lms-btn lms-btn--primary"
+        onClick={join}
+        disabled={busy}
+        aria-disabled={busy}
+      >
+        {busy ? "Joining…" : "Join this game"}
+      </button>
+      {error && (
+        <p role="alert" style={{ color: "var(--color-out-ink)", marginTop: "0.5rem" }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StandingRowItem({ p }: { p: StandingRow }) {
+  return (
+    <li className={styles.row} data-you={p.you} data-out={p.status !== "alive"}>
+      <span className={styles.rank} data-nums aria-hidden="true">
+        {p.rank}
+      </span>
+      <span className={styles.player}>
+        <span className={styles.pname}>
+          {p.name}
+          {p.you && <span className={styles.youTag}>you</span>}
+        </span>
+        <span className={styles.psub} data-nums>
+          survived {p.survivedWeeks} {p.survivedWeeks === 1 ? "week" : "weeks"}
+        </span>
+      </span>
+      <span className={styles.lastPick}>
+        {p.lastTeamTla ? (
+          <>
+            <TeamCrest crest={p.lastTeamCrest} tla={p.lastTeamTla} />
+            <span className={styles.pickName}>{p.lastTeamName}</span>
+          </>
+        ) : (
+          <span className={styles.pickName}>—</span>
+        )}
+      </span>
+      <span className={`lms-chip ${p.status === "alive" ? "lms-chip--safe" : "lms-chip--out"}`}>
+        <span className="lms-dot" aria-hidden="true" />
+        {p.status === "winner" ? "Winner" : p.status === "alive" ? "In" : "Out"}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * The board: first page arrives server-rendered in props; further pages
+ * lazy-load from /api/standings as the sentinel scrolls into view.
+ */
+export function StandingsBoard({
+  firstPage,
+  myStanding,
+  total,
+}: {
+  firstPage: StandingRow[];
+  myStanding: StandingRow | null;
+  total: number;
+}) {
+  const [extraRows, setExtraRows] = useState<StandingRow[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadedCount = firstPage.length + extraRows.length;
+  const hasMore = loadedCount < total;
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/standings?offset=${loadedCount}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const page = (await res.json()) as StandingsPage;
+      setExtraRows((rows) => [...rows, ...page.rows]);
+    } catch {
+      /* the button stays — the player can retry */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, loadedCount]);
+
+  // Auto-load the next page when the end of the board scrolls into view.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: "300px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore]);
+
+  // Own row is pinned on top, so drop it from the pages that contain it.
+  const boardRows = [...firstPage, ...extraRows].filter((r) => !r.you);
+
+  return (
+    <>
+      <ul className={styles.board}>
+        {/* Your row first, always — then everyone else in rank order. */}
+        {myStanding && <StandingRowItem p={myStanding} />}
+        {boardRows.map((p) => (
+          <StandingRowItem key={`${p.rank}-${p.name}`} p={p} />
+        ))}
+      </ul>
+
+      {hasMore && (
+        <div className={styles.loadMore} ref={sentinelRef}>
+          <button
+            className="lms-btn lms-btn--ghost lms-btn--sm"
+            onClick={() => void loadMore()}
+            disabled={loadingMore}
+            aria-disabled={loadingMore}
+          >
+            {loadingMore ? (
+              <>
+                <span className="lms-spinner" aria-hidden="true" />
+                Loading&hellip;
+              </>
+            ) : (
+              `Show more players (${total - loadedCount} to go)`
+            )}
+          </button>
+        </div>
+      )}
+    </>
+  );
+}

@@ -1,10 +1,21 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { TeamCrest } from "@/components/portal/TeamCrest";
-import type { LeagueTable, LeagueRow } from "@/lib/game/portalTypes";
+import { getLeagueTable } from "@/lib/game/browse";
+import { seasonLabel } from "@/lib/format";
 import styles from "./page.module.css";
+
+export const metadata: Metadata = {
+  title: "Premier League Table",
+  description:
+    "The live Premier League table — points, goal difference and form for every club. Weigh up who's in form before your next Last Man Standing pick.",
+  alternates: { canonical: "/table" },
+  // Public page — overrides the portal layout's noindex.
+  robots: { index: true, follow: true },
+};
+
+// Always render from the latest synced results (the cron keeps them fresh).
+export const dynamic = "force-dynamic";
 
 function zoneOf(position: number, total: number): "ucl" | "uel" | "drop" | undefined {
   if (position <= 4) return "ucl";
@@ -35,65 +46,24 @@ function Form({ form }: { form: string | null }) {
   );
 }
 
-function StateShell({ children }: { children: React.ReactNode }) {
+/** Number cell with a screen-reader label — the visual header row is decorative. */
+function Num({ label, value, className }: { label: string; value: number | string; className: string }) {
   return (
-    <main className={styles.main}>
-      <div className="lms-state">{children}</div>
-    </main>
+    <span className={className} data-nums>
+      <span className="lms-sr-only">{label} </span>
+      {value}
+    </span>
   );
 }
 
-export default function TablePage() {
-  const [table, setTable] = useState<LeagueTable | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/table", { cache: "no-store" });
-      if (!res.ok) throw new Error(String(res.status));
-      setTable((await res.json()) as LeagueTable);
-      setError(null);
-    } catch {
-      setError("We couldn’t load the table. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  if (loading) {
-    return (
-      <StateShell>
-        <span className="lms-spinner lms-spinner--lg" aria-hidden="true" />
-        <p className="lms-state__body">Loading the table…</p>
-      </StateShell>
-    );
-  }
-  if (error || !table) {
-    return (
-      <StateShell>
-        <h1 className="lms-state__title">Something went wrong</h1>
-        <p className="lms-state__body">{error ?? "Please try again."}</p>
-        <button className="lms-btn lms-btn--primary" onClick={() => load()}>
-          Retry
-        </button>
-      </StateShell>
-    );
-  }
-
-  const { rows, season } = table;
-  const seasonLabel = `${season}/${String((season + 1) % 100).padStart(2, "0")}`;
+export default async function TablePage() {
+  const { rows, season } = await getLeagueTable();
 
   return (
     <main className={styles.main}>
       <div className="lms-head">
         <p className={styles.kicker} data-nums>
-          Premier League &middot; {seasonLabel}
+          Premier League &middot; {seasonLabel(season)}
         </p>
         <h1 className={styles.title}>The table</h1>
         <p className="lms-head__hint">
@@ -118,17 +88,16 @@ export default function TablePage() {
           </div>
 
           <ol className={styles.list}>
-            {rows.map((r: LeagueRow) => (
+            {rows.map((r) => (
               <li key={r.tla}>
+                {/* No aria-label here on purpose: the cells carry sr-only
+                    labels, so screen readers hear the actual numbers. */}
                 <Link
                   href={`/fixtures/${r.tla}`}
                   className={styles.row}
                   data-zone={zoneOf(r.position, rows.length)}
-                  aria-label={`${r.name} — fixtures and results`}
                 >
-                  <span className={styles.pos} data-nums>
-                    {r.position}
-                  </span>
+                  <Num label="Position" value={r.position} className={styles.pos} />
                   <span className={styles.club}>
                     <TeamCrest crest={r.crest} tla={r.tla} />
                     <span className={styles.clubText}>
@@ -145,24 +114,16 @@ export default function TablePage() {
                       </span>
                     </span>
                   </span>
-                  <span className={styles.num} data-nums>
-                    {r.played}
-                  </span>
-                  <span className={`${styles.num} ${styles.wide}`} data-nums>
-                    {r.won}
-                  </span>
-                  <span className={`${styles.num} ${styles.wide}`} data-nums>
-                    {r.drawn}
-                  </span>
-                  <span className={`${styles.num} ${styles.wide}`} data-nums>
-                    {r.lost}
-                  </span>
-                  <span className={styles.num} data-nums>
-                    {r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}
-                  </span>
-                  <span className={styles.pts} data-nums>
-                    {r.points}
-                  </span>
+                  <Num label="Played" value={r.played} className={styles.num} />
+                  <Num label="Won" value={r.won} className={`${styles.num} ${styles.wide}`} />
+                  <Num label="Drawn" value={r.drawn} className={`${styles.num} ${styles.wide}`} />
+                  <Num label="Lost" value={r.lost} className={`${styles.num} ${styles.wide}`} />
+                  <Num
+                    label="Goal difference"
+                    value={r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}
+                    className={styles.num}
+                  />
+                  <Num label="Points" value={r.points} className={styles.pts} />
                   <span className={styles.formCell}>
                     <Form form={r.form} />
                   </span>

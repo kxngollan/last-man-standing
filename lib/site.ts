@@ -32,7 +32,7 @@ export const SITE_KEYWORDS = [
 ];
 
 /** The publicly indexable routes. Everything else is app/private surface. */
-export const PUBLIC_ROUTES = ["/", "/signup", "/login", "/policy"] as const;
+export const PUBLIC_ROUTES = ["/", "/signup", "/login", "/policy", "/table", "/fixtures"] as const;
 
 /**
  * The site FAQ — single source for both the visible FAQ section on the

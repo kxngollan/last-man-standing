@@ -65,15 +65,16 @@ function AccountMenu({
         className={styles.avatar}
         type="button"
         aria-label="Account menu"
-        aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
         {initialsOf(name)}
       </button>
 
+      {/* A plain disclosure of links/buttons — no ARIA menu roles, which
+          would promise arrow-key navigation this doesn't implement. */}
       {open && (
-        <div className={styles.menu} role="menu" aria-label="Account">
+        <div className={styles.menu} aria-label="Account">
           <div className={styles.menuHead}>
             {name && <span className={styles.menuName}>{name}</span>}
             {email && <span className={styles.menuEmail}>{email}</span>}
@@ -81,7 +82,6 @@ function AccountMenu({
           {session?.user?.isAdmin && (
             <Link
               href="/admin"
-              role="menuitem"
               className={styles.menuLink}
               onClick={() => setOpen(false)}
             >
@@ -90,7 +90,6 @@ function AccountMenu({
           )}
           <button
             type="button"
-            role="menuitem"
             className={styles.feedbackItem}
             onClick={() => {
               setOpen(false);
@@ -101,7 +100,6 @@ function AccountMenu({
           </button>
           <button
             type="button"
-            role="menuitem"
             className={styles.feedbackItem}
             onClick={() => {
               setOpen(false);
@@ -112,7 +110,6 @@ function AccountMenu({
           </button>
           <button
             type="button"
-            role="menuitem"
             className={styles.logout}
             disabled={signingOut}
             onClick={() => {

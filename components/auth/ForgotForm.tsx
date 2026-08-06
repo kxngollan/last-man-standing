@@ -4,9 +4,8 @@ import { SubmitEventHandler, useState } from 'react'
 import Link from 'next/link'
 import AuthShell from '@/components/auth/AuthShell'
 import { useCooldown } from '@/components/auth/useCooldown'
+import isEmail from '@/lib/isEmail'
 import styles from '@/components/auth/authContent.module.css'
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function ForgotForm() {
   const [email, setEmail] = useState('')
@@ -40,7 +39,7 @@ export default function ForgotForm() {
 
   const submit: SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
-    if (!EMAIL_RE.test(email)) {
+    if (!isEmail(email)) {
       setError('Enter a valid email address.')
       return
     }

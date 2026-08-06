@@ -1,57 +1,31 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { TeamCrest } from "@/components/portal/TeamCrest";
-import type { PickSummary } from "@/lib/game/portalTypes";
+import { StateShell } from "@/components/portal/StateShell";
+import { getPickSummary } from "@/lib/game/queries";
 import styles from "./page.module.css";
 
-export default function PicksPage() {
-  const [summary, setSummary] = useState<PickSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const metadata: Metadata = {
+  title: "The picks",
+};
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/picks/summary", { cache: "no-store" });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((body as { error?: string }).error ?? "Failed to load.");
-      setSummary(body as PickSummary);
-      setError(null);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export default async function PicksPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login?next=/picks");
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const summary = await getPickSummary();
 
-  if (loading) {
+  if (!summary) {
     return (
-      <main className={styles.main}>
-        <div className="lms-state">
-          <span className="lms-spinner lms-spinner--lg" aria-hidden="true" />
-          <p className="lms-state__body">Counting the picks…</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !summary) {
-    return (
-      <main className={styles.main}>
-        <div className="lms-state">
-          <h1 className="lms-state__title">Couldn&rsquo;t load the picks</h1>
-          <p className="lms-state__body">{error ?? "Please try again."}</p>
-          <button className="lms-btn lms-btn--primary" onClick={() => void load()}>
-            Retry
-          </button>
-        </div>
-      </main>
+      <StateShell className={styles.main}>
+        <h1 className="lms-state__title">No game running</h1>
+        <p className="lms-state__body">There’s no game on right now, so no picks to show.</p>
+        <Link href="/dashboard" className="lms-btn lms-btn--primary">
+          Back to standings
+        </Link>
+      </StateShell>
     );
   }
 
@@ -67,13 +41,13 @@ export default function PicksPage() {
         <p className={styles.kicker} data-nums>
           Game week {summary.gameWeek}
         </p>
-        <h1 className={styles.title}>This week&rsquo;s picks</h1>
+        <h1 className={styles.title}>Where the picks went</h1>
         <p className="lms-head__hint">
           {summary.totalPicks === 0
-            ? "Nobody has picked yet — be the first."
-            : `Where all ${summary.totalPicks} ${
+            ? "Picks stay secret until the week’s deadline — check back once it kicks off."
+            : `Where all ${summary.totalPicks} Week ${summary.gameWeek} ${
                 summary.totalPicks === 1 ? "pick" : "picks"
-              } have gone so far. One team each, no repeats.`}
+              } went. One team each, no repeats. The open week’s picks stay secret until the deadline.`}
         </p>
       </div>
 

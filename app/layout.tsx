@@ -5,7 +5,6 @@ import './ui.css'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { Analytics } from '@vercel/analytics/next'
 import CookieNotice from '@/components/CookieNotice'
-import SessionWrapper from '@/components/SessionWrapper'
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_KEYWORDS } from '@/lib/site'
 
 const jakarta = Plus_Jakarta_Sans({
@@ -103,10 +102,11 @@ export default function RootLayout({
     <html lang='en-GB' className={`${jakarta.variable} ${spaceMono.variable}`} suppressHydrationWarning>
       <body className='min-h-full flex flex-col'>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-        <SessionWrapper>{children}</SessionWrapper>
+        {children}
         <CookieNotice />
       </body>
-      <GoogleAnalytics gaId={gid} />
+      {/* Session context lives in the portal layout; static pages don't pay for it. */}
+      {gid && <GoogleAnalytics gaId={gid} />}
       <Analytics />
     </html>
   )

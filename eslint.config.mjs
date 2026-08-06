@@ -6,14 +6,11 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    // Legacy fetch-on-mount client pages, written before the server-component
-    // conversion. The rule stays on for all new code; delete entries here as
-    // each page moves to the server.
+    // Legacy fetch-on-mount client components. The rule stays on for all new
+    // code; delete entries here as each file is modernised.
     files: [
-      "app/(portal)/**/page.tsx",
       "app/admin/page.tsx",
       "components/CookieNotice.tsx",
-      "components/portal/usePortalState.ts",
       "components/ui/ThemeToggle.tsx",
     ],
     rules: {
