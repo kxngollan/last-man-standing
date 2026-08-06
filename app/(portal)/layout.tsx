@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import SessionWrapper from "@/components/SessionWrapper";
 import AppBar from "@/components/portal/AppBar";
 
 // Private by default — the public pages (table, fixtures) override robots
@@ -13,12 +12,12 @@ export default function PortalLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // The SessionProvider lives here (not the root layout) so the static
-  // landing/auth pages never pay for a client session fetch.
+  // AppBar carries its own SessionProvider — everything that needs session
+  // state lives inside it, so pages without it stay session-free.
   return (
-    <SessionWrapper>
+    <>
       <AppBar />
       {children}
-    </SessionWrapper>
+    </>
   );
 }

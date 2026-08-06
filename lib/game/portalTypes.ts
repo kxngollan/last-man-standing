@@ -171,7 +171,7 @@ export interface StandingsPage {
   rows: StandingRow[];
 }
 
-/** How many players picked each team for the current pick week. */
+/** Live pick counts for the current pick week — and who's behind each one. */
 export interface PickSummary {
   gameWeek: number;
   matchday: number;
@@ -183,6 +183,8 @@ export interface PickSummary {
     tla: string;
     crest: string | null;
     count: number;
+    /** Public display names ("Sam K.") of the players on this team. */
+    players: string[];
   }>;
 }
 

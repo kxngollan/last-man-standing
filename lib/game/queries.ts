@@ -62,16 +62,6 @@ export async function requireAliveEntry(
 
 const survived = (startMatchday: number, upto: number) => Math.max(0, upto - startMatchday);
 
-/**
- * The most recent matchday whose picks are public. Picks are secret until
- * their week's deadline passes — showing them earlier would let players see
- * rivals' picks and counter-pick.
- */
-async function latestLockedMatchday(game: HydratedDocument<IGame> | IGame): Promise<number> {
-  const window = await getPickWindow(game.season, game.currentMatchday);
-  return window.locked ? window.matchday : window.matchday - 1;
-}
-
 /** Dynamic data for the admin control panel. */
 export async function getAdminOverview(): Promise<AdminOverview> {
   await connectDB();
@@ -151,15 +141,14 @@ async function buildStandingRows(
   const entryIds = entriesSlice.map((e) => e._id);
   const userIds = entriesSlice.map((e) => e.userId);
 
-  // Only locked weeks' picks are public — never leak the open week's picks.
-  const maxPublicMd = await latestLockedMatchday(game);
-
+  // Picks are fully public by design — including the open week's — so every
+  // player sees the same board and nobody wonders where a result came from.
   const [users, teams, picks] = await Promise.all([
     User.find({ _id: { $in: userIds } })
       .select("name firstName lastName")
       .lean(),
     Team.find({}).lean(),
-    Pick.find({ entryId: { $in: entryIds }, matchday: { $lte: maxPublicMd } })
+    Pick.find({ entryId: { $in: entryIds } })
       .sort({ matchday: -1 })
       .lean(),
   ]);
@@ -258,42 +247,60 @@ export async function getStandingsPage(
 }
 
 /**
- * How many players picked each team for the latest LOCKED game week. The open
- * week's counts stay hidden — even in aggregate they'd let players herd or
- * fade the crowd before the deadline.
+ * Live pick counts — and who is behind each one — for the week currently
+ * being picked. Fully public by design: everyone sees the same board while
+ * deciding, so nobody feels a result came out of nowhere.
+ *
+ * `playersPerTeam` caps the names carried per team (the compact dashboard/
+ * make-selection boards show a few + "+N more"); `count` always reflects the
+ * full number, so at thousands of players the payload stays small. Omit it
+ * for the full roster (the /picks breakdown page).
  */
-export async function getPickSummary(): Promise<PickSummary | null> {
+export async function getPickSummary(
+  opts: { playersPerTeam?: number } = {}
+): Promise<PickSummary | null> {
   await connectDB();
   const game = await getCurrentGame();
   if (!game) return null;
 
-  const lockedMd = await latestLockedMatchday(game);
-  const pickMd = Math.max(lockedMd, game.startMatchday);
+  const window = await getPickWindow(game.season, game.currentMatchday);
+  const pickMd = window.matchday;
 
-  const [counts, teams] = await Promise.all([
-    Pick.aggregate<{ _id: number; count: number }>([
-      // No week has locked yet → match nothing; the UI shows its empty state.
-      { $match: { gameId: game._id, matchday: lockedMd, teamApiId: { $ne: null } } },
-      { $group: { _id: "$teamApiId", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-    ]),
+  const [picks, teams] = await Promise.all([
+    Pick.find({ gameId: game._id, matchday: pickMd, teamApiId: { $ne: null } })
+      .select("teamApiId userId")
+      .lean(),
     Team.find({}).lean(),
   ]);
+  const users = await User.find({ _id: { $in: picks.map((p) => p.userId) } })
+    .select("name firstName lastName")
+    .lean();
+  const nameById = new Map(users.map((u) => [String(u._id), publicName(u)]));
   const teamById = new Map(teams.map((t) => [t.apiId, t]));
 
-  const rows = counts
-    .filter((c) => teamById.has(c._id))
-    .map((c) => {
-      const t = teamById.get(c._id)!;
+  const playersByTeam = new Map<number, string[]>();
+  for (const p of picks) {
+    if (p.teamApiId == null || !teamById.has(p.teamApiId)) continue;
+    const list = playersByTeam.get(p.teamApiId) ?? [];
+    list.push(nameById.get(String(p.userId)) ?? "Player");
+    playersByTeam.set(p.teamApiId, list);
+  }
+
+  const rows = [...playersByTeam.entries()]
+    .map(([apiId, players]) => {
+      const t = teamById.get(apiId)!;
+      const sorted = players.sort((a, b) => a.localeCompare(b));
       return {
         teamApiId: t.apiId,
         name: t.name,
         shortName: t.shortName,
         tla: t.tla,
         crest: t.crest ?? null,
-        count: c.count,
+        count: sorted.length,
+        players: opts.playersPerTeam != null ? sorted.slice(0, opts.playersPerTeam) : sorted,
       };
-    });
+    })
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   return {
     gameWeek: pickMd - game.startMatchday + 1,

@@ -8,7 +8,7 @@ import { getPickSummary } from "@/lib/game/queries";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
-  title: "The picks",
+  title: "This week's picks",
 };
 
 export default async function PicksPage() {
@@ -41,13 +41,13 @@ export default async function PicksPage() {
         <p className={styles.kicker} data-nums>
           Game week {summary.gameWeek}
         </p>
-        <h1 className={styles.title}>Where the picks went</h1>
+        <h1 className={styles.title}>This week&rsquo;s picks</h1>
         <p className="lms-head__hint">
           {summary.totalPicks === 0
-            ? "Picks stay secret until the week’s deadline — check back once it kicks off."
-            : `Where all ${summary.totalPicks} Week ${summary.gameWeek} ${
+            ? "Nobody has picked yet — be the first."
+            : `Where all ${summary.totalPicks} ${
                 summary.totalPicks === 1 ? "pick" : "picks"
-              } went. One team each, no repeats. The open week’s picks stay secret until the deadline.`}
+              } have gone so far, and who’s behind each one. Everyone sees this board — one team each, no repeats.`}
         </p>
       </div>
 
@@ -74,6 +74,11 @@ export default async function PicksPage() {
                     : ""}
                 </span>
               </span>
+              {/* The full roster, on its own full-width line so however many
+                  names there are, the bar above keeps its space. */}
+              {t.players.length > 0 && (
+                <span className={styles.players}>{t.players.join(", ")}</span>
+              )}
             </li>
           ))}
         </ol>

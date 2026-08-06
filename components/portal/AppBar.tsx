@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import SessionWrapper from "@/components/SessionWrapper";
 import RulesModal from "./RulesModal";
 import FeedbackModal, { type FeedbackModalHandle } from "./FeedbackModal";
 import ReportIssueModal, { type ReportIssueModalHandle } from "./ReportIssueModal";
@@ -125,7 +126,7 @@ function AccountMenu({
   );
 }
 
-export default function AppBar() {
+function AppBarInner() {
   const pathname = usePathname();
   const { status } = useSession();
   const isAuthed = status === "authenticated";
@@ -232,5 +233,18 @@ export default function AppBar() {
         })}
       </nav>
     </>
+  );
+}
+
+/**
+ * AppBar owns its SessionProvider so it works on any page that renders it
+ * (the portal layout AND the public landing page) — useSession lives only in
+ * this tree (nav state + the feedback/issue modals).
+ */
+export default function AppBar() {
+  return (
+    <SessionWrapper>
+      <AppBarInner />
+    </SessionWrapper>
   );
 }

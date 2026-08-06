@@ -4,75 +4,13 @@
 // we router.refresh() so the server re-renders with fresh state (the page
 // keys this island on the confirmed pick, so it remounts in sync).
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { TeamCrest } from "@/components/portal/TeamCrest";
-import type { TeamOption } from "@/lib/game/portalTypes";
-import { dateTimeLabel } from "@/lib/format";
+import { TopPicks } from "@/components/portal/TopPicks";
+import { DeadlineClock } from "@/components/portal/DeadlineClock";
+import type { TeamOption, PickSummary } from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-/**
- * Isolated so its 1-second tick re-renders only the clock — not the
- * 20-team fixture grid below it.
- */
-function Countdown({ deadline, locked }: { deadline: string | null; locked: boolean }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!deadline || locked) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [deadline, locked]);
-
-  const ms = deadline ? Math.max(0, new Date(deadline).getTime() - now) : null;
-  const parts =
-    ms === null
-      ? null
-      : {
-          days: Math.floor(ms / 86_400_000),
-          hours: Math.floor((ms % 86_400_000) / 3_600_000),
-          mins: Math.floor((ms % 3_600_000) / 60_000),
-          secs: Math.floor((ms % 60_000) / 1000),
-        };
-
-  return (
-    <div className={styles.countdown}>
-      <div className={styles.countdownLabel}>{locked ? "Picks locked" : "Picks lock in"}</div>
-      <div className={styles.clock} data-nums aria-hidden="true">
-        {locked ? (
-          <span>Locked</span>
-        ) : parts ? (
-          <>
-            {parts.days > 0 && (
-              <span>
-                {parts.days}
-                <small>d</small>
-              </span>
-            )}
-            <span>
-              {pad(parts.hours)}
-              <small>h</small>
-            </span>
-            <span>
-              {pad(parts.mins)}
-              <small>m</small>
-            </span>
-            <span>
-              {pad(parts.secs)}
-              <small>s</small>
-            </span>
-          </>
-        ) : (
-          <span>——</span>
-        )}
-      </div>
-      <p className={styles.deadlineWhen}>
-        Deadline &middot; {deadline ? dateTimeLabel(deadline) : "To be confirmed"}
-      </p>
-    </div>
-  );
-}
 
 export interface PickFormProps {
   gameWeek: number;
@@ -84,6 +22,8 @@ export interface PickFormProps {
   wildcardUsed: boolean;
   survivedWeeks: number;
   playersAlive: number;
+  /** The open week's live pick board — shown so players decide with the same information. */
+  summary: PickSummary | null;
 }
 
 export default function PickForm({
@@ -96,6 +36,7 @@ export default function PickForm({
   wildcardUsed,
   survivedWeeks,
   playersAlive,
+  summary,
 }: PickFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -178,7 +119,7 @@ export default function PickForm({
             </div>
           </div>
 
-          <Countdown deadline={deadline} locked={locked} />
+          <DeadlineClock deadline={deadline} locked={locked} />
         </div>
 
         {!locked && (
@@ -238,6 +179,10 @@ export default function PickForm({
             )}
           </section>
         )}
+
+        {/* The live pick board — the same one the dashboard shows, so every
+            player decides with identical information. */}
+        <TopPicks summary={summary} limit={5} />
 
         <div className={styles.gridHead}>
           <h2>This week’s fixtures</h2>

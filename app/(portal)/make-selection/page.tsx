@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { StateShell } from "@/components/portal/StateShell";
 import { StatusIcon } from "@/components/ui/StatusIcon";
-import { getGameStateForUser } from "@/lib/game/queries";
+import { getGameStateForUser, getPickSummary } from "@/lib/game/queries";
 import PickForm from "./PickForm";
 import styles from "./page.module.css";
 
@@ -16,7 +16,11 @@ export default async function MakeSelectionPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?next=/make-selection");
 
-  const state = await getGameStateForUser(session.user.id);
+  const [state, summary] = await Promise.all([
+    getGameStateForUser(session.user.id),
+    // Compact board: a few names per team, "+N more" covers the rest.
+    getPickSummary({ playersPerTeam: 3 }).catch(() => null),
+  ]);
   const myPick = state.myPick;
 
   if (!state.game) {
@@ -97,6 +101,7 @@ export default async function MakeSelectionPage() {
       wildcardUsed={state.entry.wildcardUsed}
       survivedWeeks={state.entry.survivedWeeks}
       playersAlive={state.players.alive}
+      summary={summary}
     />
   );
 }

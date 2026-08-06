@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { TeamCrest } from "@/components/portal/TeamCrest";
 import { StateShell } from "@/components/portal/StateShell";
+import { TopPicks } from "@/components/portal/TopPicks";
+import { DeadlineClock } from "@/components/portal/DeadlineClock";
 import { BallArt } from "@/components/ui/FootballArt";
 import { getGameStateForUser, getPickSummary } from "@/lib/game/queries";
-import type { PickSummary } from "@/lib/game/portalTypes";
 import { Stat, JoinButton, StandingsBoard } from "./islands";
 import styles from "./page.module.css";
 
@@ -14,52 +14,14 @@ export const metadata: Metadata = {
   title: "Standings",
 };
 
-/** Top teams from the last locked week by pick count — the full list lives at /picks. */
-function TopPicks({ summary }: { summary: PickSummary | null }) {
-  if (!summary || summary.totalPicks === 0) return null;
-  const top = summary.teams.slice(0, 3);
-  const max = top[0]?.count ?? 1;
-
-  return (
-    <section aria-label="Most picked teams">
-      <div className="lms-head">
-        <h2 className="lms-head__title">Week {summary.gameWeek} picks</h2>
-        <p className="lms-head__hint">
-          What the field backed in Week {summary.gameWeek} — {summary.totalPicks}{" "}
-          {summary.totalPicks === 1 ? "pick" : "picks"} in all.
-        </p>
-      </div>
-      <ol className={styles.topPicks}>
-        {top.map((t) => (
-          <li key={t.teamApiId} className={styles.topPickRow}>
-            <TeamCrest crest={t.crest} tla={t.tla} />
-            <span className={styles.topPickName}>{t.shortName || t.name}</span>
-            <span className={styles.topPickBar} aria-hidden="true">
-              <span
-                className={styles.topPickFill}
-                style={{ width: `${Math.max(8, (t.count / max) * 100)}%` }}
-              />
-            </span>
-            <span className={styles.topPickCount} data-nums>
-              {t.count}
-            </span>
-          </li>
-        ))}
-      </ol>
-      <Link href="/picks" className={styles.allPicksLink}>
-        {`See all Week ${summary.gameWeek} picks `}&rsaquo;
-      </Link>
-    </section>
-  );
-}
-
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?next=/dashboard");
 
   const [state, summary] = await Promise.all([
     getGameStateForUser(session.user.id),
-    getPickSummary().catch(() => null), // enrichment — the dashboard works without it
+    // Compact board: a few names per team, "+N more" covers the rest.
+    getPickSummary({ playersPerTeam: 3 }).catch(() => null),
   ]);
 
   if (!state.game) {
@@ -102,6 +64,10 @@ export default async function DashboardPage() {
           </Link>
         )}
         {!entry && game.status === "registration" && <JoinButton />}
+        {/* Same clock as make-selection — everyone sees when picks lock. */}
+        {game.status !== "finished" && (
+          <DeadlineClock deadline={state.deadline} locked={state.locked} />
+        )}
       </div>
 
       {entry && (

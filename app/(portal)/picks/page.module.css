@@ -100,3 +100,14 @@
     display: none;
   }
 }
+
+/* Who's behind each pick — its own full-width row under the bar, so any
+   number of names wraps without squeezing the bar's column. */
+.players {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

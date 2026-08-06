@@ -105,8 +105,10 @@ export default function RootLayout({
         {children}
         <CookieNotice />
       </body>
-      {/* Session context lives in the portal layout; static pages don't pay for it. */}
-      {gid && <GoogleAnalytics gaId={gid} />}
+      {/* Session context lives in the portal layout; static pages don't pay for it.
+          Ternary on purpose: `gid && …` with an empty GOOGLEID would render an
+          empty text node inside <html> — invalid HTML, hydration error. */}
+      {gid ? <GoogleAnalytics gaId={gid} /> : null}
       <Analytics />
     </html>
   )
