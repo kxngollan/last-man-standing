@@ -2,7 +2,7 @@ import mongoose, { Types } from "mongoose";
 import { connectDB } from "@/database/connect";
 import { Game, type IGame } from "@/models/Game/Game";
 import { Entry } from "@/models/Game/Entry";
-import { Pick } from "@/models/Game/Pick";
+import { Pick, type PickResult } from "@/models/Game/Pick";
 import { Team } from "@/models/Teams/Team";
 import { Fixture, type FixtureStatus, type FixtureWinner } from "@/models/Teams/Fixture";
 import { User } from "@/models/User/User";
@@ -126,6 +126,8 @@ export async function seedPick(args: {
   teamApiId: number | null;
   fixtureApiId?: number | null;
   isWildcard?: boolean;
+  result?: PickResult;
+  autoPicked?: boolean;
 }) {
   return Pick.create({
     gameId: args.gameId,
@@ -134,8 +136,8 @@ export async function seedPick(args: {
     matchday: args.matchday,
     teamApiId: args.teamApiId,
     fixtureApiId: args.fixtureApiId ?? null,
-    result: "pending",
+    result: args.result ?? "pending",
     isWildcard: args.isWildcard ?? false,
-    autoPicked: false,
+    autoPicked: args.autoPicked ?? false,
   });
 }

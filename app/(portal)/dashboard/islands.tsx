@@ -4,6 +4,7 @@
 // server-rendered; these hydrate with their data already in props.
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TeamCrest } from "@/components/portal/TeamCrest";
 import type { StandingRow, StandingsPage } from "@/lib/game/portalTypes";
@@ -94,7 +95,9 @@ function StandingRowItem({ p }: { p: StandingRow }) {
       </span>
       <span className={styles.player}>
         <span className={styles.pname}>
-          {p.name}
+          <Link href={p.you ? "/profile" : `/profile/${p.userId}`} className={styles.nameLink}>
+            {p.name}
+          </Link>
           {p.you && <span className={styles.youTag}>you</span>}
         </span>
         <span className={styles.psub} data-nums>

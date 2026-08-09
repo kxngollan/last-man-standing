@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { PickTimeline } from "@/components/portal/PickTimeline";
 import { StateShell } from "@/components/portal/StateShell";
 import { CornerFlagArt } from "@/components/ui/FootballArt";
 import { getGameStateForUser } from "@/lib/game/queries";
@@ -12,41 +13,6 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "My picks",
 };
-
-const RESULT_META: Record<string, { chip: string; label: string; detail: string }> = {
-  win: { chip: "lms-chip--safe", label: "Won", detail: "Won. Through to the next week." },
-  safe: { chip: "lms-chip--safe", label: "Safe", detail: "Safe this week." },
-  postponed: { chip: "lms-chip--safe", label: "Safe", detail: "Match postponed, counted as safe." },
-  draw: { chip: "lms-chip--out", label: "Out", detail: "Drew. Knocked out here." },
-  loss: { chip: "lms-chip--out", label: "Out", detail: "Lost. Knocked out here." },
-  pending: { chip: "lms-chip--neutral", label: "This week", detail: "Awaiting this week’s result." },
-};
-
-/** Wildcard weeks read differently: a draw is a save, not an exit. */
-function wildcardMeta(p: { tla: string | null; result: string }) {
-  if (!p.tla) {
-    // Legacy teamless wildcard (skip-the-week rules).
-    return { chip: "lms-chip--wild", label: "Wildcard", detail: "Wildcard played. Safe this week." };
-  }
-  switch (p.result) {
-    case "pending":
-      return {
-        chip: "lms-chip--wild",
-        label: "Wildcard on",
-        detail: "Wildcard played — win or draw and you’re through.",
-      };
-    case "draw":
-      return {
-        chip: "lms-chip--wild",
-        label: "Wildcard save",
-        detail: "Drew — the wildcard kept you in.",
-      };
-    case "win":
-      return { chip: "lms-chip--safe", label: "Won", detail: "Won — the wildcard wasn’t needed." };
-    default:
-      return RESULT_META[p.result] ?? RESULT_META.pending;
-  }
-}
 
 export default async function TeamPage() {
   const session = await auth();
@@ -93,36 +59,7 @@ export default async function TeamPage() {
       {history.length === 0 ? (
         <p className="lms-head__hint">You haven’t made a pick yet this game.</p>
       ) : (
-        <ol className={styles.timeline}>
-          {history.map((p) => {
-            const meta = p.isWildcard ? wildcardMeta(p) : RESULT_META[p.result] ?? RESULT_META.pending;
-            return (
-              <li key={p.matchday} className={styles.entry} data-pending={p.result === "pending"}>
-                <div className={styles.marker} aria-hidden="true">
-                  <span className={styles.gw} data-nums>
-                    GW{p.gameWeek}
-                  </span>
-                </div>
-                <div className={`lms-panel ${styles.card}`}>
-                  <TeamCrest
-                    crest={p.crest}
-                    tla={p.tla ?? (p.isWildcard ? "WC" : null)}
-                    size="lg"
-                  />
-                  <div className={styles.body}>
-                    <div className={styles.teamLine}>
-                      <span className={styles.team}>
-                        {p.teamName ?? (p.isWildcard ? "Wildcard" : "—")}
-                      </span>
-                    </div>
-                    <p className={styles.detail}>{meta.detail}</p>
-                  </div>
-                  <span className={`lms-chip ${meta.chip}`}>{meta.label}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+        <PickTimeline picks={history} />
       )}
 
       <section className={styles.used} aria-label="Teams used this game">

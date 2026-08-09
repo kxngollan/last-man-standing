@@ -1,0 +1,249 @@
+/* Hallmark · genre: playful · macrostructure: Stat-Led · theme: Hum · nav: app-shell bar · footer: none
+ * motion: none (record pages are read, not performed) · contrast: pass · mobile: pass
+ * enrichment: E5 hand-built SVG football set (tier B) — trophy ornament on head-to-head
+ */
+
+.main {
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: clamp(var(--space-lg), 4vw, var(--space-2xl))
+    clamp(var(--space-md), 4vw, var(--space-xl)) var(--space-3xl);
+}
+
+/* ---- Identity ---- */
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+}
+.avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--color-ink);
+  color: var(--color-on-disc);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-lg);
+  letter-spacing: 0.02em;
+}
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-strong);
+  margin-bottom: var(--space-2xs);
+}
+.title {
+  font-size: var(--text-2xl);
+  overflow-wrap: anywhere;
+}
+.sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-2xs);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.settingsLink {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* ---- Career stats ---- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+}
+.stat {
+  padding: var(--space-lg);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  border: 1px solid var(--color-rule);
+}
+.stat:first-child {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-color: transparent;
+}
+.stat:first-child :global(.lms-stat__label) {
+  color: color-mix(in oklch, var(--color-paper) 72%, transparent);
+}
+
+/* ---- Blocks ---- */
+.block {
+  margin-bottom: var(--space-2xl);
+}
+.gameMeta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  margin-top: var(--space-3xs);
+}
+.notice {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-sm) 0 var(--space-md);
+}
+
+/* ---- Past games (each opens onto its timeline) ---- */
+.games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.game {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper);
+  padding: var(--space-sm) var(--space-md);
+  transition: border-color var(--dur-short) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .game:hover {
+    border-color: var(--color-rule-2);
+  }
+}
+.game[open] {
+  background: var(--color-paper-2);
+}
+.gameSummary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "no status" "meta status";
+  align-items: center;
+  gap: var(--space-2xs) var(--space-md);
+  cursor: pointer;
+  list-style: none;
+}
+.gameSummary::-webkit-details-marker {
+  display: none;
+}
+.gameSummary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.gameNo {
+  grid-area: no;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-md);
+}
+.gameSummary .gameMeta {
+  grid-area: meta;
+  margin: 0;
+}
+.gameSummary :global(.lms-chip) {
+  grid-area: status;
+}
+/* The timeline brings its own bottom margin; trim it inside a card. */
+.game[open] :global(ol) {
+  margin-top: var(--space-md);
+  margin-bottom: var(--space-xs);
+}
+
+/* ---- Record ---- */
+.record {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-xs);
+}
+.recordItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper);
+}
+.recordKey {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.recordVal {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  text-align: end;
+}
+.tally {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.tallyName {
+  font-weight: 700;
+}
+.tallyCount {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+/* ---- Head to head ---- */
+.h2h {
+  position: relative;
+  padding: var(--space-lg);
+  padding-inline-end: calc(clamp(40px, 7vw, 56px) + var(--space-xl));
+}
+.h2hArt {
+  position: absolute;
+  top: var(--space-lg);
+  inset-inline-end: var(--space-lg);
+  width: clamp(40px, 7vw, 56px);
+  height: auto;
+  color: var(--color-ink-2);
+  pointer-events: none;
+}
+.h2hTitle {
+  font-size: var(--text-md);
+  font-family: var(--font-display);
+  font-weight: 800;
+  margin-bottom: var(--space-2xs);
+}
+.h2hLine {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  max-width: 60ch;
+}
+
+/* ---- Empty ---- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: var(--space-md);
+  padding: var(--space-2xl) 0;
+}
+.emptyBody {
+  color: var(--color-ink-2);
+  max-width: 52ch;
+}

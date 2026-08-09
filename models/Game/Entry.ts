@@ -35,5 +35,9 @@ EntrySchema.index({ gameId: 1, userId: 1 }, { unique: true });
 // Alive-count and standings queries run on every portal request.
 EntrySchema.index({ gameId: 1, status: 1 });
 
+// A player's career across games — the profile page's first query. The
+// {gameId, userId} index can't serve this one: gameId is its prefix.
+EntrySchema.index({ userId: 1 });
+
 export const Entry: Model<IEntry> =
   (models.Entry as Model<IEntry>) || model<IEntry>("Entry", EntrySchema);

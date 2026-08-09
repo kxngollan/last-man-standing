@@ -1,0 +1,97 @@
+/* The week-by-week pick timeline, shared by /team and profiles.
+ * Lifted verbatim from the /team page so both stay identical. */
+
+.timeline {
+  list-style: none;
+  margin: 0 0 var(--space-2xl);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.entry {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: var(--space-sm);
+  align-items: stretch;
+}
+.marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: var(--space-md);
+  position: relative;
+}
+/* connecting line */
+.marker::before {
+  content: "";
+  position: absolute;
+  top: 2.75rem;
+  bottom: -1.5rem;
+  width: 2px;
+  background: var(--color-rule);
+}
+.entry:last-child .marker::before {
+  display: none;
+}
+.gw {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+  background: var(--color-paper-3);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2xs) var(--space-xs);
+  z-index: var(--z-raised);
+}
+.entry[data-pending="true"] .gw {
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+.entry[data-pending="true"] .card {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+/* A pick only its owner can see here — held back, not settled. */
+.entry[data-hidden="true"] .card {
+  border-style: dashed;
+  background: var(--color-paper-2);
+}
+.body {
+  flex: 1;
+  min-width: 0;
+}
+.teamLine {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.team {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-md);
+}
+.auto {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  border: 1px solid var(--color-rule-2);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-xs);
+}
+.detail {
+  margin-top: var(--space-3xs);
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}

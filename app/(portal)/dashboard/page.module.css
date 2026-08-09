@@ -135,6 +135,17 @@
   align-items: center;
   gap: var(--space-xs);
 }
+/* Every name opens that player's record. */
+.nameLink {
+  color: inherit;
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .nameLink:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
 .youTag {
   font-family: var(--font-mono);
   font-size: 0.6rem;

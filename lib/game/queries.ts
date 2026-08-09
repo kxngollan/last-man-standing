@@ -60,7 +60,8 @@ export async function requireAliveEntry(
   return entry;
 }
 
-const survived = (startMatchday: number, upto: number) => Math.max(0, upto - startMatchday);
+/** Game weeks cleared: the standings number, and profiles must agree with it. */
+export const survived = (startMatchday: number, upto: number) => Math.max(0, upto - startMatchday);
 
 /** Dynamic data for the admin control panel. */
 export async function getAdminOverview(): Promise<AdminOverview> {
@@ -167,6 +168,7 @@ async function buildStandingRows(
     return {
       rank: firstRank + i,
       name: nameById.get(String(e.userId)) ?? "Player",
+      userId: String(e.userId),
       you: String(e.userId) === String(userId),
       survivedWeeks: survived(game.startMatchday, e.eliminatedAtMatchday ?? md),
       status: e.status,
@@ -199,16 +201,20 @@ async function standingsPageForGame(
   return { total, offset, rows };
 }
 
-/** The player's own row with its true rank — pinned on top of the board. */
-async function myStandingRow(
-  game: HydratedDocument<IGame>,
-  entry: HydratedDocument<IEntry>,
-  userId: string
-): Promise<StandingRow> {
+/**
+ * Where one entry sits in its game — the number of entries ranked ahead of it,
+ * plus one. Same ordering as the board, so a profile's placing and the
+ * standings never disagree. Takes plain fields so lean docs work too.
+ */
+export async function rankOfEntry(
+  gameId: Types.ObjectId,
+  // Spelled out rather than Pick<IEntry, …> — `Pick` is the model in this file.
+  entry: { status: IEntry["status"]; eliminatedAtMatchday: number | null; createdAt: Date }
+): Promise<number> {
   const myOut = entry.status === "alive" ? 0 : 1;
   const myElim = entry.eliminatedAtMatchday ?? 9999;
   const ahead = await Entry.aggregate<{ n: number }>([
-    { $match: { gameId: game._id } },
+    { $match: { gameId } },
     { $addFields: STANDINGS_SORT_FIELDS },
     {
       $match: {
@@ -229,7 +235,16 @@ async function myStandingRow(
     },
     { $count: "n" },
   ]);
-  const rank = (ahead[0]?.n ?? 0) + 1;
+  return (ahead[0]?.n ?? 0) + 1;
+}
+
+/** The player's own row with its true rank — pinned on top of the board. */
+async function myStandingRow(
+  game: HydratedDocument<IGame>,
+  entry: HydratedDocument<IEntry>,
+  userId: string
+): Promise<StandingRow> {
+  const rank = await rankOfEntry(game._id, entry);
   const [row] = await buildStandingRows(game, [entry.toObject()], userId, rank);
   return row;
 }

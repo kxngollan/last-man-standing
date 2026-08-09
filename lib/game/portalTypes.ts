@@ -3,6 +3,7 @@
 
 export type GameStatus = "registration" | "active" | "finished";
 export type EntryStatus = "alive" | "eliminated" | "winner";
+export type PickResult = "pending" | "win" | "draw" | "loss" | "postponed" | "safe";
 
 export interface TeamOption {
   apiId: number;
@@ -156,6 +157,8 @@ export interface AdminOverview {
 export interface StandingRow {
   rank: number;
   name: string;
+  /** The player behind the row — the board links each name to their profile. */
+  userId: string;
   you: boolean;
   survivedWeeks: number;
   status: EntryStatus;
@@ -232,4 +235,99 @@ export interface PortalState {
     result: string;
     isWildcard: boolean;
   }>;
+}
+
+/* ---- Profiles -----------------------------------------------------------
+ * A player's record: the games they've played, the picks behind them and the
+ * career totals. Picks for a game week that hasn't started are left out —
+ * see lib/game/profile.ts for the rule.
+ */
+
+/** One pick on a profile timeline. */
+export interface ProfilePick {
+  matchday: number;
+  gameWeek: number;
+  teamName: string | null;
+  tla: string | null;
+  crest: string | null;
+  result: PickResult;
+  isWildcard: boolean;
+  /** The deadline picked for them — they didn't get one in on time. */
+  autoPicked: boolean;
+  /** Your own pick for a week nobody's played yet: shown here only to you. */
+  hiddenFromOthers: boolean;
+}
+
+/** One game in a player's career. */
+export interface ProfileGame {
+  no: number;
+  season: number;
+  status: GameStatus;
+  /** The game still open — the only one that can hide a pick. */
+  isCurrent: boolean;
+  entryStatus: EntryStatus;
+  survivedWeeks: number;
+  /** The game week they went out in, or null if they never did. */
+  eliminatedGameWeek: number | null;
+  /** Final placing for a finished game, live rank for the open one. */
+  rank: number;
+  playersTotal: number;
+  teamsUsed: number;
+  picks: ProfilePick[];
+}
+
+/** A team a player leans on, with how often. */
+export interface ProfileTeamTally {
+  name: string;
+  tla: string;
+  crest: string | null;
+  count: number;
+}
+
+/** Career totals, counted from visible picks only. */
+export interface ProfileStats {
+  gamesPlayed: number;
+  wins: number;
+  /** Most weeks survived in a single game. */
+  bestRun: number;
+  totalWeeksSurvived: number;
+  /** Mean weeks per game, to one decimal place. */
+  averageWeeks: number;
+  picksMade: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  /** Percentage of decided picks won — null until one has been decided. */
+  winRate: number | null;
+  wildcardsPlayed: number;
+  autoPicks: number;
+  /** Most-picked team across the career (teams can't repeat within a game). */
+  favouriteTeam: ProfileTeamTally | null;
+  /** The team they were on when they went out, most often. */
+  nemesisTeam: ProfileTeamTally | null;
+}
+
+/** How the viewer's record compares in the games they've both played. */
+export interface HeadToHead {
+  gamesShared: number;
+  viewerAhead: number;
+  profileAhead: number;
+  level: number;
+}
+
+export interface UserProfile {
+  id: string;
+  /** "Sam K." to everyone else, the full name on your own profile. */
+  name: string;
+  initials: string;
+  /** ISO — when they signed up. */
+  memberSince: string;
+  isSelf: boolean;
+  /** The open game, if they're in it. */
+  current: ProfileGame | null;
+  /** Finished games, newest first. */
+  past: ProfileGame[];
+  stats: ProfileStats;
+  /** Only when viewing someone else, and only if you've shared a game. */
+  headToHead: HeadToHead | null;
 }

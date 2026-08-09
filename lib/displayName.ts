@@ -23,6 +23,17 @@ export function publicName(u: Nameish): string {
   return last ? `${first} ${last[0].toUpperCase()}.` : first;
 }
 
+/** Up to two initials for an avatar disc ("Sam Kerr" → "SK"). */
+export function initialsOf(name?: string | null): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const letters = parts
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("");
+  return (letters || name[0] || "?").toUpperCase();
+}
+
 /** Full name from the split fields, falling back to legacy `name`. */
 export function fullName(u: Nameish): string {
   if (u.firstName) return [u.firstName.trim(), (u.lastName ?? "").trim()].filter(Boolean).join(" ");

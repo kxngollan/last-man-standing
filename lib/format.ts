@@ -35,6 +35,11 @@ export function longDate(iso: string): string {
   });
 }
 
+/** "Sep 2025" — coarse enough for "member since". */
+export function monthYear(iso: string): string {
+  return new Date(iso).toLocaleDateString(LOCALE, { ...ZONE, month: "short", year: "numeric" });
+}
+
 /** "Sat 14 Feb, 15:00" — deadlines and other date+time moments. */
 export function dateTimeLabel(iso: string): string {
   return new Date(iso).toLocaleString(LOCALE, {

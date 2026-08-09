@@ -9,6 +9,7 @@ import RulesModal from "./RulesModal";
 import FeedbackModal, { type FeedbackModalHandle } from "./FeedbackModal";
 import ReportIssueModal, { type ReportIssueModalHandle } from "./ReportIssueModal";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { initialsOf } from "@/lib/displayName";
 import styles from "./AppBar.module.css";
 
 const NAV = [
@@ -21,13 +22,6 @@ const NAV = [
 
 // Table and fixtures are public — the only destinations shown signed-out.
 const PUBLIC_NAV = NAV.filter((i) => i.href === "/table" || i.href === "/fixtures");
-
-function initialsOf(name?: string | null): string {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const letters = parts.slice(0, 2).map((w) => w[0]).join("");
-  return (letters || name[0] || "?").toUpperCase();
-}
 
 function AccountMenu({
   onFeedback,
@@ -80,6 +74,9 @@ function AccountMenu({
             {name && <span className={styles.menuName}>{name}</span>}
             {email && <span className={styles.menuEmail}>{email}</span>}
           </div>
+          <Link href="/profile" className={styles.menuLink} onClick={() => setOpen(false)}>
+            Profile
+          </Link>
           {session?.user?.isAdmin && (
             <Link
               href="/admin"
