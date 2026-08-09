@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { connectDB } from "@/database/connect";
-import { User } from "@/models/User";
+import { User } from "@/models/User/User";
 import { nameParts } from "@/lib/displayName";
 import { errorResponse } from "@/lib/api";
 import type { AdminUserRow } from "@/lib/game/portalTypes";

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/authz";
 import { connectDB } from "@/database/connect";
-import { Feedback } from "@/models/Feedback";
+import { Feedback } from "@/models/Report/Feedback";
 import { feedbackSchema } from "@/lib/validation";
 import { rateLimit } from "@/lib/rateLimit";
 import { readJson, errorResponse } from "@/lib/api";

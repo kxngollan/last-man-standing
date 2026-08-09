@@ -1,7 +1,7 @@
 import { connectDB } from "@/database/connect";
-import { Pick } from "@/models/Pick";
-import { Entry } from "@/models/Entry";
-import { Fixture } from "@/models/Fixture";
+import { Pick } from "@/models/Game/Pick";
+import { Entry } from "@/models/Game/Entry";
+import { Fixture } from "@/models/Teams/Fixture";
 import { getPlayableGame, requireAliveEntry } from "./queries";
 import { getPickWindow } from "./pickWindow";
 import { GameError } from "./errors";

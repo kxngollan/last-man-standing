@@ -1,11 +1,11 @@
 import { type Types, type HydratedDocument } from "mongoose";
 import { connectDB } from "@/database/connect";
-import { Game, type IGame } from "@/models/Game";
-import { Entry, type IEntry } from "@/models/Entry";
-import { Pick } from "@/models/Pick";
-import { Team } from "@/models/Team";
-import { Fixture } from "@/models/Fixture";
-import { User } from "@/models/User";
+import { Game, type IGame } from "@/models/Game/Game";
+import { Entry, type IEntry } from "@/models/Game/Entry";
+import { Pick } from "@/models/Game/Pick";
+import { Team } from "@/models/Teams/Team";
+import { Fixture } from "@/models/Teams/Fixture";
+import { User } from "@/models/User/User";
 import { publicName } from "@/lib/displayName";
 import { getMatchdayDeadline, isLocked } from "./deadline";
 import { getPickWindow } from "./pickWindow";

@@ -1,4 +1,4 @@
-import { Fixture } from "@/models/Fixture";
+import { Fixture } from "@/models/Teams/Fixture";
 
 /** The pick deadline for a matchday = kickoff of its earliest fixture. */
 export async function getMatchdayDeadline(

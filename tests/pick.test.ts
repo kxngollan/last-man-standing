@@ -1,8 +1,8 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from "vitest";
 import { makePick, playWildcard, undoWildcard } from "@/lib/game/pick";
 import { GameError } from "@/lib/game/errors";
-import { Pick } from "@/models/Pick";
-import { Entry } from "@/models/Entry";
+import { Pick } from "@/models/Game/Pick";
+import { Entry } from "@/models/Game/Entry";
 import {
   initDb,
   clearDb,

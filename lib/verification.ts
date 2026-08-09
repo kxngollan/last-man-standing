@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { connectDB } from "@/database/connect";
-import { VerificationToken } from "@/models/VerificationToken";
-import { User } from "@/models/User";
+import { VerificationToken } from "@/models/User/VerificationToken";
+import { User } from "@/models/User/User";
 import { isAdminEmail } from "@/lib/adminEmails";
 
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h

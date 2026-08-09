@@ -1,4 +1,4 @@
-import { Fixture } from "@/models/Fixture";
+import { Fixture } from "@/models/Teams/Fixture";
 import { syncFixtures } from "@/lib/football-api/sync";
 import { acquireLock, releaseLock } from "@/lib/locks";
 import { getMatchdayDeadline, isLocked } from "./deadline";

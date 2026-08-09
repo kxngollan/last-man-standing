@@ -1,6 +1,6 @@
 import { connectDB } from "@/database/connect";
-import { Team } from "@/models/Team";
-import { Fixture, type FixtureStatus, type FixtureWinner } from "@/models/Fixture";
+import { Team } from "@/models/Teams/Team";
+import { Fixture, type FixtureStatus, type FixtureWinner } from "@/models/Teams/Fixture";
 import { fetchPLTeams, fetchPLMatchday, fetchPLSeasonMatches, type FdMatch } from "./client";
 
 /** Upsert a batch of API matches into the Fixture collection. */

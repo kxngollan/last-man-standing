@@ -19,9 +19,9 @@
  * weak dev credentials can't land in a production database by accident.
  */
 import { connectDB } from "@/database/connect";
-import { User } from "@/models/User";
-import { Team } from "@/models/Team";
-import { Fixture } from "@/models/Fixture";
+import { User } from "@/models/User/User";
+import { Team } from "@/models/Teams/Team";
+import { Fixture } from "@/models/Teams/Fixture";
 import { hashPassword } from "@/lib/password";
 import { syncTeams, syncSeasonFixtures } from "@/lib/football-api/sync";
 import { DEFAULT_SEASON } from "@/lib/game/constants";

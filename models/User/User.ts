@@ -12,6 +12,7 @@ export interface IUser {
   dob: Date;
   emailVerified: boolean;
   isAdmin: boolean;
+  banned: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +33,7 @@ const UserSchema = new Schema<IUser>(
     dob: { type: Date, required: true },
     emailVerified: { type: Boolean, default: false },
     isAdmin: { type: Boolean, default: false },
+    banned: {type: Boolean, default: false}
   },
   { timestamps: true }
 );

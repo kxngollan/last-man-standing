@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/database/connect";
-import { User } from "@/models/User";
-import { VerificationToken } from "@/models/VerificationToken";
+import { User } from "@/models/User/User";
+import { VerificationToken } from "@/models/User/VerificationToken";
 import { signupSchema } from "@/lib/validation";
 import { hashPassword } from "@/lib/password";
 import { isOldEnough } from "@/lib/age";

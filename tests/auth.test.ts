@@ -3,8 +3,8 @@ import { rateLimit } from "@/lib/rateLimit";
 import { createResetToken, resetPasswordWithToken } from "@/lib/passwordReset";
 import { createVerificationToken, consumeVerificationToken } from "@/lib/verification";
 import { POST as signUp } from "@/app/api/sign-up/route";
-import { User } from "@/models/User";
-import { PasswordResetToken } from "@/models/PasswordResetToken";
+import { User } from "@/models/User/User";
+import { PasswordResetToken } from "@/models/User/PasswordResetToken";
 import { initDb, clearDb, closeDb, seedUser } from "./helpers";
 
 beforeAll(initDb);

@@ -1,5 +1,5 @@
 import { connectDB } from "@/database/connect";
-import { Game, type IGame } from "@/models/Game";
+import { Game, type IGame } from "@/models/Game/Game";
 import { syncFixtures } from "@/lib/football-api/sync";
 import { DEFAULT_SEASON } from "./constants";
 import { GameError } from "./errors";

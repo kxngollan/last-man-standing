@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { connectDB } from "@/database/connect";
-import { Feedback } from "@/models/Feedback";
-import { User } from "@/models/User";
+import { Feedback } from "@/models/Report/Feedback";
+import { User } from "@/models/User/User";
 import { fullName } from "@/lib/displayName";
 import { errorResponse } from "@/lib/api";
 import type { AdminFeedbackList, AdminFeedbackRow } from "@/lib/game/portalTypes";

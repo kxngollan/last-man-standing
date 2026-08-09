@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { requireAdmin } from "@/lib/authz";
 import { connectDB } from "@/database/connect";
-import { User } from "@/models/User";
+import { User } from "@/models/User/User";
 import { adminUserUpdateSchema } from "@/lib/validation";
 import { fullName, nameParts } from "@/lib/displayName";
 import { readJson, errorResponse } from "@/lib/api";

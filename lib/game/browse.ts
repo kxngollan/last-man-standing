@@ -1,6 +1,6 @@
 import { connectDB } from "@/database/connect";
-import { Team } from "@/models/Team";
-import { Fixture, type IFixture } from "@/models/Fixture";
+import { Team } from "@/models/Teams/Team";
+import { Fixture, type IFixture } from "@/models/Teams/Fixture";
 import { syncSeasonFixtures } from "@/lib/football-api/sync";
 import { acquireLock, releaseLock } from "@/lib/locks";
 import { DEFAULT_SEASON, TOTAL_MATCHDAYS, INCOMPLETE_STATUSES } from "./constants";

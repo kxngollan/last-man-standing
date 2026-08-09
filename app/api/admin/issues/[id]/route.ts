@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { requireAdmin } from "@/lib/authz";
 import { connectDB } from "@/database/connect";
-import { IssueReport } from "@/models/IssueReport";
+import { IssueReport } from "@/models/Report/IssueReport";
 import { readJson, errorResponse } from "@/lib/api";
 
 // Admin triage: flip an issue between open and resolved.

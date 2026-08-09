@@ -1,15 +1,15 @@
 import mongoose, { Types } from "mongoose";
 import { connectDB } from "@/database/connect";
-import { Game, type IGame } from "@/models/Game";
-import { Entry } from "@/models/Entry";
-import { Pick } from "@/models/Pick";
-import { Team } from "@/models/Team";
-import { Fixture, type FixtureStatus, type FixtureWinner } from "@/models/Fixture";
-import { User } from "@/models/User";
+import { Game, type IGame } from "@/models/Game/Game";
+import { Entry } from "@/models/Game/Entry";
+import { Pick } from "@/models/Game/Pick";
+import { Team } from "@/models/Teams/Team";
+import { Fixture, type FixtureStatus, type FixtureWinner } from "@/models/Teams/Fixture";
+import { User } from "@/models/User/User";
 import { Lock } from "@/models/Lock";
 import { RateLimit } from "@/models/RateLimit";
-import { VerificationToken } from "@/models/VerificationToken";
-import { PasswordResetToken } from "@/models/PasswordResetToken";
+import { VerificationToken } from "@/models/User/VerificationToken";
+import { PasswordResetToken } from "@/models/User/PasswordResetToken";
 
 export const SEASON = 2025;
 

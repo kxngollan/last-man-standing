@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { connectDB } from "@/database/connect";
-import { PasswordResetToken } from "@/models/PasswordResetToken";
-import { User } from "@/models/User";
+import { PasswordResetToken } from "@/models/User/PasswordResetToken";
+import { User } from "@/models/User/User";
 import { hashPassword } from "@/lib/password";
 import { isAdminEmail } from "@/lib/adminEmails";
 

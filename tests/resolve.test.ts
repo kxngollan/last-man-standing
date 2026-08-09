@@ -1,9 +1,9 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from "vitest";
 import { resolveMatchday, autoPickForMatchday } from "@/lib/game/resolve";
 import { acquireLock, releaseLock } from "@/lib/locks";
-import { Game } from "@/models/Game";
-import { Entry } from "@/models/Entry";
-import { Pick } from "@/models/Pick";
+import { Game } from "@/models/Game/Game";
+import { Entry } from "@/models/Game/Entry";
+import { Pick } from "@/models/Game/Pick";
 import {
   initDb,
   clearDb,

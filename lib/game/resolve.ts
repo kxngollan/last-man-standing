@@ -1,10 +1,10 @@
 import mongoose, { type HydratedDocument, type Types } from "mongoose";
 import { connectDB } from "@/database/connect";
-import { Game, type IGame } from "@/models/Game";
-import { Entry } from "@/models/Entry";
-import { Pick, type PickResult } from "@/models/Pick";
-import { Team } from "@/models/Team";
-import { Fixture } from "@/models/Fixture";
+import { Game, type IGame } from "@/models/Game/Game";
+import { Entry } from "@/models/Game/Entry";
+import { Pick, type PickResult } from "@/models/Game/Pick";
+import { Team } from "@/models/Teams/Team";
+import { Fixture } from "@/models/Teams/Fixture";
 import { syncFixtures } from "@/lib/football-api/sync";
 import { acquireLock, releaseLock } from "@/lib/locks";
 import { INCOMPLETE_STATUSES, UNPLAYABLE_STATUSES, DECIDED_STATUSES } from "./constants";

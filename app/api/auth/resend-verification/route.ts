@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/database/connect";
-import { User } from "@/models/User";
+import { User } from "@/models/User/User";
 import { rotateVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/email";
 import isEmail from "@/lib/isEmail";

@@ -1,6 +1,6 @@
 import { connectDB } from "@/database/connect";
-import { Game } from "@/models/Game";
-import { Entry } from "@/models/Entry";
+import { Game } from "@/models/Game/Game";
+import { Entry } from "@/models/Game/Entry";
 import { GameError } from "./errors";
 
 /** Join the current game. Only allowed while the game is in registration. */

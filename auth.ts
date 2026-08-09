@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { connectDB } from "@/database/connect";
-import { User } from "@/models/User";
+import { User } from "@/models/User/User";
 import { verifyPassword } from "@/lib/password";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import isEmail from "@/lib/isEmail";
