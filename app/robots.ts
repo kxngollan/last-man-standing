@@ -11,6 +11,9 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         "/api/",
         "/admin",
+        // Referral short links — they only exist to be shared, not crawled.
+        "/r/",
+        "/referrals",
         "/dashboard",
         "/make-selection",
         "/team",

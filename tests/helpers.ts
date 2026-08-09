@@ -10,6 +10,8 @@ import { Lock } from "@/models/Lock";
 import { RateLimit } from "@/models/RateLimit";
 import { VerificationToken } from "@/models/User/VerificationToken";
 import { PasswordResetToken } from "@/models/User/PasswordResetToken";
+import { UserReferralHandle } from "@/models/User/UserReferralHandle";
+import { UserReferredBy } from "@/models/User/UserReferredBy";
 
 export const SEASON = 2025;
 
@@ -17,9 +19,20 @@ export const SEASON = 2025;
 export async function initDb(): Promise<void> {
   await connectDB();
   await Promise.all(
-    [Game, Entry, Pick, Team, Fixture, User, Lock, RateLimit, VerificationToken, PasswordResetToken].map(
-      (m) => m.init()
-    )
+    [
+      Game,
+      Entry,
+      Pick,
+      Team,
+      Fixture,
+      User,
+      Lock,
+      RateLimit,
+      VerificationToken,
+      PasswordResetToken,
+      UserReferralHandle,
+      UserReferredBy,
+    ].map((m) => m.init())
   );
 }
 

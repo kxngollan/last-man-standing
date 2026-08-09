@@ -3,6 +3,7 @@ import { connectDB } from "@/database/connect";
 import { VerificationToken } from "@/models/User/VerificationToken";
 import { User } from "@/models/User/User";
 import { isAdminEmail } from "@/lib/adminEmails";
+import { confirmReferral } from "@/lib/referral";
 
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -52,5 +53,9 @@ export async function consumeVerificationToken(raw: string): Promise<VerifyOutco
   // Verification proves inbox ownership — the safe moment to grant admin.
   if (isAdminEmail(user.email)) user.isAdmin = true;
   await user.save();
+
+  // Same reasoning: a referral only counts once a real inbox is behind it, so
+  // nobody can pad their total with addresses they never confirm.
+  await confirmReferral(String(user._id));
   return "verified";
 }

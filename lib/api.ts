@@ -48,6 +48,27 @@ export function errorResponse(err: unknown): NextResponse {
   );
 }
 
+/**
+ * One cookie off a request. Route handlers are already dynamic, so reading
+ * cookies here costs nothing — unlike `cookies()` in a server component, which
+ * would opt static pages into dynamic rendering.
+ */
+export function readCookie(request: Request, name: string): string | null {
+  const header = request.headers.get("cookie");
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    if (part.slice(0, eq).trim() !== name) continue;
+    try {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    } catch {
+      return null; // malformed percent-encoding — treat as absent
+    }
+  }
+  return null;
+}
+
 /** Parse a JSON body, returning null on failure. */
 export async function readJson<T = unknown>(request: Request): Promise<T | null> {
   try {

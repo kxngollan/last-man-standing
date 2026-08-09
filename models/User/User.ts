@@ -19,6 +19,8 @@ export interface IUser {
    * Null for accounts that have never changed it.
    */
   passwordChangedAt: Date | null;
+  /** Opted out of the public referral leaderboard. Their own count still shows. */
+  hideFromReferralBoard: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +43,7 @@ const UserSchema = new Schema<IUser>(
     isAdmin: { type: Boolean, default: false },
     banned: {type: Boolean, default: false},
     passwordChangedAt: { type: Date, default: null },
+    hideFromReferralBoard: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

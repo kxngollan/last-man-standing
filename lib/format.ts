@@ -35,6 +35,16 @@ export function longDate(iso: string): string {
   });
 }
 
+/** "1 January 1990" — dates outside the season, where the year is the point. */
+export function fullDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(LOCALE, {
+    ...ZONE,
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 /** "Sep 2025" — coarse enough for "member since". */
 export function monthYear(iso: string): string {
   return new Date(iso).toLocaleDateString(LOCALE, { ...ZONE, month: "short", year: "numeric" });

@@ -179,7 +179,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-md);
+  /* A team tally is wide — let it drop below the label rather than
+     squeezing "Goes back to" down to one word per line. */
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-md);
   padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-card);
@@ -188,6 +191,7 @@
 .recordKey {
   font-size: var(--text-sm);
   color: var(--color-muted);
+  white-space: nowrap;
 }
 .recordVal {
   font-weight: 700;

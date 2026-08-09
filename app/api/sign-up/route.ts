@@ -7,9 +7,15 @@ import { hashPassword } from "@/lib/password";
 import { isOldEnough } from "@/lib/age";
 import { createVerificationToken } from "@/lib/verification";
 import { sendVerificationEmail } from "@/lib/email";
-import { readJson, errorResponse } from "@/lib/api";
+import { readJson, readCookie, errorResponse } from "@/lib/api";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { SITE_URL } from "@/lib/site";
+import {
+  REF_COOKIE,
+  clearReferralRecords,
+  ensureReferralHandle,
+  recordReferral,
+} from "@/lib/referral";
 
 export async function POST(request: Request) {
   try {
@@ -81,6 +87,15 @@ export async function POST(request: Request) {
       throw err;
     }
 
+    // Their own link, and credit to whoever sent them. Neither can be allowed
+    // to fail a registration that has already succeeded.
+    try {
+      await ensureReferralHandle(String(user._id));
+      await recordReferral(String(user._id), readCookie(request, REF_COOKIE));
+    } catch (err) {
+      console.error("[signup] referral bookkeeping failed:", (err as Error).message);
+    }
+
     // Send the confirmation link. If it can't be sent, roll the account back
     // so the player can simply sign up again — with no resend flow, an
     // unverified account with no email would be permanently locked out.
@@ -89,6 +104,9 @@ export async function POST(request: Request) {
       await sendVerificationEmail(emailLc, `${SITE_URL}/verify?token=${token}`);
     } catch (err) {
       await VerificationToken.deleteMany({ userId: user._id });
+      // The account is going — its handle and referral row go with it, or they
+      // outlive the user and the handle stays claimed by nobody.
+      await clearReferralRecords(String(user._id));
       await User.deleteOne({ _id: user._id });
       throw err;
     }

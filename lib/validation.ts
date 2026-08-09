@@ -52,6 +52,17 @@ export const changePasswordSchema = z
     path: ["newPassword"],
   });
 
+/** Your referral link, and whether you appear on the public board. */
+export const updateReferralSchema = z
+  .object({
+    // Length and character rules live in lib/referral.ts validateHandle, so
+    // there's one definition of a legal handle. This only bounds the payload.
+    referralHandle: z.string().trim().max(60).optional(),
+    hideFromBoard: z.boolean().optional(),
+  })
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update." });
+
 export const loginSchema = z
   .object({
     email: z.string().trim().regex(EMAIL_RE, "Enter a valid email address."),

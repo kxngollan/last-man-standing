@@ -58,6 +58,35 @@
   padding: var(--space-xs) var(--space-sm);
 }
 
+/* ---- Referral link ---- */
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+}
+.link {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper-3);
+  overflow-wrap: anywhere;
+}
+.warn {
+  font-size: var(--text-sm);
+  color: var(--color-out-ink);
+  background: var(--color-out-wash);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  max-width: 60ch;
+}
+.count {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
 /* ---- Read-only account details ---- */
 .details {
   display: flex;

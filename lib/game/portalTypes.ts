@@ -129,6 +129,12 @@ export interface AdminUserRow {
   emailVerified: boolean;
   isAdmin: boolean;
   createdAt: string;
+  /** Referral fields — only the list endpoint fills these in. */
+  referralHandle?: string;
+  /** Public name of whoever brought them in, if anyone. */
+  referredBy?: string | null;
+  /** Confirmed referrals they've made. */
+  referrals?: number;
 }
 
 export interface AdminOverview {

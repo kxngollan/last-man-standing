@@ -316,6 +316,19 @@ function PlayersPanel() {
                   >
                     {u.emailVerified ? "Verified" : "Unverified"}
                   </span>
+                  {!!u.referrals && (
+                    <span
+                      className="lms-chip lms-chip--mono"
+                      title={`${u.referrals} confirmed referrals`}
+                    >
+                      {u.referrals} referred
+                    </span>
+                  )}
+                  {u.referredBy && (
+                    <span className="lms-chip lms-chip--neutral" title="Who brought them in">
+                      via {u.referredBy}
+                    </span>
+                  )}
                 </span>
 
                 <span className={styles.userActions}>

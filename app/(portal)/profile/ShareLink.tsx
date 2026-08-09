@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 
-/** Copies the profile's URL. The address bar is the fallback if it's blocked. */
-export default function ShareLink({ path }: { path: string }) {
+/** Copies a link on this site. The address bar is the fallback if it's blocked. */
+export default function ShareLink({
+  path,
+  label = "Share profile",
+  copiedLabel = "Link copied",
+}: {
+  path: string;
+  label?: string;
+  copiedLabel?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -23,7 +31,7 @@ export default function ShareLink({ path }: { path: string }) {
       onClick={() => void copy()}
       aria-live="polite"
     >
-      {copied ? "Link copied" : "Share profile"}
+      {copied ? copiedLabel : label}
     </button>
   );
 }

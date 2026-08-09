@@ -13,6 +13,7 @@ const PORTAL_PREFIXES = [
   "/picks",
   "/profile",
   "/settings",
+  "/referrals",
 ];
 const AUTH_PAGES = ["/login", "/signup"];
 
@@ -52,6 +53,7 @@ export const config = {
     "/picks/:path*",
     "/profile/:path*",
     "/settings/:path*",
+    "/referrals/:path*",
     "/admin/:path*",
     "/login",
     "/signup",
