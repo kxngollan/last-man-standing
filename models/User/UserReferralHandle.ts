@@ -1,4 +1,4 @@
-import {Schema, Model, models, model } from "mongoose"
+import {Schema, type Model, models, model } from "mongoose"
 
 export interface IUserReferalHandle {
     userId: string;
