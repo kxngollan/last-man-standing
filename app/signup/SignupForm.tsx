@@ -46,7 +46,7 @@ function validate(f: Fields): Errors {
   return e;
 }
 
-export default function SignupPage() {
+export default function SignupForm({ inviter }: { inviter?: string | null }) {
   const [fields, setFields] = useState<Fields>({
     firstName: "",
     lastName: "",
@@ -192,6 +192,13 @@ export default function SignupPage() {
 
   return (
     <AuthShell>
+      {/* The share card promises "X has invited you" — say so here too, or
+          arriving on a generic page reads like the link went wrong. */}
+      {inviter && (
+        <p className={styles.invite}>
+          <strong>{inviter}</strong> invited you to play.
+        </p>
+      )}
       <h1 className={styles.title}>Create your account</h1>
       <p className={styles.lede}>Free to play. You must be 16 or older to sign up.</p>
 

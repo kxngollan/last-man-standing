@@ -22,7 +22,12 @@ export async function GET(
   { params }: { params: Promise<{ handle: string }> }
 ) {
   const { handle } = await params;
-  const response = NextResponse.redirect(new URL("/signup", request.url));
+  // ?ref= carries the handle to the destination so /signup can render a
+  // personalised share card: crawlers follow this redirect and read the
+  // metadata there, not here. The cookie below is what actually credits it.
+  const target = new URL("/signup", request.url);
+  target.searchParams.set("ref", handle.trim().toLowerCase());
+  const response = NextResponse.redirect(target);
 
   // A database blip must not break the link; they just arrive uncredited.
   const referrerUserId = await resolveHandle(handle).catch(() => null);

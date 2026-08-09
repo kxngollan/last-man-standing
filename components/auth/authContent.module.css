@@ -1,5 +1,17 @@
 /* Shared content styles for the auth screens (signup / login / verify). */
 
+/* "Sam K. invited you" — shown when they arrived on a referral link, so the
+   page matches the share card that brought them here. */
+.invite {
+  display: inline-block;
+  font-size: var(--text-sm);
+  color: var(--color-accent-ink);
+  background: var(--color-accent-wash);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2xs) var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
 .title {
   font-size: var(--text-xl);
   margin-bottom: var(--space-2xs);
