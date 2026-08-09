@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AppBar from "@/components/portal/AppBar";
+import SessionWrapper from "@/components/SessionWrapper";
 
 // Private by default — the public pages (table, fixtures) override robots
 // and set their own titles in their page metadata.
@@ -12,12 +13,13 @@ export default function PortalLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // AppBar carries its own SessionProvider — everything that needs session
-  // state lives inside it, so pages without it stay session-free.
+  // One SessionProvider for the whole portal, covering the app bar and the
+  // pages alike: the settings form calls `update()` after a rename, and the bar
+  // only sees it because they share this context.
   return (
-    <>
+    <SessionWrapper>
       <AppBar />
       {children}
-    </>
+    </SessionWrapper>
   );
 }

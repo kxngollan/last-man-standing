@@ -13,6 +13,12 @@ export interface IUser {
   emailVerified: boolean;
   isAdmin: boolean;
   banned: boolean;
+  /**
+   * When the password last changed. Sessions issued before this are refused at
+   * the next claims refresh, so changing a password drops every other device.
+   * Null for accounts that have never changed it.
+   */
+  passwordChangedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,7 +39,8 @@ const UserSchema = new Schema<IUser>(
     dob: { type: Date, required: true },
     emailVerified: { type: Boolean, default: false },
     isAdmin: { type: Boolean, default: false },
-    banned: {type: Boolean, default: false}
+    banned: {type: Boolean, default: false},
+    passwordChangedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

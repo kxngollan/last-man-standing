@@ -6,7 +6,14 @@ import { authConfig } from "@/auth.config";
 // Uses the DB-free auth config (JWT read only), so it stays lightweight.
 const { auth } = NextAuth(authConfig);
 
-const PORTAL_PREFIXES = ["/dashboard", "/make-selection", "/team", "/picks", "/profile"];
+const PORTAL_PREFIXES = [
+  "/dashboard",
+  "/make-selection",
+  "/team",
+  "/picks",
+  "/profile",
+  "/settings",
+];
 const AUTH_PAGES = ["/login", "/signup"];
 
 export default auth((req) => {
@@ -44,6 +51,7 @@ export const config = {
     "/team/:path*",
     "/picks/:path*",
     "/profile/:path*",
+    "/settings/:path*",
     "/admin/:path*",
     "/login",
     "/signup",

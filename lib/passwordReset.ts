@@ -45,6 +45,8 @@ export async function resetPasswordWithToken(
   if (!user) return "invalid";
 
   user.passwordHash = await hashPassword(newPassword);
+  // Someone locked out by an attacker resets here — drop the attacker's session.
+  user.passwordChangedAt = new Date();
   // Receiving the reset email proves ownership, so confirm the address too —
   // and inbox ownership is the bar for the admin allowlist.
   user.emailVerified = true;

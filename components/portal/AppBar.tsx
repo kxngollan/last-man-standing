@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import SessionWrapper from "@/components/SessionWrapper";
 import RulesModal from "./RulesModal";
 import FeedbackModal, { type FeedbackModalHandle } from "./FeedbackModal";
 import ReportIssueModal, { type ReportIssueModalHandle } from "./ReportIssueModal";
@@ -76,6 +75,9 @@ function AccountMenu({
           </div>
           <Link href="/profile" className={styles.menuLink} onClick={() => setOpen(false)}>
             Profile
+          </Link>
+          <Link href="/settings" className={styles.menuLink} onClick={() => setOpen(false)}>
+            Settings
           </Link>
           {session?.user?.isAdmin && (
             <Link
@@ -234,14 +236,10 @@ function AppBarInner() {
 }
 
 /**
- * AppBar owns its SessionProvider so it works on any page that renders it
- * (the portal layout AND the public landing page) — useSession lives only in
- * this tree (nav state + the feedback/issue modals).
+ * Expects a SessionProvider above it — the portal layout and the landing page
+ * each supply one. It used to carry its own, but a second provider elsewhere on
+ * the page is a separate context: `update()` in one (the settings form renaming
+ * you) would never reach the other, and the bar would keep showing the old name.
+ * One provider per page keeps them in step.
  */
-export default function AppBar() {
-  return (
-    <SessionWrapper>
-      <AppBarInner />
-    </SessionWrapper>
-  );
-}
+export default AppBarInner;

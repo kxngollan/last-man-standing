@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { auth } from '@/auth'
 import AppBar from '@/components/portal/AppBar'
+import SessionWrapper from '@/components/SessionWrapper'
 import { connectDB } from '@/database/connect'
 import { Team } from '@/models/Teams/Team'
 import { TeamCrest } from '@/components/portal/TeamCrest'
@@ -121,7 +122,9 @@ export default async function LandingPage() {
       <script type='application/ld+json' dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       {/* Signed in → the app's nav bar; signed out → N7 brutal-slab marketing nav */}
       {isLoggedIn ? (
-        <AppBar />
+        <SessionWrapper>
+          <AppBar />
+        </SessionWrapper>
       ) : (
         <header className={styles.nav}>
           <span className={styles.wordmark}>Last Man Standing</span>

@@ -4,6 +4,7 @@ import { authConfig } from "./auth.config";
 import { connectDB } from "@/database/connect";
 import { User } from "@/models/User/User";
 import { verifyPassword } from "@/lib/password";
+import { sessionOutlivedPassword } from "@/lib/account";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import isEmail from "@/lib/isEmail";
 
@@ -20,7 +21,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         // Fresh login — stamp the claims.
         token.id = (user as { id?: string }).id;
@@ -30,7 +31,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       const refreshedAt = typeof token.refreshedAt === "number" ? token.refreshedAt : 0;
-      if (Date.now() - refreshedAt < CLAIMS_TTL_MS) return token;
+      // `update()` from the client forces an immediate re-read — that's how a
+      // rename reaches the app bar without waiting out the TTL. It deliberately
+      // does NOT skip the checks below: any session can call it, so treating it
+      // as trusted would hand a revoked session a way to renew itself.
+      if (trigger !== "update" && Date.now() - refreshedAt < CLAIMS_TTL_MS) return token;
 
       // Claims are stale — re-read them so deletion/demotion actually bites.
       try {
@@ -38,9 +43,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       } catch {
         return token; // DB blip: keep the old claims until the next request
       }
-      const dbUser = await User.findById(token.id).select("isAdmin emailVerified").lean();
+      const dbUser = await User.findById(token.id)
+        .select("isAdmin emailVerified name passwordChangedAt")
+        .lean();
       if (!dbUser || !dbUser.emailVerified) return null; // gone or unverified → sign out
+
+      // A password change ends every session that predates it. The device that
+      // made the change signs in again with the new password on the spot, so it
+      // comes back holding a token stamped after this moment.
+      if (sessionOutlivedPassword(refreshedAt, dbUser.passwordChangedAt)) return null;
+
       token.isAdmin = dbUser.isAdmin;
+      token.name = dbUser.name;
       token.refreshedAt = Date.now();
       return token;
     },

@@ -1,0 +1,91 @@
+/* Hallmark · genre: playful · macrostructure: Long Document · theme: Hum · nav: app-shell bar · footer: none
+ * motion: none (Long Document is motion-off) · contrast: pass · mobile: pass
+ */
+
+.main {
+  width: 100%;
+  max-width: 46rem;
+  margin-inline: auto;
+  padding: clamp(var(--space-lg), 4vw, var(--space-2xl))
+    clamp(var(--space-md), 4vw, var(--space-xl)) var(--space-3xl);
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-strong);
+  margin-bottom: var(--space-2xs);
+}
+.title {
+  font-size: var(--text-2xl);
+}
+
+.block {
+  margin-top: var(--space-2xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--color-rule);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: start;
+  max-width: 34rem;
+}
+/* Two names sit side by side once there's room for both. */
+.row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-sm);
+  width: 100%;
+}
+@media (min-width: 34rem) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+}
+
+.ok {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-safe-ink);
+  background: var(--color-safe-wash);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* ---- Read-only account details ---- */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-width: 34rem;
+}
+.detail {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+}
+.detailKey {
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.detailVal {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.quiet {
+  color: var(--color-ink-2);
+  font-weight: 600;
+}

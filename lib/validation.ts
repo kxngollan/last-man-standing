@@ -28,6 +28,30 @@ export const adminUserUpdateSchema = z
   .strict()
   .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update." });
 
+/** A player renaming themselves from the settings page. */
+export const updateNameSchema = z
+  .object({
+    firstName: z.string().trim().min(1, "Enter your first name.").max(40),
+    lastName: z.string().trim().min(1, "Enter your last name.").max(40),
+  })
+  .strict();
+
+/** Changing your own password: prove the current one, then set a new one. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password."),
+    // Same bounds as signup — bcrypt only reads the first 72 bytes.
+    newPassword: z
+      .string()
+      .min(8, "Password must be at least 8 characters.")
+      .max(72, "Password must be 72 characters or fewer."),
+  })
+  .strict()
+  .refine((v) => v.currentPassword !== v.newPassword, {
+    message: "Your new password must be different from your current one.",
+    path: ["newPassword"],
+  });
+
 export const loginSchema = z
   .object({
     email: z.string().trim().regex(EMAIL_RE, "Enter a valid email address."),

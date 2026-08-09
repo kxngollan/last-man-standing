@@ -102,7 +102,7 @@ export function ProfileView({ profile }: { profile: UserProfile }) {
           {/* Always the by-id URL: /profile only ever shows the viewer their own. */}
           <ShareLink path={`/profile/${profile.id}`} />
           {isSelf && (
-            <Link href="/setting" className={styles.settingsLink}>
+            <Link href="/settings" className={styles.settingsLink}>
               Settings
             </Link>
           )}

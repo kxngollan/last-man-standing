@@ -129,6 +129,34 @@ export async function sendVerificationEmail(to: string, link: string): Promise<v
   });
 }
 
+/**
+ * Told after the fact, not asked — this is how someone finds out their account
+ * was taken. The link goes to the reset flow so they can lock it back down.
+ */
+export async function sendPasswordChangedEmail(to: string, link: string): Promise<void> {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log(`\n[email] Password changed for ${to}. Reset link: ${link}\n`);
+    return;
+  }
+  await deliver(transporter, {
+    from: FROM,
+    to,
+    subject: "Your Last Man Standing password was changed",
+    text: `Your password was just changed, and every other device has been signed out.\n\nIf that was you, there's nothing to do.\n\nIf it wasn't, reset your password now:\n${link}`,
+    attachments: logoAttachments(),
+    html: flyerHtml({
+      preheader: "Your password was changed. If that wasn't you, act now.",
+      headline: "Your password changed",
+      body: "Your password was just changed and every other device has been signed out. If that was you, there&rsquo;s nothing to do here.",
+      ctaLabel: "It wasn’t me — reset it",
+      link,
+      ticketNote: "Security notice &middot; sent to the account address",
+      finePrint: "Was it you? Then you can safely ignore this email.",
+    }),
+  });
+}
+
 export async function sendPasswordResetEmail(to: string, link: string): Promise<void> {
   const transporter = getTransporter();
   if (!transporter) {
