@@ -3,15 +3,9 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { connectDB } from "@/database/connect";
 import { User } from "@/models/User/User";
-import { verifyPassword } from "@/lib/password";
 import { sessionOutlivedPassword } from "@/lib/account";
-import { rateLimit, clientIp } from "@/lib/rateLimit";
-import isEmail from "@/lib/isEmail";
-
-// Compared against when no account matches the email, so a login attempt
-// costs the same ~bcrypt time whether or not the account exists — response
-// timing can't be used to enumerate accounts. (Hash of a random throwaway.)
-const DUMMY_HASH = "$2b$12$NL4fYDmM6QhQOQu0x7.cXuJfdNFmlEqaRDKWho6zGcmL79ENZMsR6";
+import { attemptLogin } from "@/lib/login";
+import { clientIp } from "@/lib/rateLimit";
 
 // How long a session keeps its claims before re-reading them from the DB.
 // Bounds how long a deleted user or demoted admin keeps working access.
@@ -66,57 +60,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, request) {
+        // The credential check itself lives in lib/login.ts, shared with the
+        // mobile login endpoint. Read fields directly — Auth.js may pass extra
+        // keys (callbackUrl, redirect), so a strict schema would reject.
+        const result = await attemptLogin(credentials?.email, credentials?.password, clientIp(request));
+
         // Auth.js reports every failure to the client as a generic
-        // "CredentialsSignin". We log the reason (never the email — that's
-        // PII and a credential-stuffing oracle in aggregated logs) so it's
-        // visible in the dev server console. Read fields directly — Auth.js
-        // may pass extra keys (callbackUrl, redirect), so a strict schema
-        // would reject.
-        const email =
-          typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
-        const password = typeof credentials?.password === "string" ? credentials.password : "";
-
-        if (!isEmail(email) || password.length < 1) {
-          console.warn("[auth] login rejected: missing or malformed email/password");
+        // "CredentialsSignin". We log the reason (never the email — that's PII
+        // and a credential-stuffing oracle in aggregated logs) so it's visible
+        // in the dev server console.
+        if (!result.ok) {
+          console.warn(`[auth] login rejected: ${result.reason}`);
           return null;
         }
-
-        try {
-          await connectDB();
-
-          const ip = clientIp(request);
-          const ipOk = await rateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000);
-          const emailOk = await rateLimit(`login:email:${email}`, 5, 15 * 60 * 1000);
-          if (!ipOk || !emailOk) {
-            console.warn("[auth] login rejected: rate limited");
-            return null;
-          }
-
-          const user = await User.findOne({ email });
-
-          // Always burn a bcrypt compare so "no such account" and "wrong
-          // password" take the same time.
-          const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
-          if (!user || !ok) {
-            console.warn("[auth] login rejected: unknown email or wrong password");
-            return null;
-          }
-
-          if (!user.emailVerified) {
-            console.warn("[auth] login rejected: email not confirmed yet");
-            return null;
-          }
-
-          return {
-            id: String(user._id),
-            name: user.name,
-            email: user.email,
-            isAdmin: user.isAdmin,
-          };
-        } catch (err) {
-          console.error("[auth] login failed:", (err as Error).message);
-          return null;
-        }
+        return result.user;
       },
     }),
   ],
