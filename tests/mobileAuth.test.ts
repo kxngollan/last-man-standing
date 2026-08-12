@@ -127,6 +127,8 @@ describe("shared login (the door mobile and web both use)", () => {
         name: "Alice Tester",
         email: "alice@example.com",
         isAdmin: false,
+        // Has a date of birth, so there's no onboarding left to do.
+        needsOnboarding: false,
       },
     });
   });

@@ -11,6 +11,7 @@ export const authConfig = {
       if (user) {
         token.id = (user as { id?: string }).id;
         token.isAdmin = (user as { isAdmin?: boolean }).isAdmin ?? false;
+        token.needsOnboarding = (user as { needsOnboarding?: boolean }).needsOnboarding ?? false;
       }
       return token;
     },
@@ -18,6 +19,9 @@ export const authConfig = {
       if (session.user) {
         session.user.id = (token.id as string) ?? "";
         session.user.isAdmin = (token.isAdmin as boolean) ?? false;
+        // Read by proxy.ts to hold a social sign-up at /welcome until it has
+        // given a date of birth.
+        session.user.needsOnboarding = (token.needsOnboarding as boolean) ?? false;
       }
       return session;
     },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import PasswordInput from "@/components/ui/PasswordInput";
@@ -282,10 +283,12 @@ export default function SettingsForms({
   firstName,
   lastName,
   email,
+  hasPassword,
 }: {
   firstName: string;
   lastName: string;
   email: string;
+  hasPassword: boolean;
 }) {
   return (
     <>
@@ -309,11 +312,21 @@ export default function SettingsForms({
             Password
           </h2>
           <p className="lms-head__hint">
-            You&rsquo;ll need your current password. Changing it signs out every other device
-            and sends a note to your email address.
+            {hasPassword ? (
+              <>
+                You&rsquo;ll need your current password. Changing it signs out every other
+                device and sends a note to your email address.
+              </>
+            ) : (
+              <>
+                You sign in with Google or Apple, so there&rsquo;s no password on this account.
+                You can still give it one — <Link href="/forgot">send yourself a link</Link> and
+                choose a password. Signing in with Google or Apple keeps working either way.
+              </>
+            )}
           </p>
         </div>
-        <PasswordForm email={email} />
+        {hasPassword && <PasswordForm email={email} />}
       </section>
     </>
   );

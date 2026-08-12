@@ -22,7 +22,7 @@ export default async function SettingsPage() {
 
   await connectDB();
   const user = await User.findById(session.user.id)
-    .select("name firstName lastName email dob createdAt hideFromReferralBoard")
+    .select("name firstName lastName email dob createdAt hideFromReferralBoard passwordHash")
     .lean();
   // The session outlived the account — nothing to settle here.
   if (!user) redirect("/login?next=/settings");
@@ -44,7 +44,14 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsForms firstName={first} lastName={last} email={user.email} />
+      <SettingsForms
+        firstName={first}
+        lastName={last}
+        email={user.email}
+        // Google/Apple accounts have none until they set one through the reset
+        // flow — there'd be no current password to prove.
+        hasPassword={!!user.passwordHash}
+      />
 
       <section className={styles.block} aria-labelledby="referral-heading">
         <div className="lms-head">
@@ -93,7 +100,7 @@ export default async function SettingsPage() {
           <div className={styles.detail}>
             <dt className={styles.detailKey}>Date of birth</dt>
             <dd className={styles.detailVal} data-nums>
-              {fullDate(new Date(user.dob).toISOString())}
+              {user.dob ? fullDate(new Date(user.dob).toISOString()) : "—"}
             </dd>
           </div>
           <div className={styles.detail}>

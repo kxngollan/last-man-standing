@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import AuthShell from "@/components/auth/AuthShell";
+import OAuthButtons from "@/components/auth/OAuthButtons";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { useCooldown } from "@/components/auth/useCooldown";
 import isEmail from "@/lib/isEmail";
@@ -352,6 +353,10 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
           )}
         </button>
       </form>
+
+      {/* Neither provider tells us a date of birth, so signing up this way
+          lands on /welcome to give one before the first pick. */}
+      <OAuthButtons next="/welcome" />
 
       <p className={styles.alt}>
         By creating an account, you agree to our <Link href="/policy">Privacy Policy</Link>.

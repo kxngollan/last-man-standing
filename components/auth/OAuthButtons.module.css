@@ -1,0 +1,39 @@
+/* Google / Apple buttons, shared by the login and sign-up screens. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+/* "or", with a rule running through it. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-2xs);
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-rule);
+}
+
+.provider {
+  /* The mark sits left, the label stays centred in the button. */
+  position: relative;
+  font-weight: 600;
+}
+
+.mark {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}

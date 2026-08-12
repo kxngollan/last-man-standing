@@ -34,7 +34,9 @@ export const GET = authedRoute(async (me) => {
     name: user.name,
     email: user.email,
     isAdmin: me.isAdmin,
-    dob: new Date(user.dob).toISOString(),
+    // Null between a Google/Apple sign-up and the web's /welcome step, which is
+    // where a date of birth gets collected.
+    dob: user.dob ? new Date(user.dob).toISOString() : null,
     memberSince: new Date(user.createdAt).toISOString(),
     referralHandle,
     referrals,

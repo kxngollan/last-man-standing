@@ -18,6 +18,16 @@ export const signupSchema = z
 
 export type SignupInput = z.infer<typeof signupSchema>;
 
+/**
+ * The one thing Google and Apple can't tell us. Asked for at /welcome, once,
+ * after a social sign-up — the 16+ gate has nothing to work with until then.
+ */
+export const completeProfileSchema = z
+  .object({
+    dob: z.string().min(1, "Enter your date of birth."), // ISO yyyy-mm-dd from the date input
+  })
+  .strict();
+
 /** Admin edits to a player: rename and/or set verification. */
 export const adminUserUpdateSchema = z
   .object({

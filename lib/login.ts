@@ -24,6 +24,15 @@ export interface LoginUser {
   name: string;
   email: string;
   isAdmin: boolean;
+  /**
+   * No date of birth on file, so the 16+ gate hasn't been applied to this
+   * account — it must finish at /welcome before it can play.
+   *
+   * Only ever true for an account created by a Google/Apple sign-in. It can
+   * still arrive through this password login: an account like that can give
+   * itself a password through the reset flow before it has been near /welcome.
+   */
+  needsOnboarding: boolean;
 }
 
 export type LoginResult =
@@ -68,6 +77,7 @@ export async function attemptLogin(
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
+        needsOnboarding: !user.dob,
       },
     };
   } catch (err) {

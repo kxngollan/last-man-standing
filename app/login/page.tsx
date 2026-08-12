@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
+import OAuthButtons from "@/components/auth/OAuthButtons";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { PASSWORD_RESET_ENABLED } from "@/lib/features";
 import isEmail from "@/lib/isEmail";
@@ -15,6 +16,24 @@ function safeNext(next: string | null): string {
   return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
 }
 
+/**
+ * A Google/Apple sign-in that was refused comes back here with ?error= — see
+ * the signIn callback in auth.ts. Anything unrecognised is Auth.js's own
+ * (`Configuration`, `AccessDenied`, …), which we don't explain to the visitor.
+ */
+function oauthError(code: string | null): string {
+  switch (code) {
+    case "unverified-email":
+      return "That account's email address hasn't been verified with the provider, so we can't use it to log you in. Log in with your password instead.";
+    case "malformed":
+      return "We didn't get an email address back from that provider, and we need one. Log in with your password instead.";
+    case null:
+      return "";
+    default:
+      return "We couldn't complete that sign-in. Please try again, or log in with your password.";
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,10 +41,14 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Read once: it belongs to the sign-in they just came back from, not to
+  // whatever they do next on this page.
+  const [providerError, setProviderError] = useState(() => oauthError(searchParams.get("error")));
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+    setProviderError("");
     if (!email || !password) {
       setError("Enter your email and password.");
       return;
@@ -52,6 +75,12 @@ function LoginForm() {
     <AuthShell>
       <h1 className={styles.title}>Welcome back</h1>
       <p className={styles.lede}>Log in to make your pick before the deadline.</p>
+
+      {providerError && (
+        <p className="lms-field__help" data-error="true" role="alert">
+          {providerError}
+        </p>
+      )}
 
       <form className={styles.form} onSubmit={submit} noValidate>
         <div className={`lms-field ${error ? "lms-field--error" : ""}`}>
@@ -100,6 +129,8 @@ function LoginForm() {
           )}
         </button>
       </form>
+
+      <OAuthButtons next={safeNext(searchParams.get("next"))} />
 
       {error && (
         <p className={styles.alt}>

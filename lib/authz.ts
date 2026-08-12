@@ -8,10 +8,23 @@ export interface SessionUser {
   email?: string | null;
 }
 
-/** Return the signed-in user, or throw a 401. */
-export async function requireUser(): Promise<SessionUser> {
+/**
+ * Return the signed-in user, or throw a 401.
+ *
+ * An account that signed up with Google or Apple and hasn't given a date of
+ * birth yet is refused: proxy.ts holds it at /welcome, and without this the API
+ * would be a way round the 16+ gate for the one window where a real session
+ * exists but the age check hasn't been applied. `allowPendingOnboarding` is for
+ * /api/me/dob itself, which is how the gate gets satisfied.
+ */
+export async function requireUser(
+  opts: { allowPendingOnboarding?: boolean } = {}
+): Promise<SessionUser> {
   const session = await auth();
   if (!session?.user?.id) throw new GameError("You need to be signed in.", 401);
+  if (session.user.needsOnboarding && !opts.allowPendingOnboarding) {
+    throw new GameError("Finish setting up your account first.", 403);
+  }
   return {
     id: session.user.id,
     isAdmin: !!session.user.isAdmin,

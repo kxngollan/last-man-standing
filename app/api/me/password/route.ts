@@ -49,6 +49,15 @@ export async function POST(request: Request) {
     if (result === "wrong-password") {
       return NextResponse.json({ error: "That isn’t your current password." }, { status: 400 });
     }
+    if (result === "no-password") {
+      return NextResponse.json(
+        {
+          error:
+            "This account signs in with Google or Apple and has no password yet. Set one through “Forgot password”.",
+        },
+        { status: 400 }
+      );
+    }
 
     // The password is already changed — a mail outage mustn't undo that or
     // report failure. Losing the notification is the lesser problem.
