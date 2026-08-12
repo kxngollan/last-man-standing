@@ -19,6 +19,19 @@ export const signupSchema = z
 export type SignupInput = z.infer<typeof signupSchema>;
 
 /**
+ * Agreeing to have an account created after signing in with Google/Apple with
+ * an address we've never seen. The email is the one the provider returned; it
+ * is checked against the provider's answer again before anything is created.
+ */
+export const socialConsentSchema = z
+  .object({
+    provider: z.enum(["google", "apple"]),
+    email: z.string().trim().regex(EMAIL_RE, "Enter a valid email address."),
+    dob: z.string().min(1, "Enter your date of birth."),
+  })
+  .strict();
+
+/**
  * The one thing Google and Apple can't tell us. Asked for at /welcome, once,
  * after a social sign-up — the 16+ gate has nothing to work with until then.
  */

@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useState } from "react";
+import Link from "next/link";
+import { signIn } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
 import { ageFromDob, MIN_AGE } from "@/lib/age";
-import { safeNext } from "@/lib/safeNext";
 import styles from "@/components/auth/authContent.module.css";
+
+const PROVIDER_NAMES = { google: "Google", apple: "Apple" } as const;
 
 function ageFrom(dob: string): number | null {
   if (!dob) return null;
@@ -15,23 +16,32 @@ function ageFrom(dob: string): number | null {
   return ageFromDob(d);
 }
 
-function Form({ firstName }: { firstName: string }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { update } = useSession();
+/**
+ * "We don't know this address — do you want an account?"
+ *
+ * Confirming records the consent (a signed, short-lived cookie) and then sends
+ * them back through the provider. That second trip is silent — they've already
+ * consented at Google/Apple — and it's what proves the address again at the
+ * moment the account is created. Nothing is written before the button.
+ */
+export default function SocialSignupForm({
+  provider,
+  email,
+}: {
+  provider: "google" | "apple";
+  email: string;
+}) {
   const [dob, setDob] = useState("");
   const [agree, setAgree] = useState(false);
   const [dobError, setDobError] = useState("");
   const [agreeError, setAgreeError] = useState("");
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
 
-    // The same checks the server applies, said sooner. The server's are the
-    // ones that count.
     const age = ageFrom(dob);
     if (!dob) setDobError("Enter your date of birth.");
     else if (age === null) setDobError("Enter a valid date.");
@@ -40,45 +50,36 @@ function Form({ firstName }: { firstName: string }) {
     setAgreeError(agree ? "" : `Please confirm you’re ${MIN_AGE} or older.`);
     if (!dob || age === null || age < MIN_AGE || !agree) return;
 
-    setSaving(true);
+    setSubmitting(true);
     try {
-      const res = await fetch("/api/me/dob", {
+      const res = await fetch("/api/auth/social-consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dob }),
+        body: JSON.stringify({ provider, email, dob }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Couldn’t save that. Please try again.");
+        setError(data.error ?? "Couldn’t create your account. Please try again.");
+        setSubmitting(false);
         return;
       }
 
-      // Force the session to re-read its claims rather than waiting out the
-      // five-minute TTL. The proxy trusts the session over the database, so
-      // navigating before the claim has actually changed would bounce us
-      // straight back here — check what comes back, and only go if it agrees.
-      const session = await update();
-      if (!session?.user || session.user.needsOnboarding) {
-        setError(
-          "Saved, but this session hasn’t caught up. Reload the page, or log out and back in."
-        );
-        return;
-      }
-      router.replace(safeNext(searchParams.get("next")));
-      router.refresh();
+      // Back through the provider. It proves the address one more time, and
+      // that's the trip on which the account is actually created.
+      void signIn(provider, { redirectTo: "/dashboard" });
     } catch {
       setError("Network error. Please try again.");
-    } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   }
 
   return (
     <AuthShell>
-      <h1 className={styles.title}>{firstName ? `Welcome, ${firstName}` : "Welcome"}</h1>
+      <h1 className={styles.title}>Create your account?</h1>
       <p className={styles.lede}>
-        One thing Google and Apple don&rsquo;t tell us: your date of birth. We need it to
-        confirm you&rsquo;re old enough to play, and then you&rsquo;re in.
+        You signed in with {PROVIDER_NAMES[provider]} as <strong>{email}</strong>, and there’s no
+        Last Man Standing account for that address yet. We haven’t created anything — say the
+        word and we will.
       </p>
 
       <form className={styles.form} onSubmit={submit} noValidate>
@@ -101,7 +102,8 @@ function Form({ firstName }: { firstName: string }) {
             aria-required="true"
           />
           <p className="lms-field__help" id="dob-help" role={dobError ? "alert" : undefined}>
-            {dobError || `We check this to confirm you’re ${MIN_AGE} or older. It can’t be changed later.`}
+            {dobError ||
+              `${PROVIDER_NAMES[provider]} doesn’t tell us this, and we check it to confirm you’re ${MIN_AGE} or older.`}
           </p>
         </div>
 
@@ -130,28 +132,27 @@ function Form({ firstName }: { firstName: string }) {
         <button
           type="submit"
           className="lms-btn lms-btn--primary lms-btn--block"
-          disabled={saving}
-          aria-disabled={saving}
+          disabled={submitting}
+          aria-disabled={submitting}
         >
-          {saving ? (
+          {submitting ? (
             <>
               <span className="lms-spinner" aria-hidden="true" />
-              Saving&hellip;
+              Creating account&hellip;
             </>
           ) : (
-            "Start playing"
+            "Create my account"
           )}
         </button>
       </form>
-    </AuthShell>
-  );
-}
 
-// useSearchParams needs a Suspense boundary, same as the login page.
-export default function WelcomeForm({ firstName }: { firstName: string }) {
-  return (
-    <Suspense fallback={null}>
-      <Form firstName={firstName} />
-    </Suspense>
+      <p className={styles.alt}>
+        Already have an account under a different address?{" "}
+        <Link href="/login">Log in instead</Link>
+      </p>
+      <p className={styles.alt}>
+        By creating an account, you agree to our <Link href="/policy">Privacy Policy</Link>.
+      </p>
+    </AuthShell>
   );
 }

@@ -7,6 +7,7 @@ import { User } from "@/models/User/User";
 import { UserReferralHandle } from "@/models/User/UserReferralHandle";
 import { UserReferredBy } from "@/models/User/UserReferredBy";
 import { encodeReferralCookie } from "@/lib/referral";
+import { sealConsent, openConsent } from "@/lib/socialConsent";
 import { initDb, clearDb, closeDb, seedUser } from "./helpers";
 
 beforeAll(initDb);
@@ -28,15 +29,107 @@ function google(overrides: Partial<OAuthIdentity> = {}): OAuthIdentity {
   };
 }
 
-describe("signing in with Google/Apple", () => {
-  it("creates a verified account, and holds it for a date of birth", async () => {
+const DOB = "1990-05-01";
+
+/**
+ * Signing in the way someone does after saying yes on the confirmation screen:
+ * carrying a consent for the address the provider gave. Without one, a sign-in
+ * creates nothing at all — which is what the first tests below check.
+ */
+function register(identity: OAuthIdentity, referralCookie?: string | null, dob = DOB) {
+  return signInWithOAuth(identity, {
+    referralCookie,
+    consent: {
+      provider: identity.provider,
+      email: (identity.email ?? "").trim().toLowerCase(),
+      dob,
+    },
+  });
+}
+
+/** An account left behind by a social sign-in before consent was asked for:
+ *  no password, and no date of birth. What /welcome exists to finish. */
+async function legacyOAuthAccount() {
+  const user = await User.create({
+    name: "Legacy Player",
+    firstName: "Legacy",
+    lastName: "Player",
+    email: "legacy@example.com",
+    emailVerified: true,
+    oauthAccounts: [{ provider: "google", providerAccountId: "google-legacy" }],
+  });
+  return String(user._id);
+}
+
+describe("the consent that authorises a social sign-up", () => {
+  it("survives a round trip and refuses anything tampered with", async () => {
+    const sealed = await sealConsent({
+      provider: "google",
+      email: "player@example.com",
+      dob: DOB,
+    });
+
+    expect(await openConsent(sealed)).toEqual({
+      provider: "google",
+      email: "player@example.com",
+      dob: DOB,
+    });
+
+    // Signed, so it can't be edited in the browser and it can't be invented.
+    expect(await openConsent(`${sealed}x`)).toBeNull();
+    expect(await openConsent("not-a-token")).toBeNull();
+    expect(await openConsent(null)).toBeNull();
+  });
+});
+
+describe("an address we've never seen", () => {
+  it("creates nothing — clicking the button isn't a request to register", async () => {
     const result = await signInWithOAuth(google());
+
+    expect(result).toEqual({ ok: false, reason: "no-account" });
+    expect(await User.countDocuments({})).toBe(0);
+  });
+
+  it("won't take a consent for a different address", async () => {
+    // Confirmed for one address, signed in as another: the consent names the
+    // address, so it buys nothing here.
+    const result = await signInWithOAuth(google(), {
+      consent: { provider: "google", email: "someone.else@example.com", dob: DOB },
+    });
+
+    expect(result).toEqual({ ok: false, reason: "no-account" });
+    expect(await User.countDocuments({})).toBe(0);
+  });
+
+  it("won't take a consent from a different provider", async () => {
+    const result = await signInWithOAuth(google(), {
+      consent: { provider: "apple", email: "player@example.com", dob: DOB },
+    });
+
+    expect(result).toEqual({ ok: false, reason: "no-account" });
+    expect(await User.countDocuments({})).toBe(0);
+  });
+
+  it("refuses to register anyone under 16, and writes nothing", async () => {
+    const twelve = new Date();
+    twelve.setFullYear(twelve.getFullYear() - 12);
+    const result = await register(google(), null, twelve.toISOString().slice(0, 10));
+
+    expect(result).toEqual({ ok: false, reason: "too-young" });
+    expect(await User.countDocuments({})).toBe(0);
+  });
+});
+
+describe("signing in with Google/Apple", () => {
+  it("creates a complete, verified account once it's been confirmed", async () => {
+    const result = await register(google());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
     expect(result.created).toBe(true);
-    // Nothing to play with until /welcome has run.
-    expect(result.user.needsOnboarding).toBe(true);
+    // The confirmation screen collected the date of birth, so the account is
+    // whole the moment it exists — nothing half-made to finish later.
+    expect(result.user.needsOnboarding).toBe(false);
 
     const user = await User.findById(result.user.id);
     expect(user?.email).toBe("player@example.com"); // normalised
@@ -44,15 +137,15 @@ describe("signing in with Google/Apple", () => {
     // The provider proved the inbox, so there's nothing left to confirm.
     expect(user?.emailVerified).toBe(true);
     expect(user?.passwordHash).toBeUndefined();
-    expect(user?.dob).toBeUndefined();
+    expect(user?.dob).toEqual(new Date(DOB));
     expect(user?.oauthAccounts).toEqual([
       expect.objectContaining({ provider: "google", providerAccountId: "google-sub-1" }),
     ]);
   });
 
   it("signs the same identity back in without making a second account", async () => {
-    const first = await signInWithOAuth(google());
-    const second = await signInWithOAuth(google());
+    const first = await register(google());
+    const second = await register(google());
     expect(first.ok && second.ok).toBe(true);
     if (!first.ok || !second.ok) return;
 
@@ -62,7 +155,7 @@ describe("signing in with Google/Apple", () => {
   });
 
   it("follows the subject id when the address at the provider changes", async () => {
-    const first = await signInWithOAuth(google());
+    const first = await register(google());
     const second = await signInWithOAuth(google({ email: "moved@example.com" }));
     expect(first.ok && second.ok).toBe(true);
     if (!first.ok || !second.ok) return;
@@ -140,7 +233,7 @@ describe("signing in with Google/Apple", () => {
     const referrerId = await seedUser("Ref");
     const cookie = encodeReferralCookie(String(referrerId), "ref");
 
-    const result = await signInWithOAuth(google(), cookie);
+    const result = await register(google(), cookie);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -155,7 +248,7 @@ describe("signing in with Google/Apple", () => {
   it("names the account after the email when the provider sends no name", async () => {
     // What Apple does after the first consent: no name, so its provider config
     // passes the address through as one.
-    const result = await signInWithOAuth({
+    const result = await register({
       provider: "apple",
       providerAccountId: "apple-sub-1",
       email: "keeper@example.com",
@@ -168,7 +261,7 @@ describe("signing in with Google/Apple", () => {
   });
 
   it("can link both providers to one account", async () => {
-    const first = await signInWithOAuth(google());
+    const first = await register(google());
     const second = await signInWithOAuth({
       provider: "apple",
       providerAccountId: "apple-sub-2",
@@ -185,7 +278,7 @@ describe("signing in with Google/Apple", () => {
   });
 
   it("won't let one provider identity claim two accounts", async () => {
-    await signInWithOAuth(google());
+    await register(google());
     // Same subject id, a different address that already has an account.
     await seedUser("Other");
     const result = await signInWithOAuth(
@@ -200,7 +293,7 @@ describe("signing in with Google/Apple", () => {
 
 describe("an account with no password", () => {
   it("can't be logged into with one", async () => {
-    const created = await signInWithOAuth(google());
+    const created = await register(google());
     expect(created.ok).toBe(true);
 
     const result = await attemptLogin("player@example.com", "anything-at-all", "1.2.3.4");
@@ -208,7 +301,7 @@ describe("an account with no password", () => {
   });
 
   it("is told to use the reset flow rather than the change-password form", async () => {
-    const created = await signInWithOAuth(google());
+    const created = await register(google());
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
@@ -227,46 +320,44 @@ describe("an account with no password", () => {
   });
 });
 
+// Accounts made by the earlier behaviour — created straight from a sign-in,
+// before anyone was asked — have no date of birth. /welcome is what finishes
+// them, and the gate stays in place for exactly this reason.
 describe("the date of birth /welcome collects", () => {
   it("saves once and lifts the onboarding flag", async () => {
-    const created = await signInWithOAuth(google());
-    expect(created.ok).toBe(true);
-    if (!created.ok) return;
+    const userId = await legacyOAuthAccount();
 
-    expect(await setDateOfBirth(created.user.id, new Date("1990-05-01"))).toBe("ok");
+    expect(await setDateOfBirth(userId, new Date(DOB))).toBe("ok");
 
-    const again = await signInWithOAuth(google());
+    const again = await signInWithOAuth(
+      google({ email: "legacy@example.com", providerAccountId: "google-legacy" })
+    );
     expect(again.ok && again.user.needsOnboarding).toBe(false);
   });
 
   it("is still owed when the same account logs in with a password", async () => {
-    // A Google account that gave itself a password through the reset flow
-    // before it ever saw /welcome. The password login has to carry the same
-    // claim, or it would be five minutes inside the portal before the session
-    // re-reads and notices.
-    const created = await signInWithOAuth(google());
-    expect(created.ok).toBe(true);
-    if (!created.ok) return;
+    // One of those accounts, having given itself a password through the reset
+    // flow. The password login has to carry the same claim, or it would be five
+    // minutes inside the portal before the session re-reads and notices.
+    const userId = await legacyOAuthAccount();
     await User.updateOne(
-      { _id: created.user.id },
+      { _id: userId },
       { $set: { passwordHash: await hashPassword("set-by-reset") } }
     );
 
-    const result = await attemptLogin("player@example.com", "set-by-reset", "1.2.3.4");
+    const result = await attemptLogin("legacy@example.com", "set-by-reset", "1.2.3.4");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.user.needsOnboarding).toBe(true);
   });
 
   it("refuses anyone under 16", async () => {
-    const created = await signInWithOAuth(google());
-    expect(created.ok).toBe(true);
-    if (!created.ok) return;
+    const userId = await legacyOAuthAccount();
 
     const twelve = new Date();
     twelve.setFullYear(twelve.getFullYear() - 12);
-    expect(await setDateOfBirth(created.user.id, twelve)).toBe("too-young");
-    expect((await User.findById(created.user.id))?.dob).toBeUndefined();
+    expect(await setDateOfBirth(userId, twelve)).toBe("too-young");
+    expect((await User.findById(userId))?.dob).toBeUndefined();
   });
 
   it("can't be changed once it's set", async () => {

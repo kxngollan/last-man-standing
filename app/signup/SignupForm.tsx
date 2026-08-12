@@ -354,9 +354,9 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
         </button>
       </form>
 
-      {/* Neither provider tells us a date of birth, so signing up this way
-          lands on /welcome to give one before the first pick. */}
-      <OAuthButtons next="/welcome" />
+      {/* An address we don't know goes to /signup/social to confirm and give a
+          date of birth before anything is created; a known one just logs in. */}
+      <OAuthButtons next="/dashboard" />
 
       <p className={styles.alt}>
         By creating an account, you agree to our <Link href="/policy">Privacy Policy</Link>.

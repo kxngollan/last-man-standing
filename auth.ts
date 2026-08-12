@@ -9,6 +9,7 @@ import { User } from "@/models/User/User";
 import { sessionOutlivedPassword } from "@/lib/account";
 import { attemptLogin } from "@/lib/login";
 import { signInWithOAuth } from "@/lib/oauth";
+import { CONSENT_COOKIE, openConsent } from "@/lib/socialConsent";
 import { REF_COOKIE } from "@/lib/referral";
 import { clientIp } from "@/lib/rateLimit";
 
@@ -24,17 +25,21 @@ function isSocial(provider: string | undefined): provider is SocialProvider {
 }
 
 /**
- * The referral cookie, if they arrived on someone's link before signing in with
- * Google/Apple. Only reachable during the OAuth callback request; missing it
- * costs the referrer their credit, never the player their account.
+ * One cookie off the OAuth callback request: the referral that brought them in,
+ * and the consent that says they agreed to register.
  *
- * It's a SameSite=Lax cookie (app/r/[handle]), so it rides along with Google's
- * callback — a top-level GET — but not Apple's, which is a cross-site POST.
- * Referrals through Apple sign-ups therefore go uncredited.
+ * Worth knowing about SameSite. The consent cookie is deliberately set
+ * SameSite=None on https (lib/socialConsent.ts) so it survives Apple's
+ * cross-site POST callback. The referral cookie is Lax (app/r/[handle]), so it
+ * rides along with Google's top-level GET but not Apple's POST — referrals
+ * through Apple sign-ups go uncredited.
+ *
+ * Missing either is never fatal: no referral cookie costs the referrer their
+ * credit, and no consent means we ask before creating anything.
  */
-async function referralCookie(): Promise<string | null> {
+async function cookieValue(name: string): Promise<string | null> {
   try {
-    return (await cookies()).get(REF_COOKIE)?.value ?? null;
+    return (await cookies()).get(name)?.value ?? null;
   } catch {
     return null;
   }
@@ -54,23 +59,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       const claims = (profile ?? {}) as Record<string, unknown>;
       const verified = claims.email_verified;
+      const email = user.email ?? (typeof claims.email === "string" ? claims.email : null);
       const result = await signInWithOAuth(
         {
           provider: account.provider,
           providerAccountId: account.providerAccountId,
-          email: user.email ?? (typeof claims.email === "string" ? claims.email : null),
+          email,
           // Google sends a boolean, Apple a boolean or the string "true".
           emailVerified: verified === true || verified === "true",
           firstName: typeof claims.given_name === "string" ? claims.given_name : null,
           lastName: typeof claims.family_name === "string" ? claims.family_name : null,
           name: user.name,
         },
-        await referralCookie()
+        {
+          referralCookie: await cookieValue(REF_COOKIE),
+          // Set by the confirmation screen. Absent on a first attempt, which is
+          // exactly why that attempt creates nothing.
+          consent: await openConsent(await cookieValue(CONSENT_COOKIE)),
+        }
       );
 
       if (!result.ok) {
         // No email in the log — same reasoning as the credentials provider.
         console.warn(`[auth] ${account.provider} sign-in rejected: ${result.reason}`);
+
+        // Nothing here for this address yet. Ask before registering anyone:
+        // clicking "Continue with Google" is a request to log in, and someone
+        // who meant to use their existing account should be told, not enrolled.
+        if (result.reason === "no-account") {
+          const params = new URLSearchParams({ provider: account.provider });
+          if (email) params.set("email", email);
+          return `/signup/social?${params.toString()}`;
+        }
+
         // A string is a redirect. Ours says what went wrong; the built-in error
         // page would only say "AccessDenied".
         return `/login?error=${result.reason}`;

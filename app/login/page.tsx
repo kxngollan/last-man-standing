@@ -9,12 +9,8 @@ import OAuthButtons from "@/components/auth/OAuthButtons";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { PASSWORD_RESET_ENABLED } from "@/lib/features";
 import isEmail from "@/lib/isEmail";
+import { safeNext } from "@/lib/safeNext";
 import styles from "@/components/auth/authContent.module.css";
-
-/** Only same-origin paths — never an absolute URL someone pasted into ?next=. */
-function safeNext(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-}
 
 /**
  * A Google/Apple sign-in that was refused comes back here with ?error= — see
@@ -27,6 +23,8 @@ function oauthError(code: string | null): string {
       return "That account's email address hasn't been verified with the provider, so we can't use it to log you in. Log in with your password instead.";
     case "malformed":
       return "We didn't get an email address back from that provider, and we need one. Log in with your password instead.";
+    case "too-young":
+      return "You must be 16 or older to play, so we haven't created an account.";
     case null:
       return "";
     default:

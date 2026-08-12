@@ -2,7 +2,9 @@ import { connectDB } from "@/database/connect";
 import { User, type OAuthProvider } from "@/models/User/User";
 import { isAdminEmail } from "@/lib/adminEmails";
 import isEmail from "@/lib/isEmail";
+import { isOldEnough } from "@/lib/age";
 import { confirmReferral, ensureReferralHandle, recordReferral } from "@/lib/referral";
+import type { SocialConsent } from "@/lib/socialConsent";
 import type { LoginUser } from "@/lib/login";
 
 /**
@@ -16,8 +18,10 @@ import type { LoginUser } from "@/lib/login";
  * The rules, in short:
  *   1. A provider account we've seen before signs in as its owner.
  *   2. A verified address that matches an existing account links to it.
- *   3. Anything else is a new account — with no password and no date of birth,
- *      which is what sends it to /welcome before it can play.
+ *   3. An address we've never seen creates nothing. Clicking "Continue with
+ *      Google" is not an instruction to register — the player is asked first
+ *      (/signup/social) and comes back carrying a consent for this exact
+ *      address, with the date of birth the 16+ gate needs.
  */
 
 export interface OAuthIdentity {
@@ -33,9 +37,22 @@ export interface OAuthIdentity {
   name?: string | null;
 }
 
+export interface OAuthSignInOptions {
+  /** The `lms_ref` cookie, so a referral survives a social sign-up. */
+  referralCookie?: string | null;
+  /**
+   * Present only when the player has been through the confirmation screen and
+   * said yes. Verified against the identity the provider just handed us.
+   */
+  consent?: SocialConsent | null;
+}
+
 export type OAuthLoginResult =
   | { ok: true; user: LoginUser; created: boolean }
-  | { ok: false; reason: "malformed" | "unverified-email" | "error" };
+  | {
+      ok: false;
+      reason: "malformed" | "unverified-email" | "no-account" | "too-young" | "error";
+    };
 
 function isDuplicateKey(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: number }).code === 11000;
@@ -59,14 +76,15 @@ function namesFrom(identity: OAuthIdentity, email: string): { first: string; las
   if (words.length === 1) return { first: words[0], last: "" };
 
   // Last resort so the account has something to be called. They can rename
-  // themselves in settings, and /welcome asks them to.
+  // themselves in settings.
   return { first: email.split("@")[0].slice(0, 40), last: "" };
 }
 
 export async function signInWithOAuth(
   identity: OAuthIdentity,
-  referralCookie?: string | null
+  options: OAuthSignInOptions = {}
 ): Promise<OAuthLoginResult> {
+  const { referralCookie, consent } = options;
   const provider = identity.provider;
   const providerAccountId =
     typeof identity.providerAccountId === "string" ? identity.providerAccountId.trim() : "";
@@ -94,6 +112,21 @@ export async function signInWithOAuth(
     if (!user) user = await linkToExistingAccount(email, provider, providerAccountId);
 
     if (!user) {
+      // Nobody by this identity and nobody by this address. Registering is a
+      // decision the player makes on the confirmation screen, not a side effect
+      // of clicking a provider button — so without a consent for this exact
+      // address, we create nothing and send them there.
+      if (!consent || consent.provider !== provider || consent.email !== email) {
+        return { ok: false, reason: "no-account" };
+      }
+
+      // The consent carries the one thing no provider gives us. It's checked
+      // here as well as at the screen that collected it, because this is the
+      // only place an account can actually come into existence.
+      const dob = new Date(consent.dob);
+      if (Number.isNaN(dob.getTime())) return { ok: false, reason: "malformed" };
+      if (!isOldEnough(dob)) return { ok: false, reason: "too-young" };
+
       const { first, last } = namesFrom(identity, email);
       try {
         user = await User.create({
@@ -102,6 +135,7 @@ export async function signInWithOAuth(
           // `name` mirrors the split fields, same as the sign-up route.
           name: [first, last].filter(Boolean).join(" "),
           email,
+          dob,
           // The provider has proved the inbox, which is exactly what the
           // confirmation email proves — so this account is verified from the
           // start, and the admin allowlist applies on the same footing it does
