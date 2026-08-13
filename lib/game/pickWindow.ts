@@ -28,17 +28,17 @@ export async function ensureMatchdayFixtures(season: number, matchday: number): 
 export interface PickWindow {
   /** The game week a player picks for. */
   matchday: number;
-  /** Deadline (first kickoff) for that matchday, or null if not yet known. */
+  /** Deadline (an hour before first kickoff) for that matchday, or null if not yet known. */
   deadline: Date | null;
-  /** Whether that matchday has already kicked off (so nothing is pickable). */
+  /** Whether that matchday's deadline has passed (so nothing is pickable). */
   locked: boolean;
   /** True when the pick week is beyond the current in-play week (picking ahead). */
   ahead: boolean;
 }
 
 /**
- * The week a player can pick for: the current matchday, or — once that week
- * has kicked off — the next game week, however far ahead in time it sits.
+ * The week a player can pick for: the current matchday, or — once that week's
+ * deadline has passed — the next game week, however far ahead in time it sits.
  * Looks at most one week ahead (players pick the next week only). Ensures the
  * chosen week's fixtures are loaded so its teams and deadline are available.
  */
@@ -46,7 +46,7 @@ export async function getPickWindow(season: number, currentMatchday: number): Pr
   await ensureMatchdayFixtures(season, currentMatchday);
   const currentDeadline = await getMatchdayDeadline(season, currentMatchday);
 
-  // Current week hasn't kicked off — pick it as normal.
+  // Current week hasn't locked yet — pick it as normal.
   if (!isLocked(currentDeadline)) {
     return { matchday: currentMatchday, deadline: currentDeadline, locked: false, ahead: false };
   }

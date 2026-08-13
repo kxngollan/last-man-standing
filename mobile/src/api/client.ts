@@ -31,13 +31,22 @@ export type { FixturesWeek, LeagueTable, PickSummary, PortalState, StandingsPage
  * The fallbacks cover the two simulators: 10.0.2.2 is the Android emulator's
  * alias for the host machine's loopback, which is the one detail that trips
  * everyone up, and the iOS simulator shares the host's network outright.
+ *
+ * They are `__DEV__`-only on purpose. A release build that quietly fell back to
+ * localhost would install cleanly, open, and then fail on every screen, which is
+ * the shape of bug that reaches a store reviewer rather than a developer. It
+ * can't get that far now: app.config.ts refuses to build a release profile
+ * without an https EXPO_PUBLIC_API_URL, so in a release this is always set and
+ * the empty string is unreachable.
  */
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
-  Platform.select({
-    android: "http://10.0.2.2:3000",
-    default: "http://localhost:3000",
-  });
+  (__DEV__
+    ? Platform.select({
+        android: "http://10.0.2.2:3000",
+        default: "http://localhost:3000",
+      })
+    : "");
 
 export interface MobileUser {
   id: string;
@@ -144,6 +153,16 @@ export const api = {
   }) => request<LoginResponse>("/auth/social", { method: "POST", body: input }),
 
   me: (token: string) => request<Record<string, unknown>>("/me", { token }),
+
+  /**
+   * Delete the account for good. The literal "DELETE" is the server's own
+   * confirmation check, not decoration — see deleteAccountSchema.
+   *
+   * Every token for the account stops working the moment it returns, this one
+   * included, so the caller's next move is to sign out.
+   */
+  deleteAccount: (token: string) =>
+    request<{ ok: true }>("/me", { method: "DELETE", token, body: { confirm: "DELETE" } }),
 
   /** Everything the dashboard needs in one call — the same PortalState the web renders. */
   game: (token: string) => request<PortalState & { summary: PickSummary | null }>("/game", { token }),

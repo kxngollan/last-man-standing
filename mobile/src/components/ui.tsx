@@ -113,7 +113,8 @@ export function Card({ style, ...props }: ViewProps) {
 interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: "primary" | "ghost";
+  /** `danger` is for the irreversible ones — deleting an account, and nothing else yet. */
+  variant?: "primary" | "ghost" | "danger";
   busy?: boolean;
   disabled?: boolean;
 }
@@ -121,7 +122,12 @@ interface ButtonProps {
 export function Button({ label, onPress, variant = "primary", busy, disabled }: ButtonProps) {
   const { colors } = useTheme();
   const off = disabled || busy;
-  const primary = variant === "primary";
+
+  // Filled buttons carry their own ink; the ghost borrows the page's.
+  const fill =
+    variant === "primary" ? colors.accent : variant === "danger" ? colors.out : "transparent";
+  const ink =
+    variant === "primary" ? colors.accentInk : variant === "danger" ? colors.onDisc : colors.ink;
 
   return (
     <Pressable
@@ -132,22 +138,14 @@ export function Button({ label, onPress, variant = "primary", busy, disabled }: 
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: primary ? colors.accent : "transparent",
-          borderColor: primary ? "transparent" : colors.rule2,
+          backgroundColor: fill,
+          borderColor: variant === "ghost" ? colors.rule2 : "transparent",
           opacity: off ? 0.5 : pressed ? 0.9 : 1,
         },
       ]}
     >
-      {busy && <ActivityIndicator size="small" color={primary ? colors.accentInk : colors.ink} />}
-      <Text
-        style={{
-          color: primary ? colors.accentInk : colors.ink,
-          fontSize: Type.sm,
-          fontWeight: Weight.bold,
-        }}
-      >
-        {label}
-      </Text>
+      {busy && <ActivityIndicator size="small" color={ink} />}
+      <Text style={{ color: ink, fontSize: Type.sm, fontWeight: Weight.bold }}>{label}</Text>
     </Pressable>
   );
 }

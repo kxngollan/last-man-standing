@@ -17,6 +17,17 @@ export const SITE_URL = (() => {
 export const SITE_NAME = "Last Man Standing";
 export const SITE_TAGLINE = "Free Premier League Survival Game";
 
+/**
+ * Where a player writes to us.
+ *
+ * Both stores want a contact route that still works for someone locked out of
+ * their account — Play asks for one alongside the data deletion URL, Apple wants
+ * it on the listing — so it can't be the portal's "Report an issue" form, which
+ * needs a session. Same domain as SMTP_FROM's default; set SUPPORT_EMAIL if the
+ * mailbox is somewhere else.
+ */
+export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@lastmanstanding.app";
+
 export const SITE_DESCRIPTION =
   "Last Man Standing is a free Premier League survival game. Each game week you pick one team to win. Survive, never pick the same team twice, and be the last player standing to win.";
 
@@ -31,8 +42,22 @@ export const SITE_KEYWORDS = [
   "football last team standing",
 ];
 
-/** The publicly indexable routes. Everything else is app/private surface. */
-export const PUBLIC_ROUTES = ["/", "/signup", "/login", "/policy", "/table", "/fixtures"] as const;
+/**
+ * The publicly indexable routes. Everything else is app/private surface.
+ *
+ * /delete-account is here because Play's data deletion policy wants the route
+ * findable from outside the app — a page nobody can reach without signing in
+ * doesn't satisfy it.
+ */
+export const PUBLIC_ROUTES = [
+  "/",
+  "/signup",
+  "/login",
+  "/policy",
+  "/delete-account",
+  "/table",
+  "/fixtures",
+] as const;
 
 /**
  * The site FAQ — single source for both the visible FAQ section on the

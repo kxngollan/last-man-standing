@@ -1,7 +1,7 @@
 import { authedRoute, body, OPTIONS } from "@/lib/mobile/api";
-import { renameUser } from "@/lib/account";
+import { deleteOwnAccount, renameUser } from "@/lib/account";
 import { ensureReferralHandle, referralCount } from "@/lib/referral";
-import { updateNameSchema } from "@/lib/validation";
+import { deleteAccountSchema, updateNameSchema } from "@/lib/validation";
 import { nameParts } from "@/lib/displayName";
 import { GameError } from "@/lib/game/errors";
 import { connectDB } from "@/database/connect";
@@ -58,4 +58,33 @@ export const PATCH = authedRoute(async (me, request) => {
   const updated = await renameUser(me.id, parsed.data.firstName, parsed.data.lastName);
   if (!updated) throw new GameError("Unknown account.", 404);
   return updated;
+});
+
+/**
+ * Delete your account and everything in it. Required to be here: Apple's
+ * guideline 5.1.1(v) and Play's data deletion policy both want deletion
+ * reachable from inside the app, not by emailing support.
+ *
+ * No token to revoke afterwards — userFromToken() looks the account up on every
+ * request, so every bearer token for it starts failing the moment it's gone.
+ */
+export const DELETE = authedRoute(async (me, request) => {
+  if (!(await rateLimit(`delete-account:${me.id}`, 5, 60 * 60 * 1000))) {
+    throw new GameError("Too many attempts. Please try again later.", 429);
+  }
+
+  const parsed = deleteAccountSchema.safeParse(await body(request));
+  if (!parsed.success) {
+    throw new GameError(parsed.error.issues[0]?.message ?? "Type DELETE to confirm.", 400);
+  }
+
+  const result = await deleteOwnAccount(me.id);
+  if (result === "unknown-user") throw new GameError("Unknown account.", 404);
+  if (result === "is-admin") {
+    throw new GameError(
+      "Admin accounts can’t be deleted here. Get in touch and we’ll do it for you.",
+      403
+    );
+  }
+  return { ok: true as const };
 });

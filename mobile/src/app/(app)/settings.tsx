@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Switch, View } from "react-native";
-import { request, ApiError } from "@/api/client";
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { api, API_URL, request, ApiError } from "@/api/client";
 import { Button, Card, Field, Lede, Muted, Title } from "@/components/ui";
 import {
   biometricKind,
@@ -19,10 +21,14 @@ import { Space, Text as Type, useTheme } from "@/theme";
  * Changing a password ends every other session by design, this one included,
  * so we sign out afterwards and let them back in with the new one rather than
  * leaving a token that's about to start failing.
+ *
+ * Deleting the account lives here too, at the bottom, because both app stores
+ * require it to be reachable from inside the app rather than by asking us.
  */
 export default function SettingsScreen() {
   const { token, user, signOut, enableBiometrics, disableBiometrics } = useSession();
   const { colors } = useTheme();
+  const router = useRouter();
 
   const [first, setFirst] = useState(user?.name?.split(" ")[0] ?? "");
   const [last, setLast] = useState(user?.name?.split(" ").slice(1).join(" ") ?? "");
@@ -31,6 +37,13 @@ export default function SettingsScreen() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // Typing the word is the gate. Case-insensitive here because the request
+  // sends the literal "DELETE" the server wants either way — the point of the
+  // field is deliberation, not spelling.
+  const [confirmDelete, setConfirmDelete] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const confirmed = confirmDelete.trim().toUpperCase() === "DELETE";
 
   // "none" hides the row entirely — a switch that can't be switched is worse
   // than no switch.
@@ -113,6 +126,40 @@ export default function SettingsScreen() {
     }
   }
 
+  /**
+   * Two gates before anything happens: the typed word, then the OS dialog. The
+   * dialog is the one that gets read, so it names what goes rather than asking
+   * "are you sure".
+   */
+  function askToDelete() {
+    Alert.alert(
+      "Delete your account?",
+      "Your picks, your entries and your referrals go with it, on every device. This can’t be undone.",
+      [
+        { text: "Keep my account", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => void reallyDelete() },
+      ]
+    );
+  }
+
+  async function reallyDelete() {
+    if (!token) return;
+    setDeleting(true);
+    try {
+      await api.deleteAccount(token);
+      // The token died with the account, so this isn't ending a session — it's
+      // clearing the keychain and the biometric guard off this phone, and it
+      // unmounts this screen on the way out.
+      await signOut();
+    } catch (err) {
+      setDeleting(false);
+      Alert.alert(
+        "Couldn’t delete it",
+        err instanceof ApiError ? err.message : "Please try again."
+      );
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <Card style={{ gap: Space.sm }}>
@@ -179,6 +226,47 @@ export default function SettingsScreen() {
             know where it is, and it isn't sitting under a password form where
             a mis-tap is expensive. */}
         <Muted>Log out from the menu, top left.</Muted>
+      </Card>
+
+      {/* The policy opens in the system browser rather than a screen of its own:
+          it's a long legal document that changes on the website's schedule, and
+          a copy in the bundle would be the stale one. */}
+      <Card style={{ gap: Space.sm }}>
+        <Title style={{ fontSize: Type.md }}>Rules and privacy</Title>
+        <Muted>
+          How the game is decided, and what we collect to run it. Free to play, 16 and over, no
+          stakes — there is nothing to pay for in this app.
+        </Muted>
+        <Button label="Official rules" variant="ghost" onPress={() => router.push("/rules")} />
+        <Button
+          label="Privacy policy"
+          variant="ghost"
+          onPress={() => void WebBrowser.openBrowserAsync(`${API_URL}/policy`)}
+        />
+      </Card>
+
+      <Card style={{ gap: Space.sm, borderColor: colors.out }}>
+        <Title style={{ fontSize: Type.md, color: colors.out }}>Delete account</Title>
+        <Muted>
+          Deletes your account and everything in it — your picks, your entries, your referrals
+          and your name off the boards. Games you played stay, without you in them. It can’t be
+          undone, and it happens straight away.
+        </Muted>
+        <Field
+          label="Type DELETE to confirm"
+          value={confirmDelete}
+          onChangeText={setConfirmDelete}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          spellCheck={false}
+        />
+        <Button
+          label="Delete my account"
+          variant="danger"
+          onPress={askToDelete}
+          busy={deleting}
+          disabled={!confirmed || !token}
+        />
       </Card>
     </ScrollView>
   );

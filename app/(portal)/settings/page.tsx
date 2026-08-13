@@ -8,7 +8,7 @@ import { nameParts } from "@/lib/displayName";
 import { fullDate, monthYear } from "@/lib/format";
 import { ensureReferralHandle, referralCount } from "@/lib/referral";
 import { SITE_URL } from "@/lib/site";
-import SettingsForms from "./SettingsForms";
+import SettingsForms, { DeleteAccountForm } from "./SettingsForms";
 import ReferralSettings from "./ReferralSettings";
 import styles from "./settings.module.css";
 
@@ -110,6 +110,21 @@ export default async function SettingsPage() {
             </dd>
           </div>
         </dl>
+      </section>
+
+      {/* Last on the page on purpose. Nothing should sit underneath it that a
+          player might scroll past this to reach. */}
+      <section className={styles.block} aria-labelledby="delete-heading">
+        <div className="lms-head">
+          <h2 className="lms-head__title" id="delete-heading">
+            Delete account
+          </h2>
+          <p className="lms-head__hint">
+            You can take your account off Last Man Standing whenever you like. Read what we hold
+            and why in the <Link href="/policy">privacy policy</Link>.
+          </p>
+        </div>
+        <DeleteAccountForm />
       </section>
     </main>
   );

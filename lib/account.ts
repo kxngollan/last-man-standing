@@ -1,6 +1,15 @@
 import mongoose from "mongoose";
 import { connectDB } from "@/database/connect";
 import { User } from "@/models/User/User";
+import { PasswordResetToken } from "@/models/User/PasswordResetToken";
+import { VerificationToken } from "@/models/User/VerificationToken";
+import { UserReferralHandle } from "@/models/User/UserReferralHandle";
+import { UserReferredBy } from "@/models/User/UserReferredBy";
+import { Entry } from "@/models/Game/Entry";
+import { Pick } from "@/models/Game/Pick";
+import { Game } from "@/models/Game/Game";
+import { Feedback } from "@/models/Report/Feedback";
+import { IssueReport } from "@/models/Report/IssueReport";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { fullName, nameParts } from "@/lib/displayName";
 import { isOldEnough } from "@/lib/age";
@@ -90,6 +99,63 @@ export async function setDateOfBirth(userId: string, dob: Date): Promise<DateOfB
 
   user.dob = dob;
   await user.save();
+  return "ok";
+}
+
+export type DeleteAccountResult = "ok" | "unknown-user" | "is-admin";
+
+/**
+ * Erase an account and everything pointing at it.
+ *
+ * Both stores require this to exist and to be reachable from inside the app —
+ * Apple under review guideline 5.1.1(v), Google under Play's data deletion
+ * policy — and both mean deletion rather than deactivation, so this removes
+ * documents instead of setting a flag.
+ *
+ * Dependents go first and the User document last. If the cascade dies halfway
+ * the account still exists, so the player can ask again and the second attempt
+ * finishes the job; the reverse order would leave picks and entries pointing at
+ * a player who is no longer there.
+ *
+ * Finished games are kept, because they are every other player's history too —
+ * a game this account won loses its winner pointer rather than the game.
+ */
+export async function deleteOwnAccount(userId: string): Promise<DeleteAccountResult> {
+  if (!mongoose.isValidObjectId(userId)) return "unknown-user";
+  await connectDB();
+
+  const user = await User.findById(userId).select("isAdmin").lean();
+  if (!user) return "unknown-user";
+  // Every game carries a required `createdBy`, so deleting an admin would
+  // strand the games they started. Staff accounts get settled by hand.
+  if (user.isAdmin) return "is-admin";
+
+  const id = new mongoose.Types.ObjectId(userId);
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      // Sequential on purpose: a Mongo session can't run concurrent operations.
+      await Pick.deleteMany({ userId: id }).session(session);
+      await Entry.deleteMany({ userId: id }).session(session);
+      await Feedback.deleteMany({ userId: id }).session(session);
+      await IssueReport.deleteMany({ userId: id }).session(session);
+      await PasswordResetToken.deleteMany({ userId: id }).session(session);
+      await VerificationToken.deleteMany({ userId: id }).session(session);
+      await UserReferralHandle.deleteMany({ userId: id }).session(session);
+      // Both directions: the row saying who invited them, and the rows naming
+      // them as someone else's referrer — those carry this account's id too.
+      await UserReferredBy.deleteMany({
+        $or: [{ userId: id }, { referrerUserId: id }],
+      }).session(session);
+      await Game.updateMany({ winnerUserId: id }, { $set: { winnerUserId: null } }).session(
+        session
+      );
+      await User.deleteOne({ _id: id }).session(session);
+    });
+  } finally {
+    await session.endSession();
+  }
+
   return "ok";
 }
 

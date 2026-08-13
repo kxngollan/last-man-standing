@@ -1,8 +1,8 @@
-import { useCallback } from "react";
-import { Pressable, StyleSheet, View, Text } from "react-native";
+import { useCallback, useState } from "react";
+import { Alert, Pressable, StyleSheet, View, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { api, type PickSummary, type PortalState } from "@/api/client";
-import { Card, Lede, Muted, Pill, Screen, Spinner, Title } from "@/components/ui";
+import { api, ApiError, type PickSummary, type PortalState } from "@/api/client";
+import { Button, Card, Lede, Muted, Pill, Screen, Spinner, Title } from "@/components/ui";
 import { Crest } from "@/components/crest";
 import { DeadlinePill } from "@/components/countdown";
 import { TopPicks } from "@/components/top-picks";
@@ -69,6 +69,31 @@ export default function DashboardScreen() {
 
   const goPick = useCallback(() => router.push("/make-selection"), [router]);
 
+  const [joining, setJoining] = useState(false);
+
+  /**
+   * Getting into the game — the step the phone used to be missing entirely.
+   *
+   * Without it a new player's only route was the pick screen, which the server
+   * turns away because they have no entry, so the app's one job ended in an
+   * error message. The website has had this button on its dashboard all along.
+   */
+  const join = useCallback(async () => {
+    if (!token) return;
+    setJoining(true);
+    try {
+      await api.joinGame(token);
+      await refresh();
+    } catch (err) {
+      Alert.alert(
+        "Couldn’t join",
+        err instanceof ApiError ? err.message : "Please try again."
+      );
+    } finally {
+      setJoining(false);
+    }
+  }, [token, refresh]);
+
   return (
     <Screen refreshing={refreshing} onRefresh={refresh}>
       {error !== "" && (
@@ -83,7 +108,39 @@ export default function DashboardScreen() {
         </Card>
       )}
 
-      {data?.game && (
+      {/* Not in this game. Registration still open means one tap gets you in;
+          a game already under way means waiting for the next one, said plainly
+          rather than left as an empty screen. */}
+      {data?.game && !entry && (
+        <Card style={{ gap: Space.sm }}>
+          {data.game.status === "registration" ? (
+            <>
+              <Title style={{ fontSize: Type.md }}>Game {data.game.no} is open</Title>
+              <Lede>
+                {data.players.total === 1
+                  ? "One player in so far."
+                  : `${data.players.total} players in so far.`}{" "}
+                Join, then pick a team each week and don&rsquo;t pick the same one twice.
+              </Lede>
+              <Button
+                label={joining ? "Joining…" : "Join this game"}
+                onPress={() => void join()}
+                busy={joining}
+              />
+            </>
+          ) : (
+            <>
+              <Title style={{ fontSize: Type.md }}>Game {data.game.no} is under way</Title>
+              <Lede>
+                This one kicked off without you — you&rsquo;ll be able to join the next game
+                when it opens.
+              </Lede>
+            </>
+          )}
+        </Card>
+      )}
+
+      {data?.game && entry && (
         <>
           {/* Stat-Led: the number leads, everything else qualifies it. One big
               figure and two small ones — three equal tiles is the templated
@@ -120,64 +177,73 @@ export default function DashboardScreen() {
 
           {/* The one thing to do this week, as a tappable surface rather than a
               read-only line. Its wording changes with state so it never asks
-              for something that's already done. */}
-          <Pressable
-            onPress={goPick}
-            disabled={data.locked}
-            accessibilityRole="button"
-            accessibilityLabel={hasPick ? "Change your pick" : "Make your pick"}
-            style={({ pressed }) => [
-              styles.action,
-              {
-                backgroundColor: hasPick ? colors.paper2 : colors.accentWash,
-                borderColor: hasPick ? colors.rule : colors.accent,
-                opacity: data.locked ? 0.6 : pressed ? 0.9 : 1,
-              },
-            ]}
-          >
-            <View style={{ flex: 1, gap: Space.xxs }}>
-              <Muted>Week {data.pickGameWeek}</Muted>
-              {hasPick ? (
+              for something that's already done — and it only appears while
+              you're still in, because the pick screen has nothing to offer
+              someone who is out. */}
+          {entry.status === "alive" && (
+            <Pressable
+              onPress={goPick}
+              disabled={data.locked}
+              accessibilityRole="button"
+              accessibilityLabel={hasPick ? "Change your pick" : "Make your pick"}
+              style={({ pressed }) => [
+                styles.action,
+                {
+                  backgroundColor: hasPick ? colors.paper2 : colors.accentWash,
+                  borderColor: hasPick ? colors.rule : colors.accent,
+                  opacity: data.locked ? 0.6 : pressed ? 0.9 : 1,
+                },
+              ]}
+            >
+              <View style={{ flex: 1, gap: Space.xxs }}>
+                <Muted>Week {data.pickGameWeek}</Muted>
+                {hasPick ? (
+                  <View style={styles.pickRow}>
+                    <Crest uri={picked?.crest} tla={picked?.tla} size={28} />
+                    <Title style={{ fontSize: Type.md }}>{data.myPick?.teamName}</Title>
+                  </View>
+                ) : (
+                  <Title style={{ fontSize: Type.md, color: colors.accentInk }}>
+                    {data.locked ? "No pick this week" : "Make your pick"}
+                  </Title>
+                )}
+                {/* Live, not computed once at render — under an hour this ticks
+                    down by the second, which is when it matters. */}
                 <View style={styles.pickRow}>
-                  <Crest uri={picked?.crest} tla={picked?.tla} size={28} />
-                  <Title style={{ fontSize: Type.md }}>{data.myPick?.teamName}</Title>
+                  <DeadlinePill deadline={data.deadline} />
+                  {deadline && <Muted style={{ fontSize: Type.xs }}>{deadline.when}</Muted>}
                 </View>
-              ) : (
-                <Title style={{ fontSize: Type.md, color: colors.accentInk }}>
-                  {data.locked ? "No pick this week" : "Make your pick"}
-                </Title>
-              )}
-              {/* Live, not computed once at render — under an hour this ticks
-                  down by the second, which is when it matters. */}
-              <View style={styles.pickRow}>
-                <DeadlinePill deadline={data.deadline} />
-                {deadline && <Muted style={{ fontSize: Type.xs }}>{deadline.when}</Muted>}
               </View>
-            </View>
 
-            {!data.locked && (
-              <Text style={{ color: colors.ink, fontSize: Type.lg, fontWeight: Weight.bold }}>
-                ›
-              </Text>
-            )}
-          </Pressable>
-
-          {entry && (
-            <View style={styles.statusRow}>
-              <Pill
-                tone={tone}
-                label={
-                  entry.status === "alive"
-                    ? "You're still in"
-                    : entry.status === "winner"
-                      ? "You won"
-                      : "You're out"
-                }
-              />
-              {data.myPick?.isWildcard && <Pill tone="wild" label="Wildcard played" />}
-            </View>
+              {!data.locked && (
+                <Text style={{ color: colors.ink, fontSize: Type.lg, fontWeight: Weight.bold }}>
+                  ›
+                </Text>
+              )}
+            </Pressable>
           )}
 
+          <View style={styles.statusRow}>
+            <Pill
+              tone={tone}
+              label={
+                entry.status === "alive"
+                  ? "You're still in"
+                  : entry.status === "winner"
+                    ? "You won"
+                    : "You're out"
+              }
+            />
+            {data.myPick?.isWildcard && <Pill tone="wild" label="Wildcard played" />}
+          </View>
+        </>
+      )}
+
+      {/* Both of these are everyone's, not yours, so they stay put whether or
+          not you're in the game — someone deciding whether to join wants to see
+          who's playing and what they're on. */}
+      {data?.game && (
+        <>
           {/* What everyone else is on. Sits above the standings because it's
               about this week's decision, not the running order. */}
           <TopPicks summary={data.summary} limit={3} />

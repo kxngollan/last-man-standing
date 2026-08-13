@@ -38,6 +38,11 @@
   background: var(--color-wild);
   color: var(--color-ink);
 }
+/* Irreversible only — deleting an account, and nothing else so far. */
+.lms-btn--danger {
+  background: var(--color-out);
+  color: var(--color-on-disc);
+}
 .lms-btn--block {
   width: 100%;
 }
@@ -58,6 +63,9 @@
   }
   .lms-btn--wild:hover:not(:disabled) {
     background: color-mix(in oklch, var(--color-wild) 84%, var(--color-ink));
+  }
+  .lms-btn--danger:hover:not(:disabled) {
+    background: color-mix(in oklch, var(--color-out) 86%, black);
   }
 }
 .lms-btn:active:not(:disabled) {

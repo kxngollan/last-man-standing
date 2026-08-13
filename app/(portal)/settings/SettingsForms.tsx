@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import PasswordInput from "@/components/ui/PasswordInput";
 import styles from "./settings.module.css";
 
@@ -273,6 +273,85 @@ function PasswordForm({ email }: { email: string }) {
           </>
         ) : (
           "Change password"
+        )}
+      </button>
+    </form>
+  );
+}
+
+/**
+ * Deleting the account, for good.
+ *
+ * The typed word is the gate — there is deliberately no single click that ends
+ * an account. It lives on the site as well as in the phone app because Play's
+ * data deletion policy wants a route a person can reach in a browser, without
+ * installing anything first.
+ */
+export function DeleteAccountForm() {
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const ready = confirm.trim().toUpperCase() === "DELETE";
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    if (!ready) {
+      setError("Type DELETE to confirm.");
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/me", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Couldn’t delete your account.");
+        setDeleting(false);
+        return;
+      }
+      // The claims would fail their next re-read regardless, since the account
+      // they name has gone. Ending the session here means landing on the home
+      // page rather than sitting in a portal that has lost its owner.
+      await signOut({ callbackUrl: "/" });
+    } catch {
+      setError("Network error. Please try again.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <form className={styles.form} onSubmit={submit} noValidate>
+      <p className={styles.warn}>
+        This deletes your account, your picks, your entries and your referrals. Games you played
+        stay on the boards without you in them. It happens straight away and cannot be undone.
+      </p>
+      <TextField
+        id="confirmDelete"
+        label="Type DELETE to confirm"
+        value={confirm}
+        onChange={setConfirm}
+        maxLength={10}
+        error={error || undefined}
+      />
+      <button
+        type="submit"
+        className="lms-btn lms-btn--danger"
+        disabled={deleting || !ready}
+        aria-disabled={deleting || !ready}
+      >
+        {deleting ? (
+          <>
+            <span className="lms-spinner" aria-hidden="true" />
+            Deleting&hellip;
+          </>
+        ) : (
+          "Delete my account"
         )}
       </button>
     </form>

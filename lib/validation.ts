@@ -59,6 +59,17 @@ export const updateNameSchema = z
   })
   .strict();
 
+/**
+ * Deleting your own account. The literal word is the whole point: it can't be
+ * arrived at by a mistyped request, only by someone who meant it. Both clients
+ * make you type it, so this is the server holding the same line.
+ */
+export const deleteAccountSchema = z
+  .object({
+    confirm: z.literal("DELETE", { message: "Type DELETE to confirm." }),
+  })
+  .strict();
+
 /** Changing your own password: prove the current one, then set a new one. */
 export const changePasswordSchema = z
   .object({

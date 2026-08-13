@@ -29,6 +29,9 @@ const NAV = [
 const ACCOUNT = [
   { href: "/profile", label: "Profile" },
   { href: "/referrals", label: "Refer a friend" },
+  // Not filler: guideline 5.3.2 wants a contest's official rules inside the
+  // app, which means somewhere a player can actually navigate to.
+  { href: "/rules", label: "Rules" },
   { href: "/settings", label: "Settings" },
 ] as const;
 
@@ -161,6 +164,7 @@ export default function AppLayout() {
       <Drawer.Screen name="fixtures" options={{ title: "Fixtures" }} />
       <Drawer.Screen name="profile" options={{ title: "Profile" }} />
       <Drawer.Screen name="referrals" options={{ title: "Refer a friend" }} />
+      <Drawer.Screen name="rules" options={{ title: "Rules" }} />
       <Drawer.Screen name="settings" options={{ title: "Settings" }} />
     </Drawer>
   );

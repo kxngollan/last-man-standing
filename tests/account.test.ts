@@ -1,10 +1,24 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from "vitest";
 import { Types } from "mongoose";
 import { User } from "@/models/User/User";
-import { changeOwnPassword, renameUser, sessionOutlivedPassword } from "@/lib/account";
+import { PasswordResetToken } from "@/models/User/PasswordResetToken";
+import { VerificationToken } from "@/models/User/VerificationToken";
+import { UserReferralHandle } from "@/models/User/UserReferralHandle";
+import { UserReferredBy } from "@/models/User/UserReferredBy";
+import { Entry } from "@/models/Game/Entry";
+import { Pick } from "@/models/Game/Pick";
+import { Game } from "@/models/Game/Game";
+import { Feedback } from "@/models/Report/Feedback";
+import { IssueReport } from "@/models/Report/IssueReport";
+import {
+  changeOwnPassword,
+  deleteOwnAccount,
+  renameUser,
+  sessionOutlivedPassword,
+} from "@/lib/account";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { createResetToken, resetPasswordWithToken } from "@/lib/passwordReset";
-import { initDb, clearDb, closeDb } from "./helpers";
+import { initDb, clearDb, closeDb, seedGame, seedUser } from "./helpers";
 
 beforeAll(initDb);
 afterAll(closeDb);
@@ -131,5 +145,138 @@ describe("renaming yourself", () => {
   it("returns null for an unknown or malformed account", async () => {
     expect(await renameUser("not-an-id", "A", "B")).toBeNull();
     expect(await renameUser(String(new Types.ObjectId()), "A", "B")).toBeNull();
+  });
+});
+
+describe("deleting your own account", () => {
+  /** An account with something in every collection that points at a user. */
+  async function seedAccountWithEverything() {
+    const user = await seedAccount();
+    const userId = user._id;
+    const game = await seedGame();
+    const entry = await Entry.create({ gameId: game._id, userId, status: "alive" });
+
+    await Pick.create({
+      gameId: game._id,
+      entryId: entry._id,
+      userId,
+      matchday: 1,
+      teamApiId: 1,
+      fixtureApiId: null,
+      result: "pending",
+    });
+    await Feedback.create({ userId, message: "Nice game", rating: 5 });
+    await IssueReport.create({ userId, category: "bug", message: "Something broke" });
+    await PasswordResetToken.create({
+      userId,
+      tokenHash: "a".repeat(64),
+      expiresAt: new Date(Date.now() + 3_600_000),
+    });
+    await VerificationToken.create({
+      userId,
+      tokenHash: "b".repeat(64),
+      expiresAt: new Date(Date.now() + 3_600_000),
+    });
+    await UserReferralHandle.create({ userId, referralHandle: "alice" });
+
+    return { user, userId, game, entry };
+  }
+
+  it("removes the account and everything that pointed at it", async () => {
+    const { userId } = await seedAccountWithEverything();
+
+    expect(await deleteOwnAccount(String(userId))).toBe("ok");
+
+    expect(await User.findById(userId).lean()).toBeNull();
+    expect(await Entry.countDocuments({ userId })).toBe(0);
+    expect(await Pick.countDocuments({ userId })).toBe(0);
+    expect(await Feedback.countDocuments({ userId })).toBe(0);
+    expect(await IssueReport.countDocuments({ userId })).toBe(0);
+    expect(await PasswordResetToken.countDocuments({ userId })).toBe(0);
+    expect(await VerificationToken.countDocuments({ userId })).toBe(0);
+    expect(await UserReferralHandle.countDocuments({ userId })).toBe(0);
+  });
+
+  it("clears referral links in both directions", async () => {
+    const user = await seedAccount();
+    const invitee = await seedUser("Bob");
+    const inviter = await seedUser("Carol");
+
+    // They invited Bob, and Carol invited them.
+    await UserReferredBy.create({
+      userId: invitee,
+      referrerUserId: user._id,
+      handleUsed: "alice",
+      confirmed: true,
+    });
+    await UserReferredBy.create({
+      userId: user._id,
+      referrerUserId: inviter,
+      handleUsed: "carol",
+      confirmed: true,
+    });
+
+    expect(await deleteOwnAccount(String(user._id))).toBe("ok");
+
+    // Nothing may be left naming the deleted account, either way round.
+    expect(await UserReferredBy.countDocuments({ referrerUserId: user._id })).toBe(0);
+    expect(await UserReferredBy.countDocuments({ userId: user._id })).toBe(0);
+    // The other two accounts are untouched.
+    expect(await User.findById(invitee).lean()).not.toBeNull();
+    expect(await User.findById(inviter).lean()).not.toBeNull();
+  });
+
+  it("keeps a game they won but drops the winner pointer", async () => {
+    const user = await seedAccount();
+    const game = await seedGame({ status: "finished", winnerUserId: user._id });
+
+    expect(await deleteOwnAccount(String(user._id))).toBe("ok");
+
+    // The game is other players' history too, so it stays — just without a
+    // pointer to an account that no longer exists.
+    const after = await Game.findById(game._id).lean();
+    expect(after).not.toBeNull();
+    expect(after!.winnerUserId).toBeNull();
+  });
+
+  it("leaves other players' picks and entries alone", async () => {
+    const { userId } = await seedAccountWithEverything();
+    const game = await seedGame();
+    const otherId = await seedUser("Dave");
+    const otherEntry = await Entry.create({ gameId: game._id, userId: otherId, status: "alive" });
+    await Pick.create({
+      gameId: game._id,
+      entryId: otherEntry._id,
+      userId: otherId,
+      matchday: 1,
+      teamApiId: 2,
+      fixtureApiId: null,
+      result: "pending",
+    });
+
+    await deleteOwnAccount(String(userId));
+
+    expect(await Entry.countDocuments({ userId: otherId })).toBe(1);
+    expect(await Pick.countDocuments({ userId: otherId })).toBe(1);
+  });
+
+  it("refuses an admin account rather than stranding the games they created", async () => {
+    const admin = await User.create({
+      name: "Admin Person",
+      email: "admin@example.com",
+      passwordHash: await hashPassword("whatever"),
+      dob: new Date("1990-01-01"),
+      emailVerified: true,
+      isAdmin: true,
+    });
+    await seedGame({ createdBy: admin._id });
+
+    expect(await deleteOwnAccount(String(admin._id))).toBe("is-admin");
+    expect(await User.findById(admin._id).lean()).not.toBeNull();
+  });
+
+  it("reports an unknown or malformed account without throwing", async () => {
+    expect(await deleteOwnAccount("not-an-id")).toBe("unknown-user");
+    expect(await deleteOwnAccount(String(new Types.ObjectId()))).toBe("unknown-user");
   });
 });

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import styles from "./page.module.css";
+import { SUPPORT_EMAIL } from "@/lib/site";
+// Shared with /delete-account — the two legal pages are the same shape.
+import styles from "../legal.module.css";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -142,8 +144,16 @@ export default function PolicyPage() {
             </li>
           </ul>
           <p className={styles.p}>
-            Match fixtures and results shown in the game come from a third party football data
-            service. We only receive data from them. We do not send them any of your personal data.
+            Match fixtures, results and club crests shown in the game come from{" "}
+            <a
+              href="https://www.football-data.org/"
+              className={styles.link}
+              rel="noreferrer"
+              target="_blank"
+            >
+              football-data.org
+            </a>
+            . We only receive data from them. We do not send them any of your personal data.
           </p>
           <p className={styles.p}>
             We may also disclose data if the law requires it, or to protect the safety and rights of
@@ -154,9 +164,13 @@ export default function PolicyPage() {
         <Section id="retention" title="How long we keep it">
           <p className={styles.p}>
             We keep your account data for as long as your account is active. Email confirmation and
-            password reset links are short lived and expire automatically. If you ask us to delete
-            your account, we remove your personal data, keeping only what we are legally required to
-            retain.
+            password reset links are short lived and expire automatically.
+          </p>
+          <p className={styles.p}>
+            You can delete your account yourself at any time, in the app or on this site — see{" "}
+            <Link href="/delete-account">how to delete your account</Link>. When you do, your
+            personal data goes immediately, and the only copies left are the routine database
+            backups our host takes, which roll over within 30 days.
           </p>
         </Section>
 
@@ -169,16 +183,21 @@ export default function PolicyPage() {
         </Section>
 
         <Section id="your-rights" title="Your rights">
-          <p className={styles.p}>You can ask us to:</p>
+          <p className={styles.p}>
+            <b>Deleting your account</b> you can do yourself, without asking us —{" "}
+            <Link href="/delete-account">here is how</Link>. You can change your name in Settings at
+            any time too.
+          </p>
+          <p className={styles.p}>You can also ask us to:</p>
           <ul className={styles.list}>
             <li>See the personal data we hold about you.</li>
             <li>Correct anything that is wrong.</li>
-            <li>Delete your account and personal data.</li>
+            <li>Send you a copy of your data, or restrict what we do with it.</li>
           </ul>
           <p className={styles.p}>
-            To make a request, please get in touch using the contact details at the end of this
-            policy. Depending on where you live, you may also have the right to complain to your local
-            data protection authority.
+            To make a request, get in touch using the contact details at the end of this policy.
+            Depending on where you live, you may also have the right to complain to your local data
+            protection authority.
           </p>
         </Section>
 
@@ -198,8 +217,11 @@ export default function PolicyPage() {
 
         <Section id="contact" title="Contact us">
           <p className={styles.p}>
-            Questions about your privacy or this policy? We are setting up a contact email and will
-            add it here soon.
+            Questions about your privacy or this policy? Email us at{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className={styles.link}>
+              {SUPPORT_EMAIL}
+            </a>
+            .
           </p>
         </Section>
       </main>
