@@ -8,7 +8,7 @@ export { OPTIONS };
 /**
  * Email and password in, a 30-day bearer token out.
  *
- * The credential check is attemptLogin() — the same function the web's
+ * The Issuecredential check is attemptLogin() — the same function the web's
  * Credentials provider calls — so this door carries the identical per-IP and
  * per-email rate limits and the same constant-time compare. It must never grow
  * its own copy of that logic.
