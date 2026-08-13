@@ -10,8 +10,12 @@ import { Radius, Space, Text as Type, Weight, useTheme } from "@/theme";
  *
  * The links mirror components/portal/AppBar.tsx one for one — same order, same
  * words ("Standings", "Make pick", "My picks") — so someone who plays on the
- * site doesn't have to relearn anything on their phone. Admin only appears for
- * admins, exactly as it does in the web account menu.
+ * site doesn't have to relearn anything on their phone.
+ *
+ * Admin is deliberately not here: there's no admin screen in this app, so the
+ * link only ever pointed at a route the phone can't reach. Running the game is
+ * a job for the website. (`isAdmin` still rides along on the session — the API
+ * uses it — it just doesn't put anything in this drawer.)
  */
 
 const NAV = [
@@ -93,18 +97,15 @@ function DrawerContent({ navigation }: { navigation: { closeDrawer: () => void }
 
         <View style={[styles.rule, { backgroundColor: colors.rule }]} />
 
-        <View style={styles.group}>
-          {ACCOUNT.map(link)}
-          {user?.isAdmin && link({ href: "/admin", label: "Admin" })}
-        </View>
+        <View style={styles.group}>{ACCOUNT.map(link)}</View>
       </ScrollView>
 
       {/* The account foot sits OUTSIDE the scroller, so it is pinned to the
           bottom of the drawer whatever the nav does. A flex spacer inside the
           ScrollView only looks pinned while the links happen to be shorter
-          than the screen — add the admin link, a small phone, or a large text
-          size and Log out drops below the fold, which is exactly where nobody
-          looks for it. */}
+          than the screen — one more link, a small phone, or a large text size
+          and Log out drops below the fold, which is exactly where nobody looks
+          for it. */}
       <View style={[styles.foot, { borderTopColor: colors.rule, backgroundColor: colors.paper }]}>
         <View style={{ paddingHorizontal: Space.sm, gap: 2, marginBottom: Space.xs }}>
           {user?.name ? (

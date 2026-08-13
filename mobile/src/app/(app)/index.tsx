@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { Pressable, StyleSheet, View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { api, type PickSummary, type PortalState } from "@/api/client";
-import { Card, Lede, Muted, Pill, Screen, Title } from "@/components/ui";
+import { Card, Lede, Muted, Pill, Screen, Spinner, Title } from "@/components/ui";
 import { Crest } from "@/components/crest";
 import { DeadlinePill } from "@/components/countdown";
 import { TopPicks } from "@/components/top-picks";
@@ -199,7 +199,7 @@ export default function DashboardScreen() {
         </>
       )}
 
-      {!data && error === "" && <Muted>Loading your game…</Muted>}
+      {!data && error === "" && <Spinner label="Loading your game" />}
 
       {/* Signing out lives in the sidebar, next to the account links — not
           stranded at the bottom of a screen you have to scroll to reach. */}

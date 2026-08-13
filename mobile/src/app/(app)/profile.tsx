@@ -1,6 +1,6 @@
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { api, type UserProfile } from "@/api/client";
-import { Card, Lede, Muted, Title } from "@/components/ui";
+import { Card, Lede, Muted, Spinner, Title } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/useApi";
 import { Space, Text as Type, useTheme } from "@/theme";
@@ -37,6 +37,8 @@ export default function ProfileScreen() {
           <Lede style={{ color: colors.outInk }}>{error}</Lede>
         </Card>
       )}
+
+      {!data && error === "" && <Spinner label="Loading your profile" />}
 
       {data && (
         <>
@@ -84,7 +86,8 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: Space.md, gap: Space.md, paddingBottom: Space.xxl },
+  // flexGrow so the first-load Spinner has a full-height box to centre in.
+  scroll: { flexGrow: 1, padding: Space.md, gap: Space.md, paddingBottom: Space.xxl },
   row: { flexDirection: "row", gap: Space.xs },
   stat: { flex: 1, alignItems: "center", gap: Space.xxs },
 });

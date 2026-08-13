@@ -1,6 +1,6 @@
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { api, type LeagueTable } from "@/api/client";
-import { Card, Lede, Muted } from "@/components/ui";
+import { Card, Lede, Muted, Spinner } from "@/components/ui";
 import { Crest } from "@/components/crest";
 import { useApi } from "@/lib/useApi";
 import { Space, Text as Type, Weight, useTheme } from "@/theme";
@@ -22,6 +22,8 @@ export default function TableScreen() {
           <Lede style={{ color: colors.outInk }}>{error}</Lede>
         </Card>
       )}
+
+      {!data && error === "" && <Spinner label="Loading the table" />}
 
       {data && (
         <>
@@ -72,7 +74,8 @@ export default function TableScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: Space.md, paddingBottom: Space.xxl },
+  // flexGrow so the first-load Spinner has a full-height box to centre in.
+  scroll: { flexGrow: 1, padding: Space.md, paddingBottom: Space.xxl },
   head: { flexDirection: "row", alignItems: "center", paddingBottom: Space.xs, borderBottomWidth: 1 },
   row: {
     flexDirection: "row",

@@ -123,6 +123,14 @@ export const api = {
   }) => request<{ ok: true; verificationSent: true }>("/auth/signup", { method: "POST", body: input }),
 
   /**
+   * Ask for a password reset link. Returns `ok` once the email is away; the
+   * link inside it opens the website's /reset page, so the app's part of the
+   * flow finishes here.
+   */
+  forgot: (email: string) =>
+    request<{ ok: true }>("/auth/forgot", { method: "POST", body: { email } }),
+
+  /**
    * Native Google/Apple sign-in. `dob` is only sent the second time round:
    * an address with no account comes back as a 409 asking to confirm, and the
    * app posts again with a date of birth once the player says yes.

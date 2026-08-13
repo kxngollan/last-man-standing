@@ -55,6 +55,9 @@ function RootNavigator() {
             so a session that arrives mid-flow can't leave you stranded on a
             form for an account you already have. */}
         <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+        {/* Same guard again: forgetting a password is something only a
+            signed-out player does, and the reset itself finishes in a browser. */}
+        <Stack.Screen name="forgot" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
   );

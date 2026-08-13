@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { api, ApiError, type PickSummary, type PortalState } from '@/api/client'
-import { Button, Lede, Muted, Pill, Screen, Title } from '@/components/ui'
+import { Button, Lede, Muted, Pill, Screen, Spinner, Title } from '@/components/ui'
 import { Crest } from '@/components/crest'
 import { DeadlinePill } from '@/components/countdown'
 import { TopPicks } from '@/components/top-picks'
@@ -67,6 +67,8 @@ export default function MakeSelectionScreen() {
           <Lede style={{ color: colors.outInk }}>{error}</Lede>
         </View>
       )}
+
+      {!data && error === '' && <Spinner label='Loading the teams' />}
 
       {data && (
         <View style={[styles.summary, { backgroundColor: colors.paper2, borderColor: colors.rule }]}>
@@ -152,7 +154,9 @@ export default function MakeSelectionScreen() {
 
       <TopPicks summary={data?.summary} limit={5} />
 
-      {teams.length === 0 && error === '' && <Muted>No teams to pick from yet.</Muted>}
+      {/* Gated on `data` so this reads as "the week has no fixtures" rather than
+          appearing for the second before the first response lands. */}
+      {data && teams.length === 0 && <Muted>No teams to pick from yet.</Muted>}
     </Screen>
   )
 }

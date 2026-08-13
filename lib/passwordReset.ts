@@ -4,11 +4,74 @@ import { PasswordResetToken } from "@/models/User/PasswordResetToken";
 import { User } from "@/models/User/User";
 import { hashPassword } from "@/lib/password";
 import { isAdminEmail } from "@/lib/adminEmails";
+import { sendPasswordResetEmail } from "@/lib/email";
+import { PASSWORD_RESET_ENABLED } from "@/lib/features";
+import { rateLimit } from "@/lib/rateLimit";
+import { SITE_URL } from "@/lib/site";
+import isEmail from "@/lib/isEmail";
 
 const TTL_MS = 60 * 60 * 1000; // 1h
 
 function hashToken(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
+}
+
+export type ResetRequestResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "disabled" | "malformed" | "rate-limited" | "no-account" | "send-failed";
+    };
+
+/**
+ * "Send me a reset link", in one place.
+ *
+ * Both front doors go through here — the website's /forgot form and the app's
+ * mobile endpoint — for the same reason attemptLogin() is shared: a second copy
+ * is a second place to forget the rate limits, and this one guards an outbound
+ * mailer, so a missed limit is a mail-bomb rather than just a guessing oracle.
+ *
+ * The emailed link always points at the website's /reset page. There's no
+ * native reset screen to send a phone to, and the token is single-use, so one
+ * destination is also one place for it to be spent.
+ *
+ * Each caller keeps its own wording and status codes; this only decides what
+ * happened. `ip` feeds the per-IP limit — pass what clientIp() gave you.
+ */
+export async function requestPasswordReset(
+  rawEmail: unknown,
+  ip: string
+): Promise<ResetRequestResult> {
+  if (!PASSWORD_RESET_ENABLED) return { ok: false, reason: "disabled" };
+
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+  if (!isEmail(email)) return { ok: false, reason: "malformed" };
+
+  // Per IP against enumeration sweeps, and per target address so one victim
+  // can't be mail-bombed from many IPs.
+  const [ipOk, emailOk] = await Promise.all([
+    rateLimit(`forgot:ip:${ip}`, 5, 15 * 60 * 1000),
+    rateLimit(`forgot:email:${email}`, 3, 60 * 60 * 1000),
+  ]);
+  if (!ipOk || !emailOk) return { ok: false, reason: "rate-limited" };
+
+  try {
+    await connectDB();
+    const user = await User.findOne({ email });
+    // Deliberate tradeoff, inherited from the web flow: telling the caller that
+    // no account exists makes enumeration possible, and we accept it so nobody
+    // sits waiting for an email that was never coming. The limits above are
+    // what keep it from being a bulk lookup service.
+    if (!user) return { ok: false, reason: "no-account" };
+
+    const token = await createResetToken(String(user._id));
+    await sendPasswordResetEmail(email, `${SITE_URL}/reset?token=${token}`);
+  } catch (err) {
+    console.error("[auth] forgot-password error:", (err as Error).message);
+    return { ok: false, reason: "send-failed" };
+  }
+
+  return { ok: true };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -159,33 +159,66 @@ interface FieldProps extends TextInputProps {
 }
 
 export const Field = forwardRef<TextInput, FieldProps>(function Field(
-  { label, error, help, style, ...props },
+  { label, error, help, style, secureTextEntry, ...props },
   ref
 ) {
   const { colors } = useTheme();
+
+  /**
+   * Masked fields get a reveal toggle. It lives inside the input's own box so
+   * the field keeps its single 44pt row — hence absolute positioning and the
+   * reserved right padding rather than a wrapping row that would double the
+   * borders. Reveal state is per-field and resets on unmount, so nothing is
+   * left legible on a screen the user has walked away from.
+   */
+  const [revealed, setRevealed] = useState(false);
+  const maskable = secureTextEntry === true;
+
   return (
     <View style={{ gap: Space.xxs }}>
       <Text style={{ color: colors.ink, fontSize: Type.sm, fontWeight: Weight.semibold }}>
         {label}
       </Text>
-      <TextInput
-        ref={ref}
-        placeholderTextColor={colors.muted}
-        {...props}
-        style={[
-          {
-            backgroundColor: colors.paper,
-            borderWidth: 1,
-            borderColor: error ? colors.out : colors.rule2,
-            borderRadius: Radius.input,
-            paddingHorizontal: Space.sm,
-            minHeight: 44,
-            color: colors.ink,
-            fontSize: Type.base,
-          },
-          style,
-        ]}
-      />
+      <View style={{ justifyContent: "center" }}>
+        <TextInput
+          ref={ref}
+          placeholderTextColor={colors.muted}
+          secureTextEntry={maskable && !revealed}
+          {...props}
+          style={[
+            {
+              backgroundColor: colors.paper,
+              borderWidth: 1,
+              borderColor: error ? colors.out : colors.rule2,
+              borderRadius: Radius.input,
+              paddingHorizontal: Space.sm,
+              paddingRight: maskable ? Space.xxl : Space.sm,
+              minHeight: 44,
+              color: colors.ink,
+              fontSize: Type.base,
+            },
+            style,
+          ]}
+        />
+        {maskable && (
+          <Pressable
+            onPress={() => setRevealed((on) => !on)}
+            hitSlop={Space.xs}
+            accessibilityRole="switch"
+            accessibilityLabel={revealed ? "Hide password" : "Show password"}
+            accessibilityState={{ checked: revealed }}
+            style={({ pressed }) => [
+              { position: "absolute", right: Space.sm, opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text
+              style={{ color: colors.accent, fontSize: Type.sm, fontWeight: Weight.semibold }}
+            >
+              {revealed ? "Hide" : "Show"}
+            </Text>
+          </Pressable>
+        )}
+      </View>
       {(error || help) && (
         <Text style={{ color: error ? colors.outInk : colors.muted, fontSize: Type.xs }}>
           {error || help}
@@ -194,6 +227,33 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
     </View>
   );
 });
+
+/**
+ * First load, before there's anything to show.
+ *
+ * `flex: 1` is what makes it centred rather than merely indented: Screen's
+ * content box already grows to fill the viewport, so a flexible child claims
+ * whatever height is left over and centres inside it. On a screen that renders
+ * a heading first, that's the space under the heading — which is where the
+ * content is about to appear anyway.
+ *
+ * Deliberately silent. A spinner already says "wait"; a caption underneath only
+ * says it again, more slowly. Screen readers get the label instead, since a
+ * spinning view announces nothing on its own.
+ */
+export function Spinner({ label = "Loading" }: { label?: string }) {
+  const { colors } = useTheme();
+  return (
+    <View
+      style={styles.spinner}
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      accessibilityState={{ busy: true }}
+    >
+      <ActivityIndicator size="large" color={colors.accent} />
+    </View>
+  );
+}
 
 /** A game-state pill — alive, out, wildcard. Icon-free here; label carries it. */
 export function Pill({ label, tone = "safe" }: { label: string; tone?: "safe" | "out" | "wild" }) {
@@ -216,6 +276,7 @@ export function Pill({ label, tone = "safe" }: { label: string; tone?: "safe" | 
 }
 
 const styles = StyleSheet.create({
+  spinner: { flex: 1, alignItems: "center", justifyContent: "center", padding: Space.xl },
   button: {
     minHeight: 44,
     borderRadius: Radius.pill,

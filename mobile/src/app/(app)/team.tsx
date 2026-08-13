@@ -1,6 +1,6 @@
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { api, type PickSummary, type PortalState } from "@/api/client";
-import { Card, Lede, Muted, Pill, Title } from "@/components/ui";
+import { Card, Lede, Muted, Pill, Spinner, Title } from "@/components/ui";
 import { Crest } from "@/components/crest";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/useApi";
@@ -50,6 +50,8 @@ export default function MyPicksScreen() {
         </Card>
       )}
 
+      {!data && error === "" && <Spinner label="Loading your picks" />}
+
       {data?.entry && (
         <Card style={{ gap: Space.xxs }}>
           <Muted>Survived</Muted>
@@ -79,7 +81,10 @@ export default function MyPicksScreen() {
         );
       })}
 
-      {history.length === 0 && error === "" && (
+      {/* Gated on `data`, not just an empty history: before the first response
+          there are no picks to show either, and "no picks yet" would be a
+          verdict on a game we haven't actually loaded. */}
+      {data && history.length === 0 && (
         <Muted>No picks yet. Make your first one from “Make pick”.</Muted>
       )}
     </ScrollView>
@@ -87,6 +92,7 @@ export default function MyPicksScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: Space.md, gap: Space.xs, paddingBottom: Space.xxl },
+  // flexGrow so the first-load Spinner has a full-height box to centre in.
+  scroll: { flexGrow: 1, padding: Space.md, gap: Space.xs, paddingBottom: Space.xxl },
   row: { flexDirection: "row", alignItems: "center", gap: Space.sm },
 });

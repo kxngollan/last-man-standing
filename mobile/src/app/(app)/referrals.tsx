@@ -1,6 +1,6 @@
 import { RefreshControl, ScrollView, Share, StyleSheet, View } from "react-native";
 import { request } from "@/api/client";
-import { Button, Card, Lede, Muted, Title } from "@/components/ui";
+import { Button, Card, Lede, Muted, Spinner, Title } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/useApi";
 import { Space, Text as Type, Weight, useTheme } from "@/theme";
@@ -44,6 +44,8 @@ export default function ReferralsScreen() {
         </Card>
       )}
 
+      {!data && error === "" && <Spinner label="Loading your referrals" />}
+
       {data && (
         <>
           <Card style={{ gap: Space.xs }}>
@@ -79,6 +81,7 @@ export default function ReferralsScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: Space.md, gap: Space.md, paddingBottom: Space.xxl },
+  // flexGrow so the first-load Spinner has a full-height box to centre in.
+  scroll: { flexGrow: 1, padding: Space.md, gap: Space.md, paddingBottom: Space.xxl },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 });

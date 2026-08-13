@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { api, type FixturesWeek } from "@/api/client";
-import { Button, Card, Lede, Muted } from "@/components/ui";
+import { Button, Card, Lede, Muted, Spinner } from "@/components/ui";
 import { Crest } from "@/components/crest";
 import { useApi } from "@/lib/useApi";
 import { Radius, Space, Text as Type, Weight, useTheme } from "@/theme";
@@ -42,6 +42,8 @@ export default function FixturesScreen() {
           <Lede style={{ color: colors.outInk }}>{error}</Lede>
         </Card>
       )}
+
+      {!data && error === "" && <Spinner label="Loading fixtures" />}
 
       {data && (
         <>
@@ -121,7 +123,8 @@ export default function FixturesScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: Space.md, gap: Space.xs, paddingBottom: Space.xxl },
+  // flexGrow so the first-load Spinner has a full-height box to centre in.
+  scroll: { flexGrow: 1, padding: Space.md, gap: Space.xs, paddingBottom: Space.xxl },
   stepper: { flexDirection: "row", alignItems: "center", gap: Space.sm, marginBottom: Space.xs },
   fixture: {
     flexDirection: "row",

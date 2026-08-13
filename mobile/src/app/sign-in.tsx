@@ -102,6 +102,14 @@ export default function SignIn() {
               onSubmitEditing={submit}
               error={error || undefined}
             />
+            {/* Between the password and the button, where the website puts it —
+                the point at which someone realises they don't know it. */}
+            <Link href="/forgot" style={{ alignSelf: "flex-end" }}>
+              <Muted style={{ color: colors.accent, fontWeight: Weight.semibold }}>
+                Forgot password?
+              </Muted>
+            </Link>
+
             <Button label={busy ? "Logging in…" : "Log in"} onPress={submit} busy={busy} />
           </View>
 
