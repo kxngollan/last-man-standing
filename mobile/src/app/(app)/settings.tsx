@@ -1,20 +1,27 @@
-import { useState } from "react";
-import { Alert, ScrollView, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { request, ApiError } from "@/api/client";
 import { Button, Card, Field, Lede, Muted, Title } from "@/components/ui";
+import {
+  biometricKind,
+  biometricLabel,
+  isBiometricEnabled,
+  type BiometricKind,
+} from "@/lib/biometrics";
 import { useSession } from "@/lib/session";
 import { Space, Text as Type, useTheme } from "@/theme";
 
 /**
  * Your name and password — the two things the web settings page lets you
- * change, against the same endpoints.
+ * change, against the same endpoints — plus biometric unlock, which is
+ * phone-only and so has no counterpart on the site.
  *
  * Changing a password ends every other session by design, this one included,
  * so we sign out afterwards and let them back in with the new one rather than
  * leaving a token that's about to start failing.
  */
 export default function SettingsScreen() {
-  const { token, user, signOut } = useSession();
+  const { token, user, signOut, enableBiometrics, disableBiometrics } = useSession();
   const { colors } = useTheme();
 
   const [first, setFirst] = useState(user?.name?.split(" ")[0] ?? "");
@@ -24,6 +31,47 @@ export default function SettingsScreen() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // "none" hides the row entirely — a switch that can't be switched is worse
+  // than no switch.
+  const [kind, setKind] = useState<BiometricKind>("none");
+  const [bioOn, setBioOn] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void Promise.all([biometricKind(), isBiometricEnabled()]).then(([k, on]) => {
+      if (!live) return;
+      setKind(k);
+      setBioOn(on);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function toggleBiometrics(on: boolean) {
+    setBioBusy(true);
+    try {
+      if (on) {
+        // Only reflect it in the UI if the keychain actually took it — a switch
+        // that flips on a declined prompt is a lie about where the token is.
+        const ok = await enableBiometrics();
+        setBioOn(ok);
+        if (!ok) {
+          Alert.alert(
+            `Couldn’t turn on ${biometricLabel(kind)}`,
+            "Your session is still saved the usual way. Try again, or check your device settings."
+          );
+        }
+      } else {
+        await disableBiometrics();
+        setBioOn(false);
+      }
+    } finally {
+      setBioBusy(false);
+    }
+  }
 
   async function saveName() {
     if (!token) return;
@@ -100,6 +148,30 @@ export default function SettingsScreen() {
         />
       </Card>
 
+      {kind !== "none" && (
+        <Card style={{ gap: Space.sm }}>
+          <View style={styles.row}>
+            <View style={styles.rowText}>
+              <Title style={{ fontSize: Type.md }}>{biometricLabel(kind)}</Title>
+              <Muted>
+                Open the app with {biometricLabel(kind)} instead of typing your password.
+              </Muted>
+            </View>
+            <Switch
+              value={bioOn}
+              onValueChange={(on) => void toggleBiometrics(on)}
+              disabled={bioBusy || !token}
+              trackColor={{ true: colors.accent, false: colors.rule2 }}
+              thumbColor={colors.paper}
+            />
+          </View>
+          <Muted style={{ fontSize: Type.xs }}>
+            Your login stays on this phone. Adding a fingerprint or face to the device
+            switches this off, and you’ll log in with your password once more.
+          </Muted>
+        </Card>
+      )}
+
       <Card style={{ gap: Space.xxs }}>
         <Muted>Signed in as</Muted>
         <Lede style={{ color: colors.ink }}>{user?.email}</Lede>
@@ -114,4 +186,6 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { padding: Space.md, gap: Space.md, paddingBottom: Space.xxl },
+  row: { flexDirection: "row", alignItems: "center", gap: Space.md },
+  rowText: { flex: 1, gap: Space.xxs },
 });

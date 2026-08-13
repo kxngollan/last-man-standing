@@ -17,7 +17,7 @@ SplashScreen.preventAutoHideAsync();
  * would have let through for a frame first.
  */
 function RootNavigator() {
-  const { token, loading } = useSession();
+  const { token, loading, locked } = useSession();
   const { colors } = useTheme();
 
   // Hold the splash until we know whether there's a stored token, so nobody
@@ -40,7 +40,16 @@ function RootNavigator() {
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
       </Stack.Protected>
 
-      <Stack.Protected guard={!token}>
+      {/* A guarded token in the keychain and no face yet. Its own state, ahead
+          of the signed-out screens: there's a valid session here, it just
+          hasn't been opened, so offering a login form would be the wrong ask.
+          `locked` is only ever true while `token` is null, so this can't
+          compete with the guard above. */}
+      <Stack.Protected guard={locked}>
+        <Stack.Screen name="lock" options={{ headerShown: false }} />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!token && !locked}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         {/* Signing up is a signed-out destination too — inside the same guard,
             so a session that arrives mid-flow can't leave you stranded on a

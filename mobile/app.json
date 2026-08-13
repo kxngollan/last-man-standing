@@ -33,7 +33,18 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Unlock Last Man Standing with Face ID."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Unlock Last Man Standing with Face ID."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
