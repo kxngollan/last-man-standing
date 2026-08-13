@@ -1,5 +1,7 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from "vitest";
 import { makePick, playWildcard, undoWildcard } from "@/lib/game/pick";
+import { getMatchdayDeadline } from "@/lib/game/deadline";
+import { PICK_DEADLINE_LEAD_MS } from "@/lib/game/constants";
 import { GameError } from "@/lib/game/errors";
 import { Pick } from "@/models/Game/Pick";
 import { Entry } from "@/models/Game/Entry";
@@ -14,6 +16,8 @@ import {
   seedPick,
   future,
   past,
+  HOUR,
+  SEASON,
 } from "./helpers";
 
 beforeAll(initDb);
@@ -198,5 +202,54 @@ describe("makePick concurrency", () => {
     const picks = await Pick.find({ entryId: entry._id, matchday: 1 });
     expect(picks).toHaveLength(1);
     expect([1, 3]).toContain(picks[0].teamApiId);
+  });
+});
+
+/**
+ * Picks close an hour before the game week starts, not on the whistle.
+ *
+ * Pinned deliberately: the lead time is the kind of rule that gets "tidied"
+ * back to the kickoff by someone reading getMatchdayDeadline in isolation, and
+ * nothing else in the suite would notice — every other fixture here sits two
+ * hours either side of now, comfortably clear of the boundary.
+ */
+describe("pick deadline", () => {
+  beforeEach(clearDb);
+
+  it("falls PICK_DEADLINE_LEAD_MS before the week's earliest kickoff", async () => {
+    const early = future(3);
+    await seedFixtures(5, [
+      // Deliberately out of order, so this also covers "earliest" rather than
+      // "first inserted".
+      { home: 3, away: 4, kickoff: future(5), status: "TIMED" },
+      { home: 1, away: 2, kickoff: early, status: "TIMED" },
+    ]);
+
+    const deadline = await getMatchdayDeadline(SEASON, 5);
+    expect(deadline?.getTime()).toBe(early.getTime() - PICK_DEADLINE_LEAD_MS);
+  });
+
+  it("locks the week inside the final hour, while the match is still to come", async () => {
+    await seedTeams(2);
+    const game = await seedGame({ currentMatchday: 38 }); // no next week to fall to
+    const { userId } = await seedEntry(game._id, "Alice");
+    // Kickoff is 30 minutes away: open under the old kickoff deadline, shut now.
+    await seedFixtures(38, [{ home: 1, away: 2, kickoff: new Date(Date.now() + HOUR / 2), status: "TIMED" }]);
+
+    await expect(makePick(String(userId), 1)).rejects.toThrow(/no open game week/);
+  });
+
+  it("leaves the week open until the lead time is reached", async () => {
+    await seedTeams(2);
+    const game = await seedGame({ currentMatchday: 38 });
+    const { entry, userId } = await seedEntry(game._id, "Alice");
+    await seedFixtures(38, [{ home: 1, away: 2, kickoff: future(2), status: "TIMED" }]);
+
+    await makePick(String(userId), 1);
+    expect(await Pick.find({ entryId: entry._id })).toHaveLength(1);
+  });
+
+  it("has no deadline for a week with no fixtures yet", async () => {
+    expect(await getMatchdayDeadline(SEASON, 7)).toBeNull();
   });
 });
