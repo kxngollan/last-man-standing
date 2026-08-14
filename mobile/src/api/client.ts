@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import type {
   FixturesWeek,
+  IssueCategory,
   LeagueTable,
   PickSummary,
   PortalState,
@@ -19,7 +20,7 @@ import type {
  * resolve outside the app folder. Copies would drift; this can't.
  */
 
-export type { FixturesWeek, LeagueTable, PickSummary, PortalState, StandingsPage, TeamFixtures, UserProfile };
+export type { FixturesWeek, IssueCategory, LeagueTable, PickSummary, PortalState, StandingsPage, TeamFixtures, UserProfile };
 
 /**
  * Where the server lives.
@@ -43,8 +44,8 @@ export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   (__DEV__
     ? Platform.select({
-        android: "http://10.0.2.2:3000",
-        default: "http://localhost:3000",
+        android: "https://www.footballlms.com",
+        default: "https://www.footballlms.com",
       })
     : "");
 
@@ -129,6 +130,8 @@ export const api = {
     password: string;
     /** ISO yyyy-mm-dd. */
     dob: string;
+    /** Required by the server from anyone under 16; ignored for everyone else. */
+    parentalConsent?: boolean;
   }) => request<{ ok: true; verificationSent: true }>("/auth/signup", { method: "POST", body: input }),
 
   /**
@@ -148,6 +151,7 @@ export const api = {
     provider: "google" | "apple";
     idToken: string;
     dob?: string;
+    parentalConsent?: boolean;
     firstName?: string | null;
     lastName?: string | null;
   }) => request<LoginResponse>("/auth/social", { method: "POST", body: input }),
@@ -185,4 +189,18 @@ export const api = {
     request<UserProfile>(`/profile/${encodeURIComponent(userId)}`, { token }),
 
   joinGame: (token: string) => request<{ ok: true }>("/games/join", { method: "POST", token }),
+
+  /**
+   * Report a problem, including another player's name — the app's only piece of
+   * user-generated content, and so the thing Apple guideline 1.2 wants a route
+   * for. Same endpoint and same categories as the website's dialog, so both
+   * clients land in one admin queue.
+   *
+   * `page` is the route they were on, kept as free context for whoever reads it.
+   * The server rate-limits to five a day per account.
+   */
+  reportIssue: (
+    token: string,
+    input: { category: IssueCategory; message: string; page?: string }
+  ) => request<{ ok: true }>("/issues", { method: "POST", token, body: input }),
 };

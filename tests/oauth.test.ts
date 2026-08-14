@@ -36,15 +36,28 @@ const DOB = "1990-05-01";
  * carrying a consent for the address the provider gave. Without one, a sign-in
  * creates nothing at all — which is what the first tests below check.
  */
-function register(identity: OAuthIdentity, referralCookie?: string | null, dob = DOB) {
+function register(
+  identity: OAuthIdentity,
+  referralCookie?: string | null,
+  dob = DOB,
+  parentalConsent = false
+) {
   return signInWithOAuth(identity, {
     referralCookie,
     consent: {
       provider: identity.provider,
       email: (identity.email ?? "").trim().toLowerCase(),
       dob,
+      parentalConsent,
     },
   });
+}
+
+/** A date of birth exactly `years` ago, as the ISO string a consent carries. */
+function dobAged(years: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  return d.toISOString().slice(0, 10);
 }
 
 /** An account left behind by a social sign-in before consent was asked for:
@@ -73,12 +86,26 @@ describe("the consent that authorises a social sign-up", () => {
       provider: "google",
       email: "player@example.com",
       dob: DOB,
+      // Sealed without it, so it opens as an explicit no rather than absent —
+      // the caller treats only `true` as permission given.
+      parentalConsent: false,
     });
 
     // Signed, so it can't be edited in the browser and it can't be invented.
     expect(await openConsent(`${sealed}x`)).toBeNull();
     expect(await openConsent("not-a-token")).toBeNull();
     expect(await openConsent(null)).toBeNull();
+  });
+
+  it("carries a parental permission that was given", async () => {
+    const sealed = await sealConsent({
+      provider: "google",
+      email: "player@example.com",
+      dob: DOB,
+      parentalConsent: true,
+    });
+
+    expect((await openConsent(sealed))?.parentalConsent).toBe(true);
   });
 });
 
@@ -110,13 +137,32 @@ describe("an address we've never seen", () => {
     expect(await User.countDocuments({})).toBe(0);
   });
 
-  it("refuses to register anyone under 16, and writes nothing", async () => {
-    const twelve = new Date();
-    twelve.setFullYear(twelve.getFullYear() - 12);
-    const result = await register(google(), null, twelve.toISOString().slice(0, 10));
+  it("refuses to register anyone under 13, and writes nothing", async () => {
+    const result = await register(google(), null, dobAged(12));
 
     expect(result).toEqual({ ok: false, reason: "too-young" });
     expect(await User.countDocuments({})).toBe(0);
+  });
+
+  it("refuses a 13-to-15 year old with no parental permission, and writes nothing", async () => {
+    const result = await register(google(), null, dobAged(14));
+
+    expect(result).toEqual({ ok: false, reason: "needs-parental-consent" });
+    expect(await User.countDocuments({})).toBe(0);
+  });
+
+  it("registers a 13-to-15 year old who has permission, and records it", async () => {
+    const result = await register(google(), null, dobAged(14), true);
+
+    expect(result.ok).toBe(true);
+    expect((await User.findOne({ email: "player@example.com" }))?.parentalConsent).toBe(true);
+  });
+
+  it("doesn't mark an adult as having needed permission", async () => {
+    // Ticked anyway — the server decides from the date, not from the box.
+    await register(google(), null, DOB, true);
+
+    expect((await User.findOne({ email: "player@example.com" }))?.parentalConsent).toBe(false);
   });
 });
 
@@ -351,13 +397,25 @@ describe("the date of birth /welcome collects", () => {
     expect(result.user.needsOnboarding).toBe(true);
   });
 
-  it("refuses anyone under 16", async () => {
+  it("refuses anyone under 13", async () => {
     const userId = await legacyOAuthAccount();
 
-    const twelve = new Date();
-    twelve.setFullYear(twelve.getFullYear() - 12);
-    expect(await setDateOfBirth(userId, twelve)).toBe("too-young");
+    expect(await setDateOfBirth(userId, new Date(dobAged(12)))).toBe("too-young");
     expect((await User.findById(userId))?.dob).toBeUndefined();
+  });
+
+  it("refuses a 13-to-15 year old with no parental permission", async () => {
+    const userId = await legacyOAuthAccount();
+
+    expect(await setDateOfBirth(userId, new Date(dobAged(14)))).toBe("needs-parental-consent");
+    expect((await User.findById(userId))?.dob).toBeUndefined();
+  });
+
+  it("accepts a 13-to-15 year old who has permission, and records it", async () => {
+    const userId = await legacyOAuthAccount();
+
+    expect(await setDateOfBirth(userId, new Date(dobAged(14)), true)).toBe("ok");
+    expect((await User.findById(userId))?.parentalConsent).toBe(true);
   });
 
   it("can't be changed once it's set", async () => {

@@ -9,7 +9,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3000"
+        "EXPO_PUBLIC_API_URL": "https://www.footballlms.com"
       }
     },
     "preview": {
@@ -17,12 +17,18 @@
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.footballlms.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.footballlms.com"
       }
     }
   },

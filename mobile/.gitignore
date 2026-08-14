@@ -41,3 +41,8 @@ example
 # generated native folders
 /ios
 /android
+
+# Store listing artwork. Regenerate with scripts/make-store-assets.py and
+# scripts/make-screenshots.py rather than committing it: the raw captures are
+# of a live account and carry other players' names.
+/store

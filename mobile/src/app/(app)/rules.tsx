@@ -38,7 +38,7 @@ const RULES: Array<{ heading: string; body: string }> = [
   },
   {
     heading: "Who can enter",
-    body: "Anyone aged 16 or over with a confirmed email address. One account per person.",
+    body: "Anyone aged 13 or over with a confirmed email address. Players under 16 need a parent or guardian's permission. One account per person.",
   },
   {
     heading: "What it costs",
@@ -58,7 +58,7 @@ export default function RulesScreen() {
       <View style={styles.head}>
         <Title>Official rules</Title>
         <Lede>
-          The whole game in eight lines. Free to enter, 16 and over, no stakes — the last player
+          The whole game in eight lines. Free to enter, 13 and over, no stakes — the last player
           standing wins.
         </Lede>
       </View>

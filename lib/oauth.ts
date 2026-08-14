@@ -2,7 +2,7 @@ import { connectDB } from "@/database/connect";
 import { User, type OAuthProvider } from "@/models/User/User";
 import { isAdminEmail } from "@/lib/adminEmails";
 import isEmail from "@/lib/isEmail";
-import { isOldEnough } from "@/lib/age";
+import { isOldEnough, needsParentalConsent } from "@/lib/age";
 import { confirmReferral, ensureReferralHandle, recordReferral } from "@/lib/referral";
 import type { SocialConsent } from "@/lib/socialConsent";
 import type { LoginUser } from "@/lib/login";
@@ -21,7 +21,7 @@ import type { LoginUser } from "@/lib/login";
  *   3. An address we've never seen creates nothing. Clicking "Continue with
  *      Google" is not an instruction to register — the player is asked first
  *      (/signup/social) and comes back carrying a consent for this exact
- *      address, with the date of birth the 16+ gate needs.
+ *      address, with the date of birth the age gate needs.
  */
 
 export interface OAuthIdentity {
@@ -51,7 +51,13 @@ export type OAuthLoginResult =
   | { ok: true; user: LoginUser; created: boolean }
   | {
       ok: false;
-      reason: "malformed" | "unverified-email" | "no-account" | "too-young" | "error";
+      reason:
+        | "malformed"
+        | "unverified-email"
+        | "no-account"
+        | "too-young"
+        | "needs-parental-consent"
+        | "error";
     };
 
 function isDuplicateKey(err: unknown): boolean {
@@ -126,6 +132,10 @@ export async function signInWithOAuth(
       const dob = new Date(consent.dob);
       if (Number.isNaN(dob.getTime())) return { ok: false, reason: "malformed" };
       if (!isOldEnough(dob)) return { ok: false, reason: "too-young" };
+      const minorConsent = needsParentalConsent(dob);
+      if (minorConsent && consent.parentalConsent !== true) {
+        return { ok: false, reason: "needs-parental-consent" };
+      }
 
       const { first, last } = namesFrom(identity, email);
       try {
@@ -136,6 +146,7 @@ export async function signInWithOAuth(
           name: [first, last].filter(Boolean).join(" "),
           email,
           dob,
+          parentalConsent: minorConsent,
           // The provider has proved the inbox, which is exactly what the
           // confirmation email proves — so this account is verified from the
           // start, and the admin allowlist applies on the same footing it does
@@ -176,7 +187,7 @@ export async function signInWithOAuth(
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
-        // No date of birth means the 16+ gate has never been applied to this
+        // No date of birth means the age gate has never been applied to this
         // account. proxy.ts holds it at /welcome until it has been.
         needsOnboarding: !user.dob,
       },

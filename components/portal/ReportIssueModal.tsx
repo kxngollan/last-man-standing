@@ -19,6 +19,9 @@ const CATEGORIES = [
   { key: "bug", label: "Bug" },
   { key: "scores", label: "Wrong result" },
   { key: "account", label: "Account" },
+  // The objectionable-content route. Names are the only thing one player can
+  // put in front of another, so they're the only thing there is to report.
+  { key: "player", label: "Player’s name" },
   { key: "other", label: "Other" },
 ] as const;
 

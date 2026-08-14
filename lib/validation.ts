@@ -13,6 +13,8 @@ export const signupSchema = z
       .min(8, "Password must be at least 8 characters.")
       .max(72, "Password must be 72 characters or fewer."),
     dob: z.string().min(1, "Enter your date of birth."), // ISO yyyy-mm-dd from the date input
+    /** Only meaningful under PARENTAL_CONSENT_AGE; the server decides when it's required. */
+    parentalConsent: z.boolean().optional(),
   })
   .strict();
 
@@ -28,16 +30,18 @@ export const socialConsentSchema = z
     provider: z.enum(["google", "apple"]),
     email: z.string().trim().regex(EMAIL_RE, "Enter a valid email address."),
     dob: z.string().min(1, "Enter your date of birth."),
+    parentalConsent: z.boolean().optional(),
   })
   .strict();
 
 /**
  * The one thing Google and Apple can't tell us. Asked for at /welcome, once,
- * after a social sign-up — the 16+ gate has nothing to work with until then.
+ * after a social sign-up — the age gate has nothing to work with until then.
  */
 export const completeProfileSchema = z
   .object({
     dob: z.string().min(1, "Enter your date of birth."), // ISO yyyy-mm-dd from the date input
+    parentalConsent: z.boolean().optional(),
   })
   .strict();
 
@@ -107,7 +111,7 @@ export const loginSchema = z
 /** An issue report: what kind of problem, and what happened. */
 export const issueSchema = z
   .object({
-    category: z.enum(["bug", "scores", "account", "other"]),
+    category: z.enum(["bug", "scores", "account", "player", "other"]),
     message: z
       .string()
       .trim()

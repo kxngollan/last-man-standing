@@ -23,6 +23,8 @@ export interface SocialConsent {
   email: string;
   /** ISO yyyy-mm-dd, as the date input gives it. */
   dob: string;
+  /** Ticked on the confirmation screen by anyone under PARENTAL_CONSENT_AGE. */
+  parentalConsent?: boolean;
 }
 
 function secret(): string {
@@ -53,7 +55,7 @@ export async function openConsent(raw: string | null | undefined): Promise<Socia
     const dob = claims?.dob;
     if ((provider !== "google" && provider !== "apple") || typeof email !== "string") return null;
     if (typeof dob !== "string") return null;
-    return { provider, email, dob };
+    return { provider, email, dob, parentalConsent: claims?.parentalConsent === true };
   } catch {
     return null; // expired, tampered with, or signed under a different secret
   }

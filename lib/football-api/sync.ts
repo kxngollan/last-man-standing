@@ -2,6 +2,7 @@ import { connectDB } from "@/database/connect";
 import { Team } from "@/models/Teams/Team";
 import { Fixture, type FixtureStatus, type FixtureWinner } from "@/models/Teams/Fixture";
 import { fetchPLTeams, fetchPLMatchday, fetchPLSeasonMatches, type FdMatch } from "./client";
+import { pixelCrestPath } from "@/lib/crests";
 
 /** Upsert a batch of API matches into the Fixture collection. */
 async function upsertMatches(season: number, matches: FdMatch[]): Promise<number> {
@@ -41,7 +42,20 @@ export async function syncTeams(season?: number): Promise<number> {
       updateOne: {
         filter: { apiId: t.id },
         update: {
-          $set: { apiId: t.id, name: t.name, shortName: t.shortName, tla: t.tla, crest: t.crest },
+          $set: {
+            apiId: t.id,
+            name: t.name,
+            shortName: t.shortName,
+            tla: t.tla,
+            // Both badges are stored, and nothing here decides between them.
+            // `crest` is the club's own, exactly as the API gave it; `pCrest`
+            // points at our pixelated copy in public/crests. Which one reaches a
+            // screen is CREST_STYLE's call, made when the team is read
+            // (lib/game/teams.ts) — so switching it needs no re-sync, and the
+            // official URL is never lost by a sync run under the wrong setting.
+            crest: t.crest,
+            pCrest: pixelCrestPath(t.tla),
+          },
         },
         upsert: true,
       },

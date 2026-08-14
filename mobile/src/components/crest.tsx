@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { API_URL } from "@/api/client";
 import { Radius, Weight, useTheme } from "@/theme";
 
 /**
@@ -24,7 +25,13 @@ export function Crest({
   const { colors } = useTheme();
   const [failed, setFailed] = useState(false);
 
-  if (!uri || failed) {
+  // Badges we host ourselves come through as a path ("/crests/ARS.png"), which
+  // the website can render as-is and a phone cannot. Resolving it here rather
+  // than storing an absolute URL keeps the server free to change domain without
+  // a database full of stale hostnames.
+  const src = uri?.startsWith("/") ? `${API_URL}${uri}` : uri;
+
+  if (!src || failed) {
     return (
       <View
         style={[
@@ -53,7 +60,7 @@ export function Crest({
 
   return (
     <Image
-      source={{ uri }}
+      source={{ uri: src }}
       onError={() => setFailed(true)}
       style={{ width: size, height: size }}
       // Badges are all shapes; contain keeps them whole rather than cropping.

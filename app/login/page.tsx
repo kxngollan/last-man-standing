@@ -24,7 +24,9 @@ function oauthError(code: string | null): string {
     case "malformed":
       return "We didn't get an email address back from that provider, and we need one. Log in with your password instead.";
     case "too-young":
-      return "You must be 16 or older to play, so we haven't created an account.";
+      return "You must be 13 or older to play, so we haven't created an account.";
+    case "needs-parental-consent":
+      return "Under 16s need a parent or guardian's permission to play, so we haven't created an account. Start again and confirm you have it.";
     case null:
       return "";
     default:

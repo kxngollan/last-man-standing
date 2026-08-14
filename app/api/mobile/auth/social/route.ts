@@ -2,7 +2,7 @@ import { verifySocialToken } from "@/lib/mobile/socialToken";
 import { signInWithOAuth } from "@/lib/oauth";
 import { issueMobileToken } from "@/lib/mobile/auth";
 import { json, body, OPTIONS } from "@/lib/mobile/api";
-import { isOldEnough, MIN_AGE } from "@/lib/age";
+import { isOldEnough, needsParentalConsent, MIN_AGE, PARENTAL_CONSENT_AGE } from "@/lib/age";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 
 export { OPTIONS };
@@ -12,6 +12,8 @@ interface Payload {
   idToken?: unknown;
   /** Only on the second call, once the player has agreed to register. */
   dob?: unknown;
+  /** With it, from anyone under PARENTAL_CONSENT_AGE. */
+  parentalConsent?: unknown;
   /** Apple hands the name to the device once, at first consent. */
   firstName?: unknown;
   lastName?: unknown;
@@ -25,7 +27,7 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? 
  * The phone does the provider dance natively and posts the resulting ID token
  * here; we verify it against the provider's keys (lib/mobile/socialToken.ts)
  * and then go through exactly the same account rules the web uses — the shared
- * signInWithOAuth() — so linking, the admin allowlist and the 16+ gate behave
+ * signInWithOAuth() — so linking, the admin allowlist and the age gate behave
  * identically on both platforms.
  *
  * Registering still isn't automatic. An address we don't know comes back as a
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
   // A date of birth in the body is the player having said yes on the confirm
   // screen. Checked here as well as there, and again inside signInWithOAuth.
   const dob = str(payload.dob);
+  const parentalConsent = payload.parentalConsent === true;
   if (dob) {
     const parsed = new Date(dob);
     if (Number.isNaN(parsed.getTime())) {
@@ -79,11 +82,17 @@ export async function POST(request: Request) {
     if (!isOldEnough(parsed)) {
       return json({ error: `You must be ${MIN_AGE} or older to play.` }, { status: 400 });
     }
+    if (needsParentalConsent(parsed) && !parentalConsent) {
+      return json(
+        { error: `Under ${PARENTAL_CONSENT_AGE}s need a parent or guardian’s permission to play.` },
+        { status: 400 }
+      );
+    }
   }
 
   const result = await signInWithOAuth(identity, {
     // No referral cookie on a phone — nothing to read it from.
-    consent: dob ? { provider, email, dob } : null,
+    consent: dob ? { provider, email, dob, parentalConsent } : null,
   });
 
   if (!result.ok) {
@@ -102,6 +111,11 @@ export async function POST(request: Request) {
         );
       case "too-young":
         return json({ error: `You must be ${MIN_AGE} or older to play.` }, { status: 400 });
+      case "needs-parental-consent":
+        return json(
+          { error: `Under ${PARENTAL_CONSENT_AGE}s need a parent or guardian’s permission to play.` },
+          { status: 400 }
+        );
       case "unverified-email":
         return json(
           { error: "That account’s email address hasn’t been verified with the provider." },

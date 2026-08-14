@@ -24,8 +24,18 @@ export interface IUser {
    * They can give themselves one through the password-reset flow. */
   passwordHash?: string;
   /** Absent between an OAuth sign-up and /welcome — neither provider tells us a
-   * date of birth, and the 16+ gate needs one before they can play. */
+   * date of birth, and the age gate needs one before they can play. */
   dob?: Date;
+  /**
+   * They declared a parent or guardian had given permission, which players
+   * under PARENTAL_CONSENT_AGE must do before an account is created.
+   *
+   * A self-declaration, not verified consent — nobody contacts the guardian.
+   * Kept because it is the record that the question was asked and answered,
+   * which is what a store reviewer or a complaint would ask to see. False or
+   * absent on anyone who was old enough not to be asked.
+   */
+  parentalConsent?: boolean;
   emailVerified: boolean;
   isAdmin: boolean;
   banned: boolean;
@@ -60,6 +70,7 @@ const UserSchema = new Schema<IUser>(
     // route still sets both on every account it creates.
     passwordHash: { type: String },
     dob: { type: Date },
+    parentalConsent: { type: Boolean, default: false },
     emailVerified: { type: Boolean, default: false },
     isAdmin: { type: Boolean, default: false },
     banned: {type: Boolean, default: false},

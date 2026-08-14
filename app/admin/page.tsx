@@ -15,6 +15,7 @@ const ISSUE_LABEL: Record<AdminIssueRow["category"], string> = {
   bug: "Bug",
   scores: "Wrong result",
   account: "Account",
+  player: "Player’s name",
   other: "Other",
 };
 

@@ -52,7 +52,7 @@ export async function getLeagueTable(): Promise<LeagueTable> {
 
   const [fixtures, teams] = await Promise.all([
     Fixture.find({ season }).lean<IFixture[]>(),
-    Team.find({}).lean(),
+    loadTeams(),
   ]);
   const teamById = new Map(teams.map((t) => [t.apiId, t]));
 
@@ -193,7 +193,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
 type SideOf = (apiId: number) => FixtureRow["home"];
 
 /** Build the `side` lookup and row mapper shared by the fixtures views. */
-function rowMapper(teams: { apiId: number; name: string; shortName: string; tla: string; crest?: string }[]): {
+function rowMapper(teams: { apiId: number; name: string; shortName: string; tla: string; crest?: string | null }[]): {
   side: SideOf;
   toRow: (f: IFixture) => FixtureRow;
 } {
@@ -233,7 +233,7 @@ export async function getFixturesForMatchday(matchday?: number): Promise<Fixture
 
   const [all, teams] = await Promise.all([
     Fixture.find({ season }).lean<IFixture[]>(),
-    Team.find({}).lean(),
+    loadTeams(),
   ]);
   const { toRow } = rowMapper(teams);
 
@@ -251,7 +251,7 @@ export async function getFixturesForMatchday(matchday?: number): Promise<Fixture
 /** All clubs of the browsed season, A–Z — for the by-team picker. */
 export async function getTeams(): Promise<TeamInfo[]> {
   await connectDB();
-  const teams = await Team.find({}).sort({ name: 1 }).lean();
+  const teams = await loadTeams();
   return teams.map((t) => ({
     name: t.name,
     shortName: t.shortName,
@@ -271,8 +271,8 @@ export async function getFixturesForTeam(tla: string): Promise<TeamFixtures | nu
   await ensureSeasonFixtures(season);
 
   const [team, teams] = await Promise.all([
-    Team.findOne({ tla: tla.toUpperCase() }).lean(),
-    Team.find({}).lean(),
+    loadTeamByTla(tla),
+    loadTeams(),
   ]);
   if (!team) return null;
 

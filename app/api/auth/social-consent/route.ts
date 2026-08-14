@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { socialConsentSchema } from "@/lib/validation";
-import { isOldEnough, MIN_AGE } from "@/lib/age";
+import { isOldEnough, needsParentalConsent, MIN_AGE, PARENTAL_CONSENT_AGE } from "@/lib/age";
 import { sealConsent, consentCookieOptions, CONSENT_COOKIE } from "@/lib/socialConsent";
 import { readJson, errorResponse } from "@/lib/api";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
@@ -50,11 +50,23 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    const parentalConsent = parsed.data.parentalConsent === true;
+    if (needsParentalConsent(dob) && !parentalConsent) {
+      return NextResponse.json(
+        { error: `Under ${PARENTAL_CONSENT_AGE}s need a parent or guardian’s permission to play.` },
+        { status: 400 }
+      );
+    }
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set(
       CONSENT_COOKIE,
-      await sealConsent({ provider: parsed.data.provider, email, dob: parsed.data.dob }),
+      await sealConsent({
+        provider: parsed.data.provider,
+        email,
+        dob: parsed.data.dob,
+        parentalConsent,
+      }),
       consentCookieOptions()
     );
     return response;

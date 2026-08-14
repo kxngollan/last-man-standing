@@ -176,7 +176,7 @@ export default async function LandingPage() {
               </>
             )}
           </div>
-          <p className={styles.free}>Free to play &middot; 16+ &middot; no stakes, just bragging rights</p>
+          <p className={styles.free}>Free to play &middot; 13+ &middot; no stakes, just bragging rights</p>
         </div>
 
         <StadiumArt className={styles.heroArt} />

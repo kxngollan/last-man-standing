@@ -7,7 +7,7 @@ import OAuthButtons from "@/components/auth/OAuthButtons";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { useCooldown } from "@/components/auth/useCooldown";
 import isEmail from "@/lib/isEmail";
-import { ageFromDob, MIN_AGE } from "@/lib/age";
+import { ageFromDob, MIN_AGE, PARENTAL_CONSENT_AGE } from "@/lib/age";
 import styles from "@/components/auth/authContent.module.css";
 
 type Fields = {
@@ -18,6 +18,7 @@ type Fields = {
   confirm: string;
   dob: string;
   agree: boolean;
+  parentalConsent: boolean;
 };
 
 type Errors = Partial<Record<keyof Fields, string>>;
@@ -44,6 +45,11 @@ function validate(f: Fields): Errors {
   else if (age === null) e.dob = "Enter a valid date.";
   else if (age < MIN_AGE) e.dob = `You must be ${MIN_AGE} or older to play.`;
   if (!f.agree) e.agree = `Please confirm you’re ${MIN_AGE} or older.`;
+  // Only asked of the 13–15 band, and only once the date says so — the box
+  // isn't on screen for anyone else.
+  if (age !== null && age >= MIN_AGE && age < PARENTAL_CONSENT_AGE && !f.parentalConsent) {
+    e.parentalConsent = "Please confirm a parent or guardian has given you permission.";
+  }
   return e;
 }
 
@@ -56,6 +62,7 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
     confirm: "",
     dob: "",
     agree: false,
+    parentalConsent: false,
   });
   const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof Fields, boolean>>>({});
@@ -65,6 +72,12 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
   const [resending, setResending] = useState(false);
   const [resendError, setResendError] = useState("");
   const { remaining, start } = useCooldown();
+
+  // Drives the extra checkbox below. Derived from the date rather than stored,
+  // so correcting a mistyped year takes the question away again.
+  const enteredAge = ageFrom(fields.dob);
+  const needsGuardian =
+    enteredAge !== null && enteredAge >= MIN_AGE && enteredAge < PARENTAL_CONSENT_AGE;
 
   function update<K extends keyof Fields>(key: K, value: Fields[K]) {
     const next = { ...fields, [key]: value };
@@ -90,6 +103,7 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
       confirm: true,
       dob: true,
       agree: true,
+      parentalConsent: true,
     });
     if (Object.keys(errs).length > 0) return;
 
@@ -104,6 +118,7 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
           email: fields.email,
           password: fields.password,
           dob: fields.dob,
+          parentalConsent: fields.parentalConsent,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -201,7 +216,10 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
         </p>
       )}
       <h1 className={styles.title}>Create your account</h1>
-      <p className={styles.lede}>Free to play. You must be 16 or older to sign up.</p>
+      <p className={styles.lede}>
+        Free to play. You must be {MIN_AGE} or older to sign up, and under{" "}
+        {PARENTAL_CONSENT_AGE}s need a parent or guardian&rsquo;s permission.
+      </p>
 
       <form className={styles.form} onSubmit={submit} noValidate>
         <div className={`lms-field ${errors.firstName ? "lms-field--error" : ""}`}>
@@ -310,7 +328,7 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
             aria-required="true"
           />
           <p className="lms-field__help" id="dob-help">
-            {errors.dob ?? "We check this to confirm you’re 16 or older."}
+            {errors.dob ?? `We check this to confirm you’re ${MIN_AGE} or older.`}
           </p>
         </div>
 
@@ -324,12 +342,37 @@ export default function SignupForm({ inviter }: { inviter?: string | null }) {
               aria-invalid={!!errors.agree}
               aria-describedby="agree-help"
             />
-            <span>I confirm I am 16 years of age or older.</span>
+            <span>I confirm I am {MIN_AGE} years of age or older.</span>
           </label>
           <p className="lms-field__help" id="agree-help">
             {errors.agree ?? ""}
           </p>
         </div>
+
+        {/* Only for the band it applies to. Showing it to everyone would ask
+            adults to answer a question about their own guardian, and showing it
+            before a date is entered would ask it of nobody in particular. */}
+        {needsGuardian && (
+          <div className={`lms-field ${errors.parentalConsent ? "lms-field--error" : ""}`}>
+            <label className="lms-check">
+              <input
+                type="checkbox"
+                checked={fields.parentalConsent}
+                onChange={(e) => update("parentalConsent", e.target.checked)}
+                onBlur={() => blur("parentalConsent")}
+                aria-invalid={!!errors.parentalConsent}
+                aria-describedby="parentalConsent-help"
+              />
+              <span>
+                A parent or guardian has given me permission to play, and has read the{" "}
+                <Link href="/policy">Privacy Policy</Link>.
+              </span>
+            </label>
+            <p className="lms-field__help" id="parentalConsent-help">
+              {errors.parentalConsent ?? `Asked of players under ${PARENTAL_CONSENT_AGE}.`}
+            </p>
+          </div>
+        )}
 
         {serverError && (
           <p className="lms-field__help" data-error="true" role="alert">

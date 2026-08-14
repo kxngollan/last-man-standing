@@ -10,7 +10,8 @@ export interface TeamOption {
   name: string;
   shortName: string;
   tla: string;
-  crest?: string;
+  /** Null when there is no badge to show — see lib/crests.ts. */
+  crest?: string | null;
   opponent: string;
   venue: "H" | "A";
   fixtureApiId: number;
@@ -86,10 +87,20 @@ export interface TeamFixtures {
   past: FixtureRow[];
 }
 
+/**
+ * What kind of problem a report is about.
+ *
+ * Here rather than only on the Mongoose model because the mobile app needs it
+ * too, and this file is the one it can see — `@shared/portalTypes` is the whole
+ * of what Metro resolves outside the app folder. It must stay in step with the
+ * enum in models/Report/IssueReport.ts and issueSchema in lib/validation.ts.
+ */
+export type IssueCategory = "bug" | "scores" | "account" | "player" | "other";
+
 /** One issue report in the admin Issues panel. */
 export interface AdminIssueRow {
   id: string;
-  category: "bug" | "scores" | "account" | "other";
+  category: IssueCategory;
   message: string;
   page: string;
   status: "open" | "resolved";

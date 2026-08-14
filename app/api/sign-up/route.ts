@@ -8,7 +8,7 @@ import { REF_COOKIE } from "@/lib/referral";
  * The web sign-up form's endpoint.
  *
  * The work happens in registerAccount() — shared with the app's sign-up
- * endpoint, so both doors carry the same rate limits, the same 16+ gate, and
+ * endpoint, so both doors carry the same rate limits, the same age gate, and
  * the same "roll the account back if the email won't send" rule. This handler
  * only turns the outcome into the shape the form expects.
  */
@@ -36,6 +36,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       case "too-young":
+      case "needs-parental-consent":
         return NextResponse.json({ error: result.message }, { status: 400 });
       case "taken":
         return NextResponse.json(

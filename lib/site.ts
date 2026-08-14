@@ -47,13 +47,15 @@ export const SITE_KEYWORDS = [
  *
  * /delete-account is here because Play's data deletion policy wants the route
  * findable from outside the app — a page nobody can reach without signing in
- * doesn't satisfy it.
+ * doesn't satisfy it. /support is here for the same reason: it is the Support
+ * URL on both listings, and it has to work for someone locked out.
  */
 export const PUBLIC_ROUTES = [
   "/",
   "/signup",
   "/login",
   "/policy",
+  "/support",
   "/delete-account",
   "/table",
   "/fixtures",
@@ -79,7 +81,7 @@ export const SITE_FAQS = [
   },
   {
     q: "Is Last Man Standing free to play?",
-    a: "Yes. It is free to play, for ages 16 and over, with no stakes, just bragging rights.",
+    a: "Yes. It is free to play, for ages 13 and over — under 16s need a parent or guardian's permission — with no stakes, just bragging rights.",
   },
   {
     q: "Who wins the game?",

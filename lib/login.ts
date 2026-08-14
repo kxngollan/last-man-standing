@@ -25,7 +25,7 @@ export interface LoginUser {
   email: string;
   isAdmin: boolean;
   /**
-   * No date of birth on file, so the 16+ gate hasn't been applied to this
+   * No date of birth on file, so the age gate hasn't been applied to this
    * account — it must finish at /welcome before it can play.
    *
    * Only ever true for an account created by a Google/Apple sign-in. It can

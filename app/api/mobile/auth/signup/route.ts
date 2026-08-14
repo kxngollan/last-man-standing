@@ -7,7 +7,7 @@ export { OPTIONS };
 /**
  * Sign up from the app.
  *
- * Same registerAccount() the website's form calls, so the rate limit, the 16+
+ * Same registerAccount() the website's form calls, so the rate limit, the age
  * gate and the confirmation email behave identically on a phone.
  *
  * No token comes back. The account starts unverified and stays that way until
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     case "invalid":
       return json({ error: result.message, fieldErrors: result.fieldErrors }, { status: 400 });
     case "too-young":
+    case "needs-parental-consent":
       return json({ error: result.message }, { status: 400 });
     case "taken":
       return json({ error: "An account with that email already exists." }, { status: 409 });

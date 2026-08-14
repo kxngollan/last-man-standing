@@ -13,7 +13,7 @@ export interface SessionUser {
  *
  * An account that signed up with Google or Apple and hasn't given a date of
  * birth yet is refused: proxy.ts holds it at /welcome, and without this the API
- * would be a way round the 16+ gate for the one window where a real session
+ * would be a way round the age gate for the one window where a real session
  * exists but the age check hasn't been applied. `allowPendingOnboarding` is for
  * /api/me/dob itself, which is how the gate gets satisfied.
  */

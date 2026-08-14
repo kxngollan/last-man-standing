@@ -64,7 +64,7 @@ export async function getUserProfile(
     Pick.find({ entryId: { $in: entryIds } })
       .sort({ matchday: 1 })
       .lean(),
-    Team.find({}).lean(),
+    loadTeams(),
     gameOrdinals(),
     Entry.aggregate<{ _id: mongoose.Types.ObjectId; n: number }>([
       { $match: { gameId: { $in: gameIds } } },
@@ -196,7 +196,7 @@ function emptyStats(): ProfileStats {
 function buildStats(
   games: ProfileGame[],
   counted: Array<{ pick: IPick; game: IGame }>,
-  teamById: Map<number, { name: string; tla: string; crest?: string }>,
+  teamById: Map<number, { name: string; tla: string; crest?: string | null }>,
   entries: IEntry[]
 ): ProfileStats {
   const totalWeeks = games.reduce((sum, g) => sum + g.survivedWeeks, 0);
@@ -241,7 +241,7 @@ function buildStats(
 /** The most-picked team in a set of picks; ties break alphabetically. */
 function topTeam(
   picks: IPick[],
-  teamById: Map<number, { name: string; tla: string; crest?: string }>
+  teamById: Map<number, { name: string; tla: string; crest?: string | null }>
 ): ProfileTeamTally | null {
   const counts = new Map<number, number>();
   for (const p of picks) {

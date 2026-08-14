@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
-import { ageFromDob, MIN_AGE } from "@/lib/age";
+import { ageFromDob, MIN_AGE, PARENTAL_CONSENT_AGE } from "@/lib/age";
 import styles from "@/components/auth/authContent.module.css";
 
 const PROVIDER_NAMES = { google: "Google", apple: "Apple" } as const;
@@ -33,10 +33,16 @@ export default function SocialSignupForm({
 }) {
   const [dob, setDob] = useState("");
   const [agree, setAgree] = useState(false);
+  const [parentalConsent, setParentalConsent] = useState(false);
   const [dobError, setDobError] = useState("");
   const [agreeError, setAgreeError] = useState("");
+  const [guardianError, setGuardianError] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const enteredAge = ageFrom(dob);
+  const needsGuardian =
+    enteredAge !== null && enteredAge >= MIN_AGE && enteredAge < PARENTAL_CONSENT_AGE;
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,14 +54,20 @@ export default function SocialSignupForm({
     else if (age < MIN_AGE) setDobError(`You must be ${MIN_AGE} or older to play.`);
     else setDobError("");
     setAgreeError(agree ? "" : `Please confirm you’re ${MIN_AGE} or older.`);
+    setGuardianError(
+      needsGuardian && !parentalConsent
+        ? "Please confirm a parent or guardian has given you permission."
+        : ""
+    );
     if (!dob || age === null || age < MIN_AGE || !agree) return;
+    if (needsGuardian && !parentalConsent) return;
 
     setSubmitting(true);
     try {
       const res = await fetch("/api/auth/social-consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, email, dob }),
+        body: JSON.stringify({ provider, email, dob, parentalConsent }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -122,6 +134,28 @@ export default function SocialSignupForm({
             {agreeError}
           </p>
         </div>
+
+        {needsGuardian && (
+          <div className={`lms-field ${guardianError ? "lms-field--error" : ""}`}>
+            <label className="lms-check">
+              <input
+                type="checkbox"
+                checked={parentalConsent}
+                onChange={(e) => setParentalConsent(e.target.checked)}
+                aria-invalid={!!guardianError}
+                aria-describedby="guardian-help"
+              />
+              <span>A parent or guardian has given me permission to play.</span>
+            </label>
+            <p
+              className="lms-field__help"
+              id="guardian-help"
+              role={guardianError ? "alert" : undefined}
+            >
+              {guardianError || `Asked of players under ${PARENTAL_CONSENT_AGE}.`}
+            </p>
+          </div>
+        )}
 
         {error && (
           <p className="lms-field__help" data-error="true" role="alert">

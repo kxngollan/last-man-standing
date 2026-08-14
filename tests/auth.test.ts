@@ -105,6 +105,13 @@ describe("sign-up route", () => {
     dob: "1990-01-01",
   });
 
+  /** A date of birth exactly `years` ago, as the ISO string the form sends. */
+  const dobAged = (years: number) => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - years);
+    return d.toISOString().slice(0, 10);
+  };
+
   it("creates an unverified user — and never an admin, even for allowlisted emails", async () => {
     process.env.ADMIN_EMAILS = "boss@example.com";
     const res = await signUp(req(validBody("boss@example.com")));
@@ -125,6 +132,27 @@ describe("sign-up route", () => {
       req({ ...validBody("long@example.com"), password: "x".repeat(73) })
     );
     expect(res.status).toBe(400);
+  });
+
+  it("rejects anyone under 13", async () => {
+    const res = await signUp(req({ ...validBody("kid@example.com"), dob: dobAged(12) }));
+    expect(res.status).toBe(400);
+    expect(await User.countDocuments({ email: "kid@example.com" })).toBe(0);
+  });
+
+  it("rejects a 13-to-15 year old who hasn't confirmed parental permission", async () => {
+    const res = await signUp(req({ ...validBody("teen@example.com"), dob: dobAged(14) }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/parent or guardian/i);
+    expect(await User.countDocuments({ email: "teen@example.com" })).toBe(0);
+  });
+
+  it("creates a 13-to-15 year old who has, and records the permission", async () => {
+    const res = await signUp(
+      req({ ...validBody("teen2@example.com"), dob: dobAged(14), parentalConsent: true })
+    );
+    expect(res.status).toBe(201);
+    expect((await User.findOne({ email: "teen2@example.com" }))?.parentalConsent).toBe(true);
   });
 
   it("rate limits per IP", async () => {

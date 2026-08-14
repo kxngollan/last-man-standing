@@ -32,6 +32,9 @@ const ACCOUNT = [
   // Not filler: guideline 5.3.2 wants a contest's official rules inside the
   // app, which means somewhere a player can actually navigate to.
   { href: "/rules", label: "Rules" },
+  // Also not filler: players' names are user-generated content, and guideline
+  // 1.2 wants the way to report them to be somewhere a player can find it.
+  { href: "/report", label: "Report an issue" },
   { href: "/settings", label: "Settings" },
 ] as const;
 
@@ -165,6 +168,7 @@ export default function AppLayout() {
       <Drawer.Screen name="profile" options={{ title: "Profile" }} />
       <Drawer.Screen name="referrals" options={{ title: "Refer a friend" }} />
       <Drawer.Screen name="rules" options={{ title: "Rules" }} />
+      <Drawer.Screen name="report" options={{ title: "Report an issue" }} />
       <Drawer.Screen name="settings" options={{ title: "Settings" }} />
     </Drawer>
   );

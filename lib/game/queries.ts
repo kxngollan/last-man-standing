@@ -148,7 +148,7 @@ async function buildStandingRows(
     User.find({ _id: { $in: userIds } })
       .select("name firstName lastName")
       .lean(),
-    Team.find({}).lean(),
+    loadTeams(),
     Pick.find({ entryId: { $in: entryIds } })
       .sort({ matchday: -1 })
       .lean(),
@@ -285,7 +285,7 @@ export async function getPickSummary(
     Pick.find({ gameId: game._id, matchday: pickMd, teamApiId: { $ne: null } })
       .select("teamApiId userId")
       .lean(),
-    Team.find({}).lean(),
+    loadTeams(),
   ]);
   const users = await User.find({ _id: { $in: picks.map((p) => p.userId) } })
     .select("name firstName lastName")
@@ -359,7 +359,7 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
   const pickGameWeek = pickMd - game.startMatchday + 1;
 
   const [teams, fixtures, entry, playersTotal, playersAlive] = await Promise.all([
-    Team.find({}).lean(),
+    loadTeams(),
     Fixture.find({ season: game.season, matchday: pickMd }).lean(),
     Entry.findOne({ gameId: game._id, userId }),
     Entry.countDocuments({ gameId: game._id }),

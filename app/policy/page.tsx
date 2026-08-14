@@ -75,8 +75,9 @@ export default function PolicyPage() {
               emails such as password resets.
             </li>
             <li>
-              <b>Your date of birth</b>, used only to confirm you are 16 or older. We store the date
-              you enter.
+              <b>Your date of birth</b>, used only to confirm you are 13 or older and, if you are
+              under 16, that a parent or guardian has given permission. We store the date you enter
+              and, where it applies, that the permission was confirmed.
             </li>
             <li>
               <b>Your password</b>, which we never store in plain text. It is kept only as a secure
@@ -99,7 +100,7 @@ export default function PolicyPage() {
           <ul className={styles.list}>
             <li>Create and secure your account and sign you in.</li>
             <li>Run the game, record your picks, and show the standings.</li>
-            <li>Confirm you are old enough to play (16 or older).</li>
+            <li>Confirm you are old enough to play (13 or older).</li>
             <li>
               Send you essential account emails, such as email confirmation and password resets. We
               do not send marketing email.
@@ -203,8 +204,11 @@ export default function PolicyPage() {
 
         <Section id="children" title="Children">
           <p className={styles.p}>
-            The game is for players aged 16 and over. We do not knowingly collect data from anyone
-            under 16. If you believe a child has signed up, contact us and we will remove the account.
+            The game is for players aged 13 and over, and players under 16 must confirm that a
+            parent or guardian has given them permission before they can sign up. We do not
+            knowingly collect data from anyone under 13. If you are a parent or guardian and want
+            your child&rsquo;s account removed, or you believe a child under 13 has signed up,
+            contact us and we will remove the account.
           </p>
         </Section>
 

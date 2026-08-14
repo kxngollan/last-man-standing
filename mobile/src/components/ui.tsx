@@ -226,6 +226,65 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
   );
 });
 
+interface CheckboxProps {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  error?: string;
+  help?: string;
+}
+
+/**
+ * A tick box, for the declarations sign-up has to collect.
+ *
+ * Drawn rather than imported: React Native has no checkbox of its own, and the
+ * two community ones look native on one platform and foreign on the other. The
+ * whole row is the target — a 20pt box alone is under every touch guideline —
+ * and `accessibilityRole="checkbox"` is what makes it read correctly to
+ * VoiceOver and TalkBack, which a styled View otherwise would not.
+ */
+export function Checkbox({ label, checked, onChange, error, help }: CheckboxProps) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={{ gap: Space.xxs }}>
+      <Pressable
+        onPress={() => onChange(!checked)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked }}
+        accessibilityLabel={label}
+        hitSlop={Space.xxs}
+        style={({ pressed }) => [styles.check, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <View
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            borderWidth: checked ? 0 : 1,
+            borderColor: error ? colors.out : colors.rule2,
+            backgroundColor: checked ? colors.accent : colors.paper,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {checked && (
+            <Text style={{ color: colors.accentInk, fontSize: Type.xs, fontWeight: Weight.bold }}>
+              ✓
+            </Text>
+          )}
+        </View>
+        <Text style={{ color: colors.ink, fontSize: Type.sm, flex: 1 }}>{label}</Text>
+      </Pressable>
+      {(error || help) && (
+        <Text style={{ color: error ? colors.outInk : colors.muted, fontSize: Type.xs }}>
+          {error || help}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 /**
  * First load, before there's anything to show.
  *
@@ -275,6 +334,7 @@ export function Pill({ label, tone = "safe" }: { label: string; tone?: "safe" | 
 
 const styles = StyleSheet.create({
   spinner: { flex: 1, alignItems: "center", justifyContent: "center", padding: Space.xl },
+  check: { flexDirection: "row", alignItems: "center", gap: Space.xs, minHeight: 44 },
   button: {
     minHeight: 44,
     borderRadius: Radius.pill,

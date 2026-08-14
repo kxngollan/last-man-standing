@@ -3,11 +3,16 @@ import { KeyboardAvoidingView, Platform, StyleSheet, View, useWindowDimensions }
 import { Link } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api, ApiError } from "@/api/client";
-import { Button, Field, Lede, Muted, Screen, Title } from "@/components/ui";
+import { Button, Checkbox, Field, Lede, Muted, Screen, Title } from "@/components/ui";
 import { BuntingArt, NightMatchArt } from "@/components/football-art";
 import { Space, Text as Type, Weight, useTheme } from "@/theme";
 
-const MIN_AGE = 16;
+/**
+ * Mirrors lib/age.ts on the server, which is the copy that decides. These are
+ * here so the form can say no before a round trip, not so it can say yes.
+ */
+const MIN_AGE = 13;
+const PARENTAL_CONSENT_AGE = 16;
 
 /**
  * Date of birth, typed rather than picked.
@@ -51,10 +56,17 @@ export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [dob, setDob] = useState("");
+  const [parentalConsent, setParentalConsent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Derived from what's typed, so correcting a mistyped year takes the extra
+  // question away again.
+  const enteredAge = parseDob(dob)?.age ?? null;
+  const needsGuardian =
+    enteredAge !== null && enteredAge >= MIN_AGE && enteredAge < PARENTAL_CONSENT_AGE;
 
   async function submit() {
     setServerError("");
@@ -69,6 +81,11 @@ export default function SignUp() {
     if (!dob.trim()) next.dob = "Enter your date of birth.";
     else if (!parsed) next.dob = "Use DD/MM/YYYY.";
     else if (parsed.age < MIN_AGE) next.dob = `You must be ${MIN_AGE} or older to play.`;
+    // The box is only on screen for the band it applies to, so this can only
+    // fire when it was there to be ticked.
+    if (needsGuardian && !parentalConsent) {
+      next.parentalConsent = "Please confirm a parent or guardian has given you permission.";
+    }
 
     setErrors(next);
     if (Object.keys(next).length > 0 || !parsed) return;
@@ -81,6 +98,7 @@ export default function SignUp() {
         email: email.trim(),
         password,
         dob: parsed.iso,
+        parentalConsent,
       });
       setDone(true);
     } catch (err) {
@@ -192,6 +210,16 @@ export default function SignUp() {
             error={errors.dob}
             help={`You must be ${MIN_AGE} or older to play.`}
           />
+
+          {needsGuardian && (
+            <Checkbox
+              label="A parent or guardian has given me permission to play."
+              checked={parentalConsent}
+              onChange={setParentalConsent}
+              error={errors.parentalConsent}
+              help={`Asked of players under ${PARENTAL_CONSENT_AGE}.`}
+            />
+          )}
 
           {serverError !== "" && (
             <Lede style={{ color: colors.outInk }} accessibilityRole="alert">

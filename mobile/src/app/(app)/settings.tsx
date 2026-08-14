@@ -234,7 +234,7 @@ export default function SettingsScreen() {
       <Card style={{ gap: Space.sm }}>
         <Title style={{ fontSize: Type.md }}>Rules and privacy</Title>
         <Muted>
-          How the game is decided, and what we collect to run it. Free to play, 16 and over, no
+          How the game is decided, and what we collect to run it. Free to play, 13 and over, no
           stakes — there is nothing to pay for in this app.
         </Muted>
         <Button label="Official rules" variant="ghost" onPress={() => router.push("/rules")} />
@@ -242,6 +242,14 @@ export default function SettingsScreen() {
           label="Privacy policy"
           variant="ghost"
           onPress={() => void WebBrowser.openBrowserAsync(`${API_URL}/policy`)}
+        />
+        {/* Reachable from the drawer too. Duplicated here on purpose: settings
+            is where someone looks for it, and where a reviewer checking
+            guideline 1.2 looks for it. */}
+        <Button
+          label="Report an issue"
+          variant="ghost"
+          onPress={() => router.push("/report")}
         />
       </Card>
 

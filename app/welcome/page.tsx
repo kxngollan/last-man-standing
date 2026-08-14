@@ -8,7 +8,7 @@ import OnboardingDone from "./OnboardingDone";
 
 /**
  * The step between signing in with Google/Apple and playing: neither provider
- * hands over a date of birth, and the 16+ gate needs one.
+ * hands over a date of birth, and the age gate needs one.
  *
  * Note what this page must never do: redirect to the portal because the
  * database says onboarding is finished. proxy.ts sends people here off the

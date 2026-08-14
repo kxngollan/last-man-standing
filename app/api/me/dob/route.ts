@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/authz";
 import { setDateOfBirth } from "@/lib/account";
 import { completeProfileSchema } from "@/lib/validation";
-import { MIN_AGE } from "@/lib/age";
+import { MIN_AGE, PARENTAL_CONSENT_AGE } from "@/lib/age";
 import { readJson, errorResponse } from "@/lib/api";
 import { rateLimit } from "@/lib/rateLimit";
 
@@ -12,7 +12,7 @@ import { rateLimit } from "@/lib/rateLimit";
  * proxy.ts keeps the portal shut.
  *
  * It can only be set once — see setDateOfBirth — so this is not a way to walk
- * an account back and forth across the 16+ line.
+ * an account back and forth across the age line.
  */
 export async function POST(request: Request) {
   try {
@@ -40,13 +40,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Enter a valid date of birth." }, { status: 400 });
     }
 
-    const result = await setDateOfBirth(me.id, dob);
+    const result = await setDateOfBirth(me.id, dob, parsed.data.parentalConsent === true);
     if (result === "unknown-user") {
       return NextResponse.json({ error: "Unknown account." }, { status: 404 });
     }
     if (result === "too-young") {
       return NextResponse.json(
         { error: `You must be ${MIN_AGE} or older to play.` },
+        { status: 400 }
+      );
+    }
+    if (result === "needs-parental-consent") {
+      return NextResponse.json(
+        { error: `Under ${PARENTAL_CONSENT_AGE}s need a parent or guardian’s permission to play.` },
         { status: 400 }
       );
     }

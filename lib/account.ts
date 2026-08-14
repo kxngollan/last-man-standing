@@ -12,7 +12,7 @@ import { Feedback } from "@/models/Report/Feedback";
 import { IssueReport } from "@/models/Report/IssueReport";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { fullName, nameParts } from "@/lib/displayName";
-import { isOldEnough } from "@/lib/age";
+import { isOldEnough, needsParentalConsent } from "@/lib/age";
 
 // Changes a player can make to their own account. Kept out of the route
 // handlers so the rules are testable without a session.
@@ -78,19 +78,30 @@ export async function renameUser(
   return { firstName: first, lastName: last, name: user.name };
 }
 
-export type DateOfBirthResult = "ok" | "unknown-user" | "already-set" | "too-young";
+export type DateOfBirthResult =
+  | "ok"
+  | "unknown-user"
+  | "already-set"
+  | "too-young"
+  | "needs-parental-consent";
 
 /**
  * Record the date of birth an account signed up without — which only happens
  * through Google or Apple, since neither provider hands one over.
  *
  * Set once. An age is something you state on the way in, not a dial you turn
- * afterwards: allowing edits would let an account that failed the 16+ gate try
+ * afterwards: allowing edits would let an account that failed the age gate try
  * again with a better answer.
  */
-export async function setDateOfBirth(userId: string, dob: Date): Promise<DateOfBirthResult> {
+export async function setDateOfBirth(
+  userId: string,
+  dob: Date,
+  parentalConsent = false
+): Promise<DateOfBirthResult> {
   if (!mongoose.isValidObjectId(userId)) return "unknown-user";
   if (!isOldEnough(dob)) return "too-young";
+  const minorConsent = needsParentalConsent(dob);
+  if (minorConsent && !parentalConsent) return "needs-parental-consent";
 
   await connectDB();
   const user = await User.findById(userId);
@@ -98,6 +109,7 @@ export async function setDateOfBirth(userId: string, dob: Date): Promise<DateOfB
   if (user.dob) return "already-set";
 
   user.dob = dob;
+  user.parentalConsent = minorConsent;
   await user.save();
   return "ok";
 }

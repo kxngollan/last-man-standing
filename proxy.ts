@@ -24,7 +24,7 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth?.user;
   const isAdmin = !!req.auth?.user?.isAdmin;
   // Signed in with Google/Apple and never asked for a date of birth, so the
-  // 16+ gate hasn't been applied to this account yet.
+  // age gate hasn't been applied to this account yet.
   const needsOnboarding = !!req.auth?.user?.needsOnboarding;
 
   const isPortal = PORTAL_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));

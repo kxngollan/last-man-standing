@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import AuthShell from "@/components/auth/AuthShell";
-import { ageFromDob, MIN_AGE } from "@/lib/age";
+import { ageFromDob, MIN_AGE, PARENTAL_CONSENT_AGE } from "@/lib/age";
 import { safeNext } from "@/lib/safeNext";
 import styles from "@/components/auth/authContent.module.css";
 
@@ -21,10 +21,16 @@ function Form({ firstName }: { firstName: string }) {
   const { update } = useSession();
   const [dob, setDob] = useState("");
   const [agree, setAgree] = useState(false);
+  const [parentalConsent, setParentalConsent] = useState(false);
   const [dobError, setDobError] = useState("");
   const [agreeError, setAgreeError] = useState("");
+  const [guardianError, setGuardianError] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const enteredAge = ageFrom(dob);
+  const needsGuardian =
+    enteredAge !== null && enteredAge >= MIN_AGE && enteredAge < PARENTAL_CONSENT_AGE;
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,14 +44,20 @@ function Form({ firstName }: { firstName: string }) {
     else if (age < MIN_AGE) setDobError(`You must be ${MIN_AGE} or older to play.`);
     else setDobError("");
     setAgreeError(agree ? "" : `Please confirm you’re ${MIN_AGE} or older.`);
+    setGuardianError(
+      needsGuardian && !parentalConsent
+        ? "Please confirm a parent or guardian has given you permission."
+        : ""
+    );
     if (!dob || age === null || age < MIN_AGE || !agree) return;
+    if (needsGuardian && !parentalConsent) return;
 
     setSaving(true);
     try {
       const res = await fetch("/api/me/dob", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dob }),
+        body: JSON.stringify({ dob, parentalConsent }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -101,7 +113,8 @@ function Form({ firstName }: { firstName: string }) {
             aria-required="true"
           />
           <p className="lms-field__help" id="dob-help" role={dobError ? "alert" : undefined}>
-            {dobError || `We check this to confirm you’re ${MIN_AGE} or older. It can’t be changed later.`}
+            {dobError ||
+              `We check this to confirm you’re ${MIN_AGE} or older. It can’t be changed later.`}
           </p>
         </div>
 
@@ -120,6 +133,28 @@ function Form({ firstName }: { firstName: string }) {
             {agreeError}
           </p>
         </div>
+
+        {needsGuardian && (
+          <div className={`lms-field ${guardianError ? "lms-field--error" : ""}`}>
+            <label className="lms-check">
+              <input
+                type="checkbox"
+                checked={parentalConsent}
+                onChange={(e) => setParentalConsent(e.target.checked)}
+                aria-invalid={!!guardianError}
+                aria-describedby="guardian-help"
+              />
+              <span>A parent or guardian has given me permission to play.</span>
+            </label>
+            <p
+              className="lms-field__help"
+              id="guardian-help"
+              role={guardianError ? "alert" : undefined}
+            >
+              {guardianError || `Asked of players under ${PARENTAL_CONSENT_AGE}.`}
+            </p>
+          </div>
+        )}
 
         {error && (
           <p className="lms-field__help" data-error="true" role="alert">
