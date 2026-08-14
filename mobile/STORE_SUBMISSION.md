@@ -225,8 +225,7 @@ Play's Intellectual Property policy both act on a rights holder's complaint
 rather than weighing the merits — which for football badges is a real risk, not a
 theoretical one.
 
-This is now a setting rather than a rewrite. `CREST_STYLE` (`lib/crests.ts`)
-decides what gets stored on each team at sync time:
+This is now a setting rather than a rewrite. `CREST_STYLE` (`lib/crests.ts`):
 
 | `CREST_STYLE` | What renders | Where it stands |
 | --- | --- | --- |
@@ -234,9 +233,15 @@ decides what gets stored on each team at sync time:
 | `official` | The club's real badge, hotlinked | What the app shipped with. Highest exposure |
 | `none` | The lettered disc both clients already draw when a badge is missing | Nothing to complain about |
 
-Changing it means re-running the team sync (`npm run seed`, or Seed from
-/admin), because the resolved value is written to `Team.crest` — it is not
-resolved at render time.
+Each team stores both badges — `crest` is the club's own, `pCrest` is the path
+to our pixelated copy — and `lib/game/teams.ts` picks between them as teams are
+read. So the switch takes effect on the next request: no re-sync, no migration,
+and if a reviewer objects mid-review you can change it and redeploy without
+touching the app binary. It applies to the website's landing-page marquee too.
+
+**One sync is needed to fill `pCrest`.** Until `npm run seed` (or Seed from
+/admin) has run once against your database, `pCrest` is empty everywhere and
+`pixel` resolves to nothing, so every row shows the lettered disc.
 
 **Be clear about what pixelation buys you.** It is risk reduction, not
 compliance. A badge has to stay recognisable to be worth putting on a team row,

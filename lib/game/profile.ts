@@ -3,7 +3,7 @@ import { connectDB } from "@/database/connect";
 import { Game, type IGame } from "@/models/Game/Game";
 import { Entry, type IEntry } from "@/models/Game/Entry";
 import { Pick, type IPick } from "@/models/Game/Pick";
-import { Team } from "@/models/Teams/Team";
+import { loadTeams } from "./teams";
 import { User } from "@/models/User/User";
 import { publicName, fullName, initialsOf } from "@/lib/displayName";
 import { survived, rankOfEntry } from "./queries";

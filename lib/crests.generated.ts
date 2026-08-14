@@ -6,6 +6,7 @@ export const PIXELATED_CRESTS = new Set<string>([
   "BHA",
   "BOU",
   "BRE",
+  "BUR",
   "CHE",
   "COV",
   "CRY",
@@ -21,4 +22,6 @@ export const PIXELATED_CRESTS = new Set<string>([
   "NOT",
   "SUN",
   "TOT",
+  "WHU",
+  "WOL",
 ]);

@@ -1,5 +1,5 @@
 import { connectDB } from "@/database/connect";
-import { Team } from "@/models/Teams/Team";
+import { loadTeams, loadTeamByTla } from "./teams";
 import { Fixture, type IFixture } from "@/models/Teams/Fixture";
 import { syncSeasonFixtures } from "@/lib/football-api/sync";
 import { acquireLock, releaseLock } from "@/lib/locks";

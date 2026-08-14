@@ -2,7 +2,14 @@
 """
 Downloads the club crests and writes pixelated copies we host ourselves.
 
-    python3 scripts/pixelate-crests.py
+    python3 scripts/pixelate-crests.py            # the season now in play
+    python3 scripts/pixelate-crests.py 2025 2026  # named seasons, unioned
+
+Seasons matter more than they look. Three clubs go down and three come up every
+year, and the database keeps every team it has ever synced — so a badge set built
+for one season leaves the promoted clubs of the next with no file, and they fall
+back to the lettered disc while everyone around them has a badge. Pass every
+season anyone can still browse.
 
 Why this exists: the app renders club badges fetched live from
 crests.football-data.org. Those badges are the clubs' registered trade marks,
@@ -21,13 +28,17 @@ What it writes:
   public/crests/<TLA>.png   the pixelated badge, served from our own domain
   lib/crests.generated.ts   the TLAs we have a file for, for lib/crests.ts
 
+The club's own badge URL is never touched — it stays on Team.crest, and the path
+written here lands on Team.pCrest beside it. CREST_STYLE picks between the two
+when a team is read, so nothing about this is one-way.
+
 Hosting them ourselves is half the point: it drops the runtime dependency on
 someone else's CDN, so a team row can no longer be a broken image on a slow
 train, and it means one place to delete everything from if a rights holder ever
 asks.
 
-After running it, re-sync the teams so the new paths reach the database —
-`npm run seed`, or Seed from /admin. Nothing reads these files directly.
+After running it, put the new paths on the teams with `npm run sync:teams`.
+Nothing reads these files directly.
 """
 
 from __future__ import annotations
@@ -77,18 +88,30 @@ def get(url: str, headers: dict[str, str] | None = None) -> bytes:
         return res.read()
 
 
-def teams() -> list[tuple[str, str]]:
-    """(tla, crest url) pairs, from football-data.org if we have a key."""
+def teams(seasons: list[str]) -> dict[str, str]:
+    """
+    {tla: crest url} across every season asked for, deduplicated.
+
+    A club keeps its badge when it goes down and comes back up, so a TLA seen in
+    two seasons is the same picture — last one wins, harmlessly.
+    """
     key = env("FOOTBALL_API")
+    found: dict[str, str] = {}
+
     if key:
-        data = json.loads(get(FD_TEAMS, {"X-Auth-Token": key}))
-        pairs = [(t["tla"], t["crest"]) for t in data.get("teams", []) if t.get("crest")]
-        if pairs:
-            return pairs
+        for season in seasons or [""]:
+            url = FD_TEAMS + (f"?season={season}" if season else "")
+            data = json.loads(get(url, {"X-Auth-Token": key}))
+            for t in data.get("teams", []):
+                if t.get("crest"):
+                    found[t["tla"]] = t["crest"]
+            print(f"  {season or 'current'}: {len(data.get('teams', []))} teams")
+        if found:
+            return found
         print("  football-data.org returned no crests; falling back to the site")
 
     data = json.loads(get(SITE_TEAMS))
-    return [(r["tla"], r["crest"]) for r in data.get("rows", []) if r.get("crest")]
+    return {r["tla"]: r["crest"] for r in data.get("rows", []) if r.get("crest")}
 
 
 def pixelate(raw: bytes) -> Image.Image:
@@ -117,18 +140,19 @@ def pixelate(raw: bytes) -> Image.Image:
 
 
 def main() -> None:
+    seasons = [a for a in sys.argv[1:] if a.isdigit()]
     try:
-        pairs = teams()
+        found = teams(seasons)
     except Exception as err:  # noqa: BLE001 - the message is the whole point
         sys.exit(f"Could not fetch the team list: {err}")
 
-    if not pairs:
+    if not found:
         sys.exit("No teams with crests came back. Nothing to do.")
 
     OUT.mkdir(parents=True, exist_ok=True)
     done: list[str] = []
 
-    for tla, url in sorted(pairs):
+    for tla, url in sorted(found.items()):
         try:
             pixelate(get(url)).save(OUT / f"{tla}.png")
         except Exception as err:  # noqa: BLE001
@@ -149,7 +173,7 @@ def main() -> None:
 
     print(f"\n{len(done)} crests -> {OUT.relative_to(ROOT)}")
     print(f"manifest -> {MANIFEST.relative_to(ROOT)}")
-    print("\nNow re-sync the teams so the database points at them:  npm run seed")
+    print("\nNow put the paths on the teams:  npm run sync:teams")
 
 
 if __name__ == "__main__":

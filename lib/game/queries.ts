@@ -4,6 +4,7 @@ import { Game, type IGame } from "@/models/Game/Game";
 import { Entry, type IEntry } from "@/models/Game/Entry";
 import { Pick } from "@/models/Game/Pick";
 import { Team } from "@/models/Teams/Team";
+import { loadTeams } from "./teams";
 import { Fixture } from "@/models/Teams/Fixture";
 import { User } from "@/models/User/User";
 import { publicName } from "@/lib/displayName";

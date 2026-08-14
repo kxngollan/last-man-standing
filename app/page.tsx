@@ -5,6 +5,7 @@ import AppBar from '@/components/portal/AppBar'
 import SessionWrapper from '@/components/SessionWrapper'
 import { connectDB } from '@/database/connect'
 import { Team } from '@/models/Teams/Team'
+import { crestFor } from '@/lib/crests'
 import { TeamCrest } from '@/components/portal/TeamCrest'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import {
@@ -81,14 +82,22 @@ const FALLBACK_CRESTS: { tla: string; color: string }[] = [
 
 type MarqueeCrest = { tla: string; crest: string | null; color?: string }
 
-/** Official team badges for the hero marquee, with a graceful letter fallback. */
+/**
+ * Team badges for the hero marquee, with a graceful letter fallback.
+ *
+ * Resolved through crestFor like every other badge. This is the most public
+ * surface on the site — the page a rights holder's agent would actually land on
+ * — so it is the last place that should still be showing a club's own mark when
+ * CREST_STYLE says otherwise. With CREST_STYLE=none nothing resolves, the count
+ * falls below six, and the curated letter discs take over.
+ */
 async function marqueeCrests(): Promise<MarqueeCrest[]> {
   try {
     await connectDB()
-    const teams = await Team.find({ crest: { $ne: null } })
-      .select('tla crest')
-      .lean()
-    const withCrest = teams.filter((t) => t.crest).map((t) => ({ tla: t.tla, crest: t.crest as string }))
+    const teams = await Team.find({}).select('tla crest pCrest').lean()
+    const withCrest = teams
+      .map((t) => ({ tla: t.tla, crest: crestFor(t) }))
+      .filter((t): t is { tla: string; crest: string } => t.crest !== null)
     if (withCrest.length >= 6) return withCrest
   } catch {
     // DB unavailable — fall through to the curated letter discs.
