@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError } from "@/api/client";
 import { Button, Field, Lede, Muted, Title } from "@/components/ui";
 import { BuntingArt, FloodlitPitchArt } from "@/components/football-art";
+import { GoogleButton } from "@/components/social";
 import { useSession } from "@/lib/session";
 import { Space, Text as Type, Weight, useTheme } from "@/theme";
 
@@ -31,6 +32,9 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  // Kept apart from `error`, which renders under the password field — a Google
+  // failure has nothing to do with what's typed there.
+  const [socialError, setSocialError] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -111,6 +115,13 @@ export default function SignIn() {
             </Link>
 
             <Button label={busy ? "Logging in…" : "Log in"} onPress={submit} busy={busy} />
+
+            {socialError !== "" && (
+              <Lede style={{ color: colors.outInk }} accessibilityRole="alert">
+                {socialError}
+              </Lede>
+            )}
+            <GoogleButton onError={setSocialError} />
           </View>
 
           <Link href="/sign-up" style={{ marginTop: Space.lg }}>

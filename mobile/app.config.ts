@@ -63,7 +63,39 @@ function assertApiUrl(profile: string | undefined): void {
   }
 }
 
+/**
+ * Google sign-in's iOS half needs a custom URL scheme, and the scheme is not a
+ * free choice: Google redirects back to the app through the client ID with its
+ * dotted parts reversed, so it has to be derived from the ID rather than typed
+ * beside it. Two places holding the same string is two places to get it wrong,
+ * and the failure — Google's sheet opening and then never coming back — gives
+ * no hint which of them is stale.
+ *
+ * So `extra.googleClientIds.ios` in app.json is the single copy, and the plugin
+ * argument is computed from it here. That's the one thing the JSON can't do,
+ * which is what this file is for.
+ *
+ * Android needs nothing equivalent: it matches the app by signing certificate
+ * (the SHA-1 fingerprints registered in the Cloud console), not by scheme.
+ */
+const GOOGLE_PLUGIN = "@react-native-google-signin/google-signin";
+
+function iosUrlScheme(clientId: string): string {
+  return `com.googleusercontent.apps.${clientId.replace(/\.apps\.googleusercontent\.com$/, "")}`;
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   assertApiUrl(process.env.EAS_BUILD_PROFILE);
-  return config as ExpoConfig;
+
+  const iosClientId = (config.extra?.googleClientIds as { ios?: string } | undefined)?.ios;
+
+  return {
+    ...config,
+    plugins: [
+      ...(config.plugins ?? []),
+      // Absent the iOS ID there's nothing to configure — the app drops the
+      // Google button rather than failing to build (see src/lib/google.ts).
+      ...(iosClientId ? [[GOOGLE_PLUGIN, { iosUrlScheme: iosUrlScheme(iosClientId) }]] : []),
+    ],
+  } as ExpoConfig;
 };

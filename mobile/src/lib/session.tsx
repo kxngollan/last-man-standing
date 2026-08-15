@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { api, ApiError, type MobileUser } from "@/api/client";
+import { api, ApiError, type LoginResponse, type MobileUser } from "@/api/client";
 import {
   biometricKind,
   biometricLabel,
@@ -11,6 +11,7 @@ import {
   prompt,
   unguardToken,
 } from "./biometrics";
+import { googleSignIn, googleSignOut } from "./google";
 
 /**
  * Who's signed in, and the token every request carries.
@@ -54,6 +55,35 @@ async function writeToken(token: string | null): Promise<void> {
   else await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
+/**
+ * A Google sign-in that got as far as a verified token but no further, because
+ * there's no account for the address yet.
+ *
+ * The server answers that with a 409 rather than registering silently: it still
+ * needs a date of birth for the age gate. So the proof of the address is held
+ * here while /social-consent asks the question, and the second call carries
+ * both at once — which is why there's never a moment where a consent exists
+ * for an address nobody has proved they own.
+ */
+interface PendingSocial {
+  provider: "google";
+  email: string;
+  idToken: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+/**
+ * What came of tapping the Google button. Cancelling is the common case, not a
+ * failure, so it can't be an exception — the screen would have to catch it and
+ * decide it wasn't really an error, which is how "we couldn't log you in"
+ * ends up on screen after someone deliberately hit Back.
+ */
+export type SocialOutcome =
+  | { status: "signed-in" }
+  | { status: "cancelled" }
+  | { status: "needs-consent" };
+
 interface SessionValue {
   token: string | null;
   user: MobileUser | null;
@@ -62,6 +92,14 @@ interface SessionValue {
   /** There's a token behind biometrics and we haven't opened it yet. */
   locked: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  /** Native Google sign-in. Throws only on real failures — see SocialOutcome. */
+  signInWithGoogle: () => Promise<SocialOutcome>;
+  /** Set only between a `needs-consent` outcome and the answer to it. */
+  pendingSocial: PendingSocial | null;
+  /** Answer the age gate and finish the sign-in that raised it. */
+  completeSocial: (dob: string, parentalConsent: boolean) => Promise<void>;
+  /** Walk away from that question, throwing the held token away with it. */
+  cancelSocial: () => void;
   signOut: () => Promise<void>;
   /** Ask for the face/finger and, if it's given, restore the session. */
   unlock: () => Promise<boolean>;
@@ -83,6 +121,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<MobileUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
+  const [pendingSocial, setPendingSocial] = useState<PendingSocial | null>(null);
 
   // Restore on launch. A token that no longer works — expired, or the account's
   // password changed since — is thrown away rather than kept around to fail
@@ -119,12 +158,75 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const result = await api.login(email, password);
+  /** Every door out of signed-out ends here, whatever proved the identity. */
+  const adopt = useCallback(async (result: LoginResponse) => {
     await writeToken(result.token);
     setToken(result.token);
     setUser(result.user);
     setLocked(false);
+    setPendingSocial(null);
+  }, []);
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      await adopt(await api.login(email, password));
+    },
+    [adopt]
+  );
+
+  const signInWithGoogle = useCallback(async (): Promise<SocialOutcome> => {
+    const credential = await googleSignIn();
+    if (!credential) return { status: "cancelled" };
+
+    try {
+      await adopt(
+        await api.social({
+          provider: "google",
+          idToken: credential.idToken,
+          firstName: credential.firstName,
+          lastName: credential.lastName,
+        })
+      );
+      return { status: "signed-in" };
+    } catch (err) {
+      // Not a refusal — the server is asking a question, and we have to hold
+      // the token to be able to answer it.
+      if (err instanceof ApiError && err.status === 409 && err.data.needsConsent === true) {
+        setPendingSocial({
+          provider: "google",
+          email: typeof err.data.email === "string" ? err.data.email : "",
+          idToken: credential.idToken,
+          firstName: credential.firstName,
+          lastName: credential.lastName,
+        });
+        return { status: "needs-consent" };
+      }
+      throw err;
+    }
+  }, [adopt]);
+
+  const completeSocial = useCallback(
+    async (dob: string, parentalConsent: boolean) => {
+      if (!pendingSocial) throw new ApiError(0, "That sign-in has expired. Please try again.");
+      await adopt(
+        await api.social({
+          provider: pendingSocial.provider,
+          idToken: pendingSocial.idToken,
+          dob,
+          parentalConsent,
+          firstName: pendingSocial.firstName,
+          lastName: pendingSocial.lastName,
+        })
+      );
+    },
+    [adopt, pendingSocial]
+  );
+
+  const cancelSocial = useCallback(() => {
+    setPendingSocial(null);
+    // The Google session outlives ours, so without this the next attempt picks
+    // the same account straight back up and lands on the same question.
+    void googleSignOut();
   }, []);
 
   const signOut = useCallback(async () => {
@@ -132,9 +234,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // Leaving a guarded token behind would send the next launch to a lock
     // screen for a session that's been deliberately ended.
     await clearGuard();
+    // Google keeps its own session. Left alone, "log out" would put the account
+    // picker one silent tap away from signing the same person back in — and on
+    // a shared phone, nobody else could ever reach their own account.
+    await googleSignOut();
     setToken(null);
     setUser(null);
     setLocked(false);
+    setPendingSocial(null);
   }, []);
 
   /**
@@ -208,6 +315,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       loading,
       locked,
       signIn,
+      signInWithGoogle,
+      pendingSocial,
+      completeSocial,
+      cancelSocial,
       signOut,
       unlock,
       enableBiometrics,
@@ -219,6 +330,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       loading,
       locked,
       signIn,
+      signInWithGoogle,
+      pendingSocial,
+      completeSocial,
+      cancelSocial,
       signOut,
       unlock,
       enableBiometrics,

@@ -58,6 +58,11 @@ function RootNavigator() {
         {/* Same guard again: forgetting a password is something only a
             signed-out player does, and the reset itself finishes in a browser. */}
         <Stack.Screen name="forgot" options={{ headerShown: false }} />
+        {/* Pushed onto sign-in when Google proves an address we've no account
+            for. It belongs to the signed-out side like the rest, and the screen
+            itself redirects out if there's no pending sign-in to confirm —
+            which is also what closes it once the token arrives. */}
+        <Stack.Screen name="social-consent" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
   );

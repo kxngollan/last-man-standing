@@ -5,47 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api, ApiError } from "@/api/client";
 import { Button, Checkbox, Field, Lede, Muted, Screen, Title } from "@/components/ui";
 import { BuntingArt, NightMatchArt } from "@/components/football-art";
+import { GoogleButton } from "@/components/social";
+import { MIN_AGE, PARENTAL_CONSENT_AGE, needsGuardian, parseDob } from "@/lib/dob";
 import { Space, Text as Type, Weight, useTheme } from "@/theme";
-
-/**
- * Mirrors lib/age.ts on the server, which is the copy that decides. These are
- * here so the form can say no before a round trip, not so it can say yes.
- */
-const MIN_AGE = 13;
-const PARENTAL_CONSENT_AGE = 16;
-
-/**
- * Date of birth, typed rather than picked.
- *
- * A native date picker would mean another native dependency and a different
- * control on every platform; a plain numeric field works everywhere and is
- * faster for a date thirty years back, which no spinner is good at. We accept
- * what people actually type — slashes, dots, dashes, or nothing — and turn it
- * into the ISO string the API wants.
- */
-function parseDob(raw: string): { iso: string; age: number } | null {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length !== 8) return null;
-
-  const day = Number(digits.slice(0, 2));
-  const month = Number(digits.slice(2, 4));
-  const year = Number(digits.slice(4, 8));
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  if (year < 1900 || year > new Date().getFullYear()) return null;
-
-  const date = new Date(Date.UTC(year, month - 1, day));
-  // Rejects the 31st of a 30-day month, and the 29th of a non-leap February —
-  // JS would silently roll those forward into the next month.
-  if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
-
-  const now = new Date();
-  let age = now.getFullYear() - year;
-  const beforeBirthday =
-    now.getMonth() < month - 1 || (now.getMonth() === month - 1 && now.getDate() < day);
-  if (beforeBirthday) age--;
-
-  return { iso: date.toISOString().slice(0, 10), age };
-}
 
 export default function SignUp() {
   const { colors } = useTheme();
@@ -64,9 +26,7 @@ export default function SignUp() {
 
   // Derived from what's typed, so correcting a mistyped year takes the extra
   // question away again.
-  const enteredAge = parseDob(dob)?.age ?? null;
-  const needsGuardian =
-    enteredAge !== null && enteredAge >= MIN_AGE && enteredAge < PARENTAL_CONSENT_AGE;
+  const guardian = needsGuardian(parseDob(dob)?.age ?? null);
 
   async function submit() {
     setServerError("");
@@ -83,7 +43,7 @@ export default function SignUp() {
     else if (parsed.age < MIN_AGE) next.dob = `You must be ${MIN_AGE} or older to play.`;
     // The box is only on screen for the band it applies to, so this can only
     // fire when it was there to be ticked.
-    if (needsGuardian && !parentalConsent) {
+    if (guardian && !parentalConsent) {
       next.parentalConsent = "Please confirm a parent or guardian has given you permission.";
     }
 
@@ -211,7 +171,7 @@ export default function SignUp() {
             help={`You must be ${MIN_AGE} or older to play.`}
           />
 
-          {needsGuardian && (
+          {guardian && (
             <Checkbox
               label="A parent or guardian has given me permission to play."
               checked={parentalConsent}
@@ -232,6 +192,11 @@ export default function SignUp() {
             onPress={submit}
             busy={busy}
           />
+
+          {/* Google skips the form entirely — it already knows the name and has
+              proved the address, so only the age gate is left, and that's asked
+              on /social-consent rather than here. */}
+          <GoogleButton onError={setServerError} />
 
           <Link href="/sign-in" style={{ marginTop: Space.xs }}>
             <Muted style={{ textAlign: "center" }}>
