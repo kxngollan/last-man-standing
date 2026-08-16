@@ -1,5 +1,5 @@
 import { connectDB } from "@/database/connect";
-import { User, type OAuthProvider } from "@/models/User/User";
+import { User, type IOAuthAccount, type OAuthProvider } from "@/models/User/User";
 import { isAdminEmail } from "@/lib/adminEmails";
 import isEmail from "@/lib/isEmail";
 import { isOldEnough, needsParentalConsent } from "@/lib/age";
@@ -35,6 +35,15 @@ export interface OAuthIdentity {
   lastName?: string | null;
   /** Whole name, when the provider doesn't split it. */
   name?: string | null;
+  /**
+   * Apple only, and kept so that deleting the account can revoke it — see
+   * models/User/User.ts. Apple hands one over on every code exchange, so a
+   * sign-in also refreshes what's stored and backfills accounts that predate
+   * this being recorded.
+   */
+  refreshToken?: string | null;
+  /** Which Apple client that refresh token belongs to. Useless without it. */
+  clientId?: string | null;
 }
 
 export interface OAuthSignInOptions {
@@ -86,6 +95,67 @@ function namesFrom(identity: OAuthIdentity, email: string): { first: string; las
   return { first: email.split("@")[0].slice(0, 40), last: "" };
 }
 
+/**
+ * What we keep so the account can be revoked at Apple when it's deleted.
+ *
+ * Empty for Google, and empty for an Apple sign-in that didn't come with a
+ * token — the app's second call carries only an id token, and Apple issues a
+ * refresh token once per consent. Spreading an empty object is what makes the
+ * callers safe: a later sign-in with nothing to say must not blank out a
+ * perfectly good token stored by an earlier one.
+ */
+function revocationCredentials(identity: OAuthIdentity): {
+  refreshToken?: string;
+  clientId?: string;
+} {
+  if (identity.provider !== "apple") return {};
+  const refreshToken = (identity.refreshToken ?? "").trim();
+  const clientId = (identity.clientId ?? "").trim();
+  // Neither is any use on its own: revoking needs both.
+  if (!refreshToken || !clientId) return {};
+  return { refreshToken, clientId };
+}
+
+/** Store a fresh refresh token against an identity we already know. */
+async function rememberCredentials(
+  user: { oauthAccounts?: IOAuthAccount[]; save: () => Promise<unknown> },
+  identity: OAuthIdentity
+): Promise<void> {
+  const credentials = revocationCredentials(identity);
+  if (!credentials.refreshToken) return;
+
+  const account = (user.oauthAccounts ?? []).find(
+    (a) => a.provider === identity.provider && a.providerAccountId === identity.providerAccountId
+  );
+  if (!account || account.refreshToken === credentials.refreshToken) return;
+
+  Object.assign(account, credentials);
+  try {
+    await user.save();
+  } catch (err) {
+    // Losing this costs a revocation at deletion time, not a sign-in. Whoever
+    // is at the door gets in either way.
+    console.error("[auth] storing apple refresh token failed:", (err as Error).message);
+  }
+}
+
+/**
+ * Store an Apple refresh token against an account that has just signed in.
+ *
+ * For the app only. A phone hands over an authorization code rather than a
+ * token, and the code can only be spent once — so unlike the website, which has
+ * its token in hand before signInWithOAuth() runs, the app's is obtained
+ * afterwards and attached here. See lib/apple/exchangeCode.ts.
+ */
+export async function rememberAppleRefreshToken(
+  userId: string,
+  identity: OAuthIdentity
+): Promise<void> {
+  if (!revocationCredentials(identity).refreshToken) return;
+  const user = await User.findById(userId);
+  if (user) await rememberCredentials(user, identity);
+}
+
 export async function signInWithOAuth(
   identity: OAuthIdentity,
   options: OAuthSignInOptions = {}
@@ -115,7 +185,14 @@ export async function signInWithOAuth(
     });
     let created = false;
 
-    if (!user) user = await linkToExistingAccount(email, provider, providerAccountId);
+    if (user) {
+      // A returning Apple sign-in arrives with a fresh refresh token. Storing
+      // it each time keeps deletion able to revoke, and backfills the accounts
+      // that linked before any of this was kept.
+      await rememberCredentials(user, identity);
+    } else {
+      user = await linkToExistingAccount(email, provider, providerAccountId, identity);
+    }
 
     if (!user) {
       // Nobody by this identity and nobody by this address. Registering is a
@@ -154,14 +231,14 @@ export async function signInWithOAuth(
           // admin address they don't control.
           emailVerified: true,
           isAdmin: isAdminEmail(email),
-          oauthAccounts: [{ provider, providerAccountId }],
+          oauthAccounts: [{ provider, providerAccountId, ...revocationCredentials(identity) }],
         });
         created = true;
       } catch (err) {
         // Two tabs, one new player: the unique email index picks a winner and
         // the loser links to the account that won.
         if (!isDuplicateKey(err)) throw err;
-        user = await linkToExistingAccount(email, provider, providerAccountId);
+        user = await linkToExistingAccount(email, provider, providerAccountId, identity);
         if (!user) return { ok: false, reason: "error" };
       }
 
@@ -209,7 +286,8 @@ export async function signInWithOAuth(
 async function linkToExistingAccount(
   email: string,
   provider: OAuthProvider,
-  providerAccountId: string
+  providerAccountId: string,
+  identity: OAuthIdentity
 ) {
   const user = await User.findOne({ email });
   if (!user) return null;
@@ -217,8 +295,13 @@ async function linkToExistingAccount(
   const alreadyLinked = (user.oauthAccounts ?? []).some(
     (a) => a.provider === provider && a.providerAccountId === providerAccountId
   );
-  if (!alreadyLinked) {
-    user.oauthAccounts = [...(user.oauthAccounts ?? []), { provider, providerAccountId }];
+  if (alreadyLinked) {
+    await rememberCredentials(user, identity);
+  } else {
+    user.oauthAccounts = [
+      ...(user.oauthAccounts ?? []),
+      { provider, providerAccountId, ...revocationCredentials(identity) },
+    ];
   }
 
   const wasUnverified = !user.emailVerified;

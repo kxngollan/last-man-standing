@@ -154,6 +154,11 @@ export const api = {
     parentalConsent?: boolean;
     firstName?: string | null;
     lastName?: string | null;
+    /**
+     * Apple only. Not part of proving who they are — the server spends it on a
+     * refresh token so that deleting the account can revoke this app at Apple.
+     */
+    authorizationCode?: string | null;
   }) => request<LoginResponse>("/auth/social", { method: "POST", body: input }),
 
   me: (token: string) => request<Record<string, unknown>>("/me", { token }),

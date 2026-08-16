@@ -13,6 +13,7 @@ import { IssueReport } from "@/models/Report/IssueReport";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { fullName, nameParts } from "@/lib/displayName";
 import { isOldEnough, needsParentalConsent } from "@/lib/age";
+import { revokeAppleAccounts } from "@/lib/apple/revoke";
 
 // Changes a player can make to their own account. Kept out of the route
 // handlers so the rules are testable without a session.
@@ -136,11 +137,18 @@ export async function deleteOwnAccount(userId: string): Promise<DeleteAccountRes
   if (!mongoose.isValidObjectId(userId)) return "unknown-user";
   await connectDB();
 
-  const user = await User.findById(userId).select("isAdmin").lean();
+  const user = await User.findById(userId).select("isAdmin oauthAccounts").lean();
   if (!user) return "unknown-user";
   // Every game carries a required `createdBy`, so deleting an admin would
   // strand the games they started. Staff accounts get settled by hand.
   if (user.isAdmin) return "is-admin";
+
+  // Before the records go, while the tokens are still readable: tell Apple to
+  // drop the app from this person's Apple ID. Same guideline as the deletion
+  // itself, and it can only be done from here — afterwards there is nothing
+  // left to revoke with. It never throws, so Apple having a bad day delays
+  // nobody's departure.
+  await revokeAppleAccounts(user.oauthAccounts);
 
   const id = new mongoose.Types.ObjectId(userId);
   const session = await mongoose.startSession();

@@ -10,16 +10,16 @@ import { useSession } from "@/lib/session";
 import { Space, Text as Type, Weight, useTheme } from "@/theme";
 
 /**
- * The one question Google can't answer for us.
+ * The one question neither Google nor Apple can answer for us.
  *
- * Signing in with Google proves an address; it says nothing about age, and the
+ * A social sign-in proves an address; it says nothing about age, and the
  * game has a floor of 13 and a guardian's tick under 16. So an address we've
  * never seen comes back from /api/mobile/auth/social as a 409 rather than a new
  * account, and this screen collects the missing part before asking again.
  *
  * Deliberately not a sign-up form. Everything else — name, email, password —
- * either came from Google or doesn't apply, and re-asking for a password would
- * defeat the point of the button they just pressed.
+ * either came from the provider or doesn't apply, and re-asking for a password
+ * would defeat the point of the button they just pressed.
  */
 export default function SocialConsent() {
   const { pendingSocial, completeSocial, cancelSocial } = useSession();

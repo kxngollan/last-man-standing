@@ -98,6 +98,13 @@ export function identityFromClaims(
       fallbackName?.lastName ??
       null,
     name: typeof claims.name === "string" ? claims.name : null,
+    // Which of our clients the token was minted for — the app's bundle id, in
+    // practice, since that's what native Sign in with Apple puts in `aud`. It
+    // is carried through because revoking at Apple has to name the same client
+    // the token belongs to (lib/apple/revoke.ts), and the token itself is the
+    // only trustworthy account of which one that is. Already checked against
+    // our own list by the time this runs.
+    clientId: Array.isArray(claims.aud) ? (claims.aud[0] ?? null) : (claims.aud ?? null),
   };
 }
 

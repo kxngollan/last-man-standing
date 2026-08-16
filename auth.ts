@@ -94,6 +94,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
           firstName: typeof claims.given_name === "string" ? claims.given_name : null,
           lastName: typeof claims.family_name === "string" ? claims.family_name : null,
           name: user.name,
+          // Apple's token exchange returns one of these; Google's is ignored
+          // downstream. It's kept only so deleting the account can tell Apple
+          // to forget it (lib/apple/revoke.ts), paired with the client it was
+          // issued to — the Services ID here, the bundle id on a phone.
+          refreshToken: account.refresh_token ?? null,
+          clientId: process.env.AUTH_APPLE_ID ?? null,
         },
         {
           referralCookie: await cookieValue(REF_COOKIE),

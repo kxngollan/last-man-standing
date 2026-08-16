@@ -12,6 +12,7 @@ import {
   unguardToken,
 } from "./biometrics";
 import { googleSignIn, googleSignOut } from "./google";
+import { appleSignIn } from "./apple";
 
 /**
  * Who's signed in, and the token every request carries.
@@ -56,7 +57,7 @@ async function writeToken(token: string | null): Promise<void> {
 }
 
 /**
- * A Google sign-in that got as far as a verified token but no further, because
+ * A social sign-in that got as far as a verified token but no further, because
  * there's no account for the address yet.
  *
  * The server answers that with a 409 rather than registering silently: it still
@@ -66,15 +67,22 @@ async function writeToken(token: string | null): Promise<void> {
  * for an address nobody has proved they own.
  */
 interface PendingSocial {
-  provider: "google";
+  provider: "google" | "apple";
   email: string;
   idToken: string;
   firstName: string | null;
   lastName: string | null;
+  /**
+   * Apple only, and carried across the question rather than spent before it.
+   * The code works once: spending it on the attempt that came back asking for
+   * a date of birth would leave the account created a moment later with
+   * nothing the server can revoke at Apple when it's deleted.
+   */
+  authorizationCode: string | null;
 }
 
 /**
- * What came of tapping the Google button. Cancelling is the common case, not a
+ * What came of tapping a social button. Cancelling is the common case, not a
  * failure, so it can't be an exception — the screen would have to catch it and
  * decide it wasn't really an error, which is how "we couldn't log you in"
  * ends up on screen after someone deliberately hit Back.
@@ -94,6 +102,8 @@ interface SessionValue {
   signIn: (email: string, password: string) => Promise<void>;
   /** Native Google sign-in. Throws only on real failures — see SocialOutcome. */
   signInWithGoogle: () => Promise<SocialOutcome>;
+  /** Native Apple sign-in. iOS only; the button isn't shown anywhere else. */
+  signInWithApple: () => Promise<SocialOutcome>;
   /** Set only between a `needs-consent` outcome and the answer to it. */
   pendingSocial: PendingSocial | null;
   /** Answer the age gate and finish the sign-in that raised it. */
@@ -174,36 +184,68 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     [adopt]
   );
 
+  /**
+   * The half of a social sign-in that is the same whichever button was pressed:
+   * post the proof, and treat the 409 as a question rather than a refusal.
+   *
+   * Shared because the fork is three-way and subtle, and two copies of it would
+   * drift — Apple's would be the one that broke, since its extra wrinkle (a
+   * name given once, a code good once) makes it the harder of the two to get
+   * right twice.
+   */
+  const beginSocial = useCallback(
+    async (
+      provider: "google" | "apple",
+      credential: {
+        idToken: string;
+        firstName: string | null;
+        lastName: string | null;
+        authorizationCode?: string | null;
+      }
+    ): Promise<SocialOutcome> => {
+      const authorizationCode = credential.authorizationCode ?? null;
+      try {
+        await adopt(
+          await api.social({
+            provider,
+            idToken: credential.idToken,
+            firstName: credential.firstName,
+            lastName: credential.lastName,
+            authorizationCode,
+          })
+        );
+        return { status: "signed-in" };
+      } catch (err) {
+        // Not a refusal — the server is asking a question, and we have to hold
+        // the proof to be able to answer it.
+        if (err instanceof ApiError && err.status === 409 && err.data.needsConsent === true) {
+          setPendingSocial({
+            provider,
+            email: typeof err.data.email === "string" ? err.data.email : "",
+            idToken: credential.idToken,
+            firstName: credential.firstName,
+            lastName: credential.lastName,
+            authorizationCode,
+          });
+          return { status: "needs-consent" };
+        }
+        throw err;
+      }
+    },
+    [adopt]
+  );
+
   const signInWithGoogle = useCallback(async (): Promise<SocialOutcome> => {
     const credential = await googleSignIn();
     if (!credential) return { status: "cancelled" };
+    return beginSocial("google", credential);
+  }, [beginSocial]);
 
-    try {
-      await adopt(
-        await api.social({
-          provider: "google",
-          idToken: credential.idToken,
-          firstName: credential.firstName,
-          lastName: credential.lastName,
-        })
-      );
-      return { status: "signed-in" };
-    } catch (err) {
-      // Not a refusal — the server is asking a question, and we have to hold
-      // the token to be able to answer it.
-      if (err instanceof ApiError && err.status === 409 && err.data.needsConsent === true) {
-        setPendingSocial({
-          provider: "google",
-          email: typeof err.data.email === "string" ? err.data.email : "",
-          idToken: credential.idToken,
-          firstName: credential.firstName,
-          lastName: credential.lastName,
-        });
-        return { status: "needs-consent" };
-      }
-      throw err;
-    }
-  }, [adopt]);
+  const signInWithApple = useCallback(async (): Promise<SocialOutcome> => {
+    const credential = await appleSignIn();
+    if (!credential) return { status: "cancelled" };
+    return beginSocial("apple", credential);
+  }, [beginSocial]);
 
   const completeSocial = useCallback(
     async (dob: string, parentalConsent: boolean) => {
@@ -216,6 +258,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           parentalConsent,
           firstName: pendingSocial.firstName,
           lastName: pendingSocial.lastName,
+          authorizationCode: pendingSocial.authorizationCode,
         })
       );
     },
@@ -225,7 +268,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const cancelSocial = useCallback(() => {
     setPendingSocial(null);
     // The Google session outlives ours, so without this the next attempt picks
-    // the same account straight back up and lands on the same question.
+    // the same account straight back up and lands on the same question. Apple
+    // needs no equivalent: it has no signed-in state of its own to clear, and
+    // its own docs steer away from signOutAsync.
     void googleSignOut();
   }, []);
 
@@ -316,6 +361,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       locked,
       signIn,
       signInWithGoogle,
+      signInWithApple,
       pendingSocial,
       completeSocial,
       cancelSocial,
@@ -331,6 +377,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       locked,
       signIn,
       signInWithGoogle,
+      signInWithApple,
       pendingSocial,
       completeSocial,
       cancelSocial,

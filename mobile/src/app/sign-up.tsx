@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api, ApiError } from "@/api/client";
 import { Button, Checkbox, Field, Lede, Muted, Screen, Title } from "@/components/ui";
 import { BuntingArt, NightMatchArt } from "@/components/football-art";
-import { GoogleButton } from "@/components/social";
+import { SocialButtons } from "@/components/social";
 import { MIN_AGE, PARENTAL_CONSENT_AGE, needsGuardian, parseDob } from "@/lib/dob";
 import { Space, Text as Type, Weight, useTheme } from "@/theme";
 
@@ -193,10 +193,10 @@ export default function SignUp() {
             busy={busy}
           />
 
-          {/* Google skips the form entirely — it already knows the name and has
-              proved the address, so only the age gate is left, and that's asked
-              on /social-consent rather than here. */}
-          <GoogleButton onError={setServerError} />
+          {/* A social sign-in skips the form entirely — the provider already
+              knows the name and has proved the address, so only the age gate is
+              left, and that's asked on /social-consent rather than here. */}
+          <SocialButtons onError={setServerError} />
 
           <Link href="/sign-in" style={{ marginTop: Space.xs }}>
             <Muted style={{ textAlign: "center" }}>

@@ -10,6 +10,24 @@ export type OAuthProvider = "google" | "apple";
 export interface IOAuthAccount {
   provider: OAuthProvider;
   providerAccountId: string;
+  /**
+   * Apple only, and only so the account can be torn down properly: deleting an
+   * account has to tell Apple to forget it too (App Review guideline
+   * 5.1.1(v)), and Apple's revoke endpoint wants a token — see
+   * lib/apple/revoke.ts.
+   *
+   * Absent on Google, which asks for nothing equivalent, and absent on Apple
+   * accounts that signed in before this was recorded. Both are survivable: the
+   * deletion goes ahead regardless.
+   */
+  refreshToken?: string;
+  /**
+   * Which Apple client that refresh token belongs to. Revocation has to present
+   * the same one, and the web and the app don't share it — the site signs in
+   * with the Services ID, the app with its bundle id. Getting it wrong fails
+   * quietly, so it's recorded at sign-in rather than guessed at deletion.
+   */
+  clientId?: string;
 }
 
 export interface IUser {
@@ -82,6 +100,8 @@ const UserSchema = new Schema<IUser>(
           {
             provider: { type: String, required: true, enum: ["google", "apple"] },
             providerAccountId: { type: String, required: true },
+            refreshToken: { type: String },
+            clientId: { type: String },
           },
           { _id: false }
         ),
