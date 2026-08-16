@@ -25,7 +25,36 @@ const TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days — Apple's ceiling is ~6 mont
 const RENEW_WITHIN_SECONDS = 60 * 60 * 24; // treat "under a day left" as expired
 
 /** Saves the round trip on the requests either side of a cold start. */
-const cache = new Map<string, { secret: string; expiresAt: number }>();
+const cache = new Map<string, { secret: string; expiresAt: number; fingerprint: string }>();
+
+/**
+ * A stored secret outlives the credentials it was signed with, and that's a
+ * trap: rotate the .p8, or point AUTH_APPLE_ID at a different Services ID, and
+ * a secret Apple now rejects goes on being served for the rest of its month.
+ * The symptom is `invalid_client` at the token exchange, on a deployment whose
+ * environment looks entirely correct — the wrong secret is in the database, not
+ * in the environment, so fixing the variables changes nothing.
+ *
+ * So each stored secret carries a fingerprint of what signed it. When that
+ * stops matching the environment, the secret is stale by definition and gets
+ * re-minted, whatever its expiry says.
+ *
+ * The private key goes into the hash rather than beside it: a key replaced
+ * under the same key id is exactly the rotation that metadata alone would miss,
+ * and a hash is safe to keep where the secret itself would not be.
+ */
+async function signingFingerprint(): Promise<string | null> {
+  const teamId = process.env.APPLE_TEAM_ID;
+  const keyId = process.env.APPLE_KEY_ID;
+  const privateKey = process.env.APPLE_PRIVATE_KEY;
+  if (!teamId || !keyId || !privateKey) return null;
+
+  const material = new TextEncoder().encode(`${teamId}\n${keyId}\n${toPem(privateKey)}`);
+  const digest = await crypto.subtle.digest("SHA-256", material);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 /**
  * Apple hands you a .p8 file. Whether the environment holds the whole thing,
@@ -69,19 +98,33 @@ async function mint(clientId: string, now: number, expiresAt: number): Promise<s
 export async function getAppleClientSecret(clientId: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const cutoff = new Date((now + RENEW_WITHIN_SECONDS) * 1000);
+  const fingerprint = await signingFingerprint();
+
+  // Null means the environment can't sign anything, so there is nothing to
+  // compare a stored secret against and nothing to replace it with. Whatever is
+  // stored is the best answer available.
+  const matches = (theirs: string | undefined) => fingerprint === null || theirs === fingerprint;
 
   const cached = cache.get(clientId);
-  if (cached && cached.expiresAt > cutoff.getTime() / 1000) return cached.secret;
+  if (cached && cached.expiresAt > cutoff.getTime() / 1000 && matches(cached.fingerprint)) {
+    return cached.secret;
+  }
 
   await connectDB();
 
   const stored = await AppleClientSecret.findOne({ clientId, expiresAt: { $gt: cutoff } })
-    .select("secret expiresAt")
+    .select("secret expiresAt fingerprint")
     .lean();
-  if (stored) {
+  if (stored && matches(stored.fingerprint)) {
     const expiresAt = Math.floor(stored.expiresAt.getTime() / 1000);
-    cache.set(clientId, { secret: stored.secret, expiresAt });
+    cache.set(clientId, { secret: stored.secret, expiresAt, fingerprint: stored.fingerprint ?? "" });
     return stored.secret;
+  }
+  if (stored) {
+    // Signed with credentials this deployment no longer has. Left in place it
+    // would fail every token exchange until it expired, and look for all the
+    // world like a bad environment variable.
+    console.warn(`[apple] stored client secret for ${clientId} predates the current signing key; re-minting`);
   }
 
   const expiresAt = now + TTL_SECONDS;
@@ -90,7 +133,14 @@ export async function getAppleClientSecret(clientId: string): Promise<string> {
   try {
     await AppleClientSecret.updateOne(
       { clientId },
-      { $set: { secret, expiresAt: new Date(expiresAt * 1000), createdAt: new Date(now * 1000) } },
+      {
+        $set: {
+          secret,
+          fingerprint,
+          expiresAt: new Date(expiresAt * 1000),
+          createdAt: new Date(now * 1000),
+        },
+      },
       { upsert: true }
     );
   } catch (err) {
@@ -102,7 +152,7 @@ export async function getAppleClientSecret(clientId: string): Promise<string> {
     console.warn("[apple] client secret was renewed concurrently; keeping the one minted here");
   }
 
-  cache.set(clientId, { secret, expiresAt });
+  cache.set(clientId, { secret, expiresAt, fingerprint: fingerprint ?? "" });
   return secret;
 }
 

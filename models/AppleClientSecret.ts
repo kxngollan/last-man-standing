@@ -10,6 +10,13 @@ import { Schema, model, models, type Model } from "mongoose";
 export interface IAppleClientSecret {
   clientId: string;
   secret: string;
+  /**
+   * A hash of the team id, key id and private key this was signed with. Rotate
+   * any of them and the stored secret is dead to Apple, however long it has
+   * left to run — this is what lets that be noticed. Absent on rows written
+   * before it was recorded, which are treated as stale.
+   */
+  fingerprint?: string;
   expiresAt: Date;
   createdAt: Date;
 }
@@ -17,6 +24,7 @@ export interface IAppleClientSecret {
 const AppleClientSecretSchema = new Schema<IAppleClientSecret>({
   clientId: { type: String, required: true, unique: true },
   secret: { type: String, required: true },
+  fingerprint: { type: String },
   expiresAt: { type: Date, required: true },
   createdAt: { type: Date, default: Date.now },
 });
