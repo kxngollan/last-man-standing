@@ -9,6 +9,7 @@ import { User } from "@/models/User/User";
 import { sessionOutlivedPassword } from "@/lib/account";
 import { attemptLogin } from "@/lib/login";
 import { signInWithOAuth } from "@/lib/oauth";
+import { getAppleClientSecret } from "@/lib/apple/clientSecret";
 import { CONSENT_COOKIE, openConsent } from "@/lib/socialConsent";
 import { REF_COOKIE } from "@/lib/referral";
 import { clientIp } from "@/lib/rateLimit";
@@ -45,7 +46,30 @@ async function cookieValue(name: string): Promise<string | null> {
   }
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+/**
+ * Sign in with Apple, ready to use — or nothing at all.
+ *
+ * Apple's "client secret" is a JWT that expires, so it isn't read from the
+ * environment: getAppleClientSecret() returns the one held in the database and
+ * mints a replacement when that one is spent. This runs per request, but the
+ * secret is cached in process, so a warm instance does no work here.
+ *
+ * A failure returns no provider rather than throwing. Auth config that throws
+ * takes down password logins and session reads with it, and "the Apple button
+ * is missing" is a far better outage than "nobody can sign in".
+ */
+async function appleProvider() {
+  const clientId = process.env.AUTH_APPLE_ID;
+  if (!clientId) return [];
+  try {
+    return [Apple({ clientId, clientSecret: await getAppleClientSecret(clientId) })];
+  } catch (err) {
+    console.error(`[auth] Apple sign-in unavailable: ${(err as Error).message}`);
+    return [];
+  }
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
@@ -164,7 +188,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // its callback cross-site and refuses http://localhost redirect URIs, so it
     // only works against an HTTPS deployment or a tunnel.
     ...(process.env.AUTH_GOOGLE_ID ? [Google] : []),
-    ...(process.env.AUTH_APPLE_ID ? [Apple] : []),
+    ...(await appleProvider()),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -188,4 +212,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-});
+}));

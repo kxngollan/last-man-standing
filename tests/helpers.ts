@@ -12,6 +12,7 @@ import { VerificationToken } from "@/models/User/VerificationToken";
 import { PasswordResetToken } from "@/models/User/PasswordResetToken";
 import { UserReferralHandle } from "@/models/User/UserReferralHandle";
 import { UserReferredBy } from "@/models/User/UserReferredBy";
+import { AppleClientSecret } from "@/models/AppleClientSecret";
 
 export const SEASON = 2025;
 
@@ -32,6 +33,7 @@ export async function initDb(): Promise<void> {
       PasswordResetToken,
       UserReferralHandle,
       UserReferredBy,
+      AppleClientSecret,
     ].map((m) => m.init())
   );
 }
