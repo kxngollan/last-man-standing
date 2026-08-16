@@ -62,7 +62,39 @@ async function appleProvider() {
   const clientId = process.env.AUTH_APPLE_ID;
   if (!clientId) return [];
   try {
-    return [Apple({ clientId, clientSecret: await getAppleClientSecret(clientId) })];
+    return [
+      Apple({
+        clientId,
+        clientSecret: await getAppleClientSecret(clientId),
+        /**
+         * Overriding the built-in only to stop it throwing.
+         *
+         * Apple attaches a `user` field to the callback on first consent and
+         * never again, and the provider's default reads straight through it —
+         * `profile.user.name.firstName`. When Apple sends `user` without a
+         * `name` inside, that's a TypeError, and a TypeError here isn't an
+         * AuthError, so Auth.js can't classify it: it becomes a bare
+         * "Configuration" error and a 500, on the sign-up attempt of someone
+         * who did nothing wrong. Read the same fields defensively instead.
+         *
+         * The name barely matters — Apple's id token carries no given_name or
+         * family_name, so lib/oauth.ts already expects to fall back to the
+         * address. Not crashing is the point.
+         */
+        profile(profile) {
+          const given = profile.user?.name?.firstName;
+          const family = profile.user?.name?.lastName;
+          const name = [given, family].filter((part) => typeof part === "string" && part).join(" ");
+          return {
+            id: profile.sub,
+            // An email here means "no name", which namesFrom() understands.
+            name: name || profile.email,
+            email: profile.email,
+            image: null,
+          };
+        },
+      }),
+    ];
   } catch (err) {
     console.error(`[auth] Apple sign-in unavailable: ${(err as Error).message}`);
     return [];
