@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "primaryColor": "#e05c45",
     "ios": {
-      "bundleIdentifier": "com.lastmanstanding.app",
+      "bundleIdentifier": "com.footballlms",
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "infoPlist": {

@@ -10,9 +10,15 @@ later.
 
 **1. Confirm the bundle ID and package name — this is permanent.**
 
-Both are currently `com.lastmanstanding.app`, in `app.json`. Once a build is
-uploaded under an identifier it can never be changed or reused, so change it now
-if you want something else. It does not have to match your domain.
+They differ, deliberately, and both live in `app.json`:
+
+| Platform | Identifier | Why this one |
+| --- | --- | --- |
+| iOS | `com.footballlms` | Sign in with Apple puts the **bundle ID** in the ID token's `aud`, so it has to be the App ID registered with the Sign in with Apple capability — the same value the server accepts in `MOBILE_APPLE_CLIENT_IDS`. Change one without the other and every Apple sign-in 401s. |
+| Android | `com.lastmanstanding.app` | Nothing on the Apple side reads it. It is registered against the Google OAuth **Android** client, which matches the app by package name plus signing-certificate SHA-1, so changing it invalidates that registration and breaks Google sign-in on Android. |
+
+Once a build is uploaded under an identifier it can never be changed or reused,
+so change them now if you want something else. Neither has to match your domain.
 
 **2. Put the server somewhere with an https address.**
 

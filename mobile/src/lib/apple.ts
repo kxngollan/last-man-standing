@@ -16,7 +16,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
  *     passed up separately, and the server treats it as a fallback.
  *
  *  2. The audience is the BUNDLE ID. A token minted on a device names
- *     com.lastmanstanding.app, not the Services ID the website signs in with —
+ *     com.footballlms, not the Services ID the website signs in with —
  *     so the server's MOBILE_APPLE_CLIENT_IDS has to list the bundle id, and
  *     listing the Services ID there would accept nothing.
  *
