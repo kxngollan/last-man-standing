@@ -69,6 +69,11 @@ function toPem(raw: string): string {
   return `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----\n`;
 }
 
+/** Enough of a fingerprint to tell two keys apart in a log, and no more. */
+function short(fingerprint: string | null | undefined): string {
+  return fingerprint ? fingerprint.slice(0, 8) : "none";
+}
+
 async function mint(clientId: string, now: number, expiresAt: number): Promise<string> {
   const teamId = process.env.APPLE_TEAM_ID;
   const keyId = process.env.APPLE_KEY_ID;
