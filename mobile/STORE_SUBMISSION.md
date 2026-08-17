@@ -22,7 +22,7 @@ fails is an Apple 2.1 rejection. On the server set:
 | Variable | Why |
 | --- | --- |
 | `APP_URL` | Canonical site URL. Email links, sitemap and share URLs all derive from it, and it still defaults to `http://localhost:3000`. Already set correctly on the live deploy — `robots.txt` and `sitemap.xml` both read `https://www.footballlms.com`. |
-| `SUPPORT_EMAIL` | Shown on `/policy` and `/delete-account` as the way to reach you. **Not set on the live deploy** — both pages currently print the code default, `support@lastmanstanding.app`, which is not a domain you own. Set it to a mailbox that exists and is read: it is the route for someone locked out of their account, and Play verifies it. |
+| `SUPPORT_EMAIL` | Shown on `/policy` and `/delete-account` as the way to reach you. **Not set on the live deploy** — both pages print the code default, `support@footballlms.com`. That is at least a domain you own now, but the mailbox still has to exist and be read: it is the route for someone locked out of their account, and Play verifies it. |
 
 **3. Point the app at that server.**
 

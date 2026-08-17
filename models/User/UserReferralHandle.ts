@@ -1,7 +1,7 @@
 import { Schema, model, models, type Model, type Types } from "mongoose";
 
 /**
- * The string a player shares: lastmanstanding.app/r/<referralHandle>.
+ * The string a player shares: www.footballlms.com/r/<referralHandle>.
  *
  * One row per player, created on signup with their own id as the handle, so a
  * link works from day one. Changing the handle updates this row in place —

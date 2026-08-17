@@ -26,7 +26,7 @@ export const SITE_TAGLINE = "Free Premier League Survival Game";
  * needs a session. Same domain as SMTP_FROM's default; set SUPPORT_EMAIL if the
  * mailbox is somewhere else.
  */
-export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@lastmanstanding.app";
+export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@footballlms.com";
 
 export const SITE_DESCRIPTION =
   "Last Man Standing is a free Premier League survival game. Each game week you pick one team to win. Survive, never pick the same team twice, and be the last player standing to win.";

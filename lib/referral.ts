@@ -6,7 +6,7 @@ import { UserReferredBy } from "@/models/User/UserReferredBy";
 import { publicName } from "@/lib/displayName";
 
 /**
- * Referral links: lastmanstanding.app/r/<handle>.
+ * Referral links: www.footballlms.com/r/<handle>.
  *
  * Every player starts with their own id as their handle, so a link works from
  * the moment they sign up. Changing it rewrites the row, which means links

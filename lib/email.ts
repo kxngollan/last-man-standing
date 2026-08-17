@@ -26,7 +26,7 @@ function getTransporter(): Transporter | null {
   return cachedTransporter;
 }
 
-const FROM = process.env.SMTP_FROM ?? "Last Man Standing <no-reply@lastmanstanding.app>";
+const FROM = process.env.SMTP_FROM ?? "Last Man Standing <no-reply@footballlms.com>";
 
 // Brand logo, embedded as an inline attachment (CID) — remote images get
 // blocked by most clients and Gmail strips data: URIs. If the file goes
