@@ -10,6 +10,7 @@ import { sessionOutlivedPassword } from "@/lib/account";
 import { attemptLogin } from "@/lib/login";
 import { signInWithOAuth } from "@/lib/oauth";
 import { getAppleClientSecret } from "@/lib/apple/clientSecret";
+import { withTokenDiagnostics } from "@/lib/apple/diagnostics";
 import { CONSENT_COOKIE, openConsent } from "@/lib/socialConsent";
 import { REF_COOKIE } from "@/lib/referral";
 import { clientIp } from "@/lib/rateLimit";
@@ -63,9 +64,10 @@ async function appleProvider() {
   if (!clientId) return [];
   try {
     return [
-      Apple({
-        clientId,
-        clientSecret: await getAppleClientSecret(clientId),
+      withTokenDiagnostics(
+        Apple({
+          clientId,
+          clientSecret: await getAppleClientSecret(clientId),
         /**
          * Overriding the built-in only to stop it throwing.
          *
@@ -81,19 +83,22 @@ async function appleProvider() {
          * family_name, so lib/oauth.ts already expects to fall back to the
          * address. Not crashing is the point.
          */
-        profile(profile) {
-          const given = profile.user?.name?.firstName;
-          const family = profile.user?.name?.lastName;
-          const name = [given, family].filter((part) => typeof part === "string" && part).join(" ");
-          return {
-            id: profile.sub,
-            // An email here means "no name", which namesFrom() understands.
-            name: name || profile.email,
-            email: profile.email,
-            image: null,
-          };
-        },
-      }),
+          profile(profile) {
+            const given = profile.user?.name?.firstName;
+            const family = profile.user?.name?.lastName;
+            const name = [given, family]
+              .filter((part) => typeof part === "string" && part)
+              .join(" ");
+            return {
+              id: profile.sub,
+              // An email here means "no name", which namesFrom() understands.
+              name: name || profile.email,
+              email: profile.email,
+              image: null,
+            };
+          },
+        })
+      ),
     ];
   } catch (err) {
     console.error(`[auth] Apple sign-in unavailable: ${(err as Error).message}`);
