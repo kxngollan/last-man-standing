@@ -118,13 +118,24 @@ export async function getAppleClientSecret(clientId: string): Promise<string> {
   if (stored && matches(stored.fingerprint)) {
     const expiresAt = Math.floor(stored.expiresAt.getTime() / 1000);
     cache.set(clientId, { secret: stored.secret, expiresAt, fingerprint: stored.fingerprint ?? "" });
+    console.info(`[apple] reusing stored client secret for ${clientId} (key ${short(fingerprint)})`);
     return stored.secret;
   }
   if (stored) {
     // Signed with credentials this deployment no longer has. Left in place it
     // would fail every token exchange until it expired, and look for all the
     // world like a bad environment variable.
-    console.warn(`[apple] stored client secret for ${clientId} predates the current signing key; re-minting`);
+    //
+    // Both fingerprints are logged because the interesting case isn't one
+    // rotation, it's two deployments with different keys writing over each
+    // other: that shows up here as the pair flipping back and forth, and
+    // nothing else in the system would ever reveal it.
+    console.warn(
+      `[apple] stored client secret for ${clientId} was signed with key ${short(stored.fingerprint)}, ` +
+        `this deployment has ${short(fingerprint)} — re-minting`
+    );
+  } else {
+    console.info(`[apple] no usable stored client secret for ${clientId}; minting (key ${short(fingerprint)})`);
   }
 
   const expiresAt = now + TTL_SECONDS;
