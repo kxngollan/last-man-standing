@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { TeamCrest } from '@/components/portal/TeamCrest'
 import { PickRoster } from '@/components/portal/PickRoster'
+import { ShareMeter } from '@/components/portal/ShareMeter'
 import { ResultMark } from '@/components/ui/ResultMark'
 import { teamWeekMeta } from '@/lib/game/pickMeta'
 import { StateShell } from '@/components/portal/StateShell'
@@ -46,6 +47,9 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
       </StateShell>
     )
   }
+
+  // Teams arrive most-picked first, so the first one sets the meter's scale.
+  const max = summary.teams[0]?.count ?? 1
 
   return (
     <main className={styles.main}>
@@ -98,6 +102,7 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
         <ol className={styles.list}>
           {summary.teams.map((t, i) => {
             const week = teamWeekMeta(t.counts, t.count, summary.state)
+            const share = summary.totalPicks > 0 ? Math.round((t.count / summary.totalPicks) * 100) : 0
             return (
               <li key={t.teamApiId} className={styles.row} data-tone={week.tone}>
                 {/* The row opens the team's week, where the full list lives. */}
@@ -125,9 +130,16 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
                   </span>
                   <span className={styles.count} data-nums>
                     {t.count}
-                    <span className={styles.share}>
-                      {summary.totalPicks > 0 ? ` · ${Math.round((t.count / summary.totalPicks) * 100)}%` : ''}
-                    </span>
+                    <span className={styles.share}>{summary.totalPicks > 0 ? ` · ${share}%` : ''}</span>
+                  </span>
+                  {/* How much of the week this team took, in ink so it reads
+                      against whatever colour the row is carrying. */}
+                  <span className={styles.meter}>
+                    <ShareMeter
+                      value={t.count}
+                      max={max}
+                      label={`${t.count} of the week’s ${summary.totalPicks} picks — ${share}%`}
+                    />
                   </span>
                   {/* Through on one line, out on the next — a full-width row of
                       its own, so the line above keeps its shape. */}

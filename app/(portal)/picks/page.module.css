@@ -177,12 +177,24 @@
     grid-template-columns: 1.25rem auto minmax(0, 1fr);
     row-gap: var(--space-2xs);
   }
+  .meter {
+    grid-column: 1 / -1;
+  }
   .outcome {
     grid-column: 3;
   }
   .count {
     grid-column: 2 / -1;
   }
+}
+
+/* The share meter and the roster each take a full-width row under the head
+   line, so the columns above keep their shape. */
+.meter {
+  grid-column: 3 / -1;
+  display: block;
+  min-width: 0;
+  margin-block: 2px;
 }
 
 /* Who's behind each pick — its own full-width row, holding the grouped

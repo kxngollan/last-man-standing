@@ -62,6 +62,11 @@
   font-size: var(--text-sm);
   color: var(--color-ink-2);
 }
+.meter {
+  display: block;
+  margin-top: var(--space-sm);
+  max-width: 22rem;
+}
 
 /* The result disc, same shape as the league table's last five. */
 .disc {

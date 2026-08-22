@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { StateShell } from "@/components/portal/StateShell";
 import { TeamCrest } from "@/components/portal/TeamCrest";
 import { PickRoster } from "@/components/portal/PickRoster";
+import { ShareMeter } from "@/components/portal/ShareMeter";
 import { ResultMark } from "@/components/ui/ResultMark";
 import { getPickSummary } from "@/lib/game/queries";
 import { loadTeamByTla } from "@/lib/game/teams";
@@ -68,6 +69,8 @@ export default async function TeamWeekPicksPage({
   const meta = teamWeekMeta(row.counts, row.count, summary.state);
   const share =
     summary.totalPicks > 0 ? Math.round((row.count / summary.totalPicks) * 100) : 0;
+  // Measured against the week's most-picked team, the same scale the boards use.
+  const max = summary.teams[0]?.count ?? row.count;
 
   return (
     <main className={styles.main}>
@@ -97,6 +100,13 @@ export default async function TeamWeekPicksPage({
                 row.wildcards === 1 ? "player" : "players"
               } played a wildcard on it.`}
           </p>
+          <span className={styles.meter}>
+            <ShareMeter
+              value={row.count}
+              max={max}
+              label={`${row.count} of the week’s ${summary.totalPicks} picks — ${share}%`}
+            />
+          </span>
         </div>
         {meta.mark && (
           <span className={styles.disc}>

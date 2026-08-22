@@ -1,0 +1,27 @@
+/* Sits in the row's flow rather than pinned to its bottom edge — hugging the
+   edge read as a stray underline, and left no room for a track. */
+.track {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  /* A visible channel, so an empty-looking bar still reads as "small share"
+     rather than "missing". */
+  background: color-mix(in oklch, var(--color-ink) 12%, transparent);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  min-width: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  transition: width var(--dur-mid) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}

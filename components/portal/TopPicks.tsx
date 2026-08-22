@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TeamCrest } from "./TeamCrest";
 import { PickRoster } from "./PickRoster";
+import { ShareMeter } from "./ShareMeter";
 import { ResultMark } from "@/components/ui/ResultMark";
 import { teamWeekMeta } from "@/lib/game/pickMeta";
 import type { PickSummary } from "@/lib/game/portalTypes";
@@ -61,7 +62,8 @@ export function TopPicks({
 }) {
   if (!summary) return null;
   const top = summary.teams.slice(0, limit);
-  const max = top[0]?.count ?? 1;
+  // Teams arrive most-picked first, so the first one sets the meter's scale.
+  const max = summary.teams[0]?.count ?? 1;
 
   return (
     <section aria-label={`Week ${summary.gameWeek} picks`}>
@@ -113,14 +115,16 @@ export function TopPicks({
                     </span>
                   )}
                 </span>
+                {/* How much of the week this team took, in ink so it stands
+                    out against whatever colour the row is carrying. */}
+                <span className={styles.meter}>
+                  <ShareMeter
+                    value={t.count}
+                    max={max}
+                    label={`${t.count} of the week’s ${summary.totalPicks} picks — ${share}%`}
+                  />
+                </span>
               </Link>
-              {/* Share of the week's picks, as a hairline along the row's
-                  bottom edge — popularity without taking a column. */}
-              <span
-                className={styles.bar}
-                style={{ width: `${Math.max(6, (t.count / max) * 100)}%` }}
-                aria-hidden="true"
-              />
             </li>
           );
         })}
