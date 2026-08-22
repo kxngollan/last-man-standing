@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { ResultMark, markFor } from "@/components/ui/ResultMark";
 import { StateShell } from "@/components/portal/StateShell";
 import { WeekBar } from "@/components/portal/WeekBar";
 import { getPickSummary, getWeekOptions } from "@/lib/game/queries";
@@ -11,6 +12,13 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "This week's picks",
 };
+
+/** What each mark means, for anyone who can't see it. */
+const STATE_LABEL = {
+  safe: "through",
+  out: "out",
+  pending: "still to play",
+} as const;
 
 // The week being viewed lives in the URL, and the board moves with the games.
 export const dynamic = "force-dynamic";
@@ -124,7 +132,13 @@ export default async function PicksPage({
                   {(t.roster ?? t.players.map((name) => ({ name, state: "pending" as const }))).map(
                     (p, n) => (
                       <span key={`${p.name}-${n}`} className={styles.player} data-state={p.state}>
-                        {p.name}
+                        <span className={styles.playerName}>{p.name}</span>
+                        <ResultMark
+                          kind={markFor(p.state)}
+                          size={12}
+                          className={styles.mark}
+                          label={STATE_LABEL[p.state]}
+                        />
                         {n < t.players.length - 1 ? ", " : ""}
                       </span>
                     )

@@ -117,7 +117,20 @@
   color: var(--color-safe-ink);
   font-weight: 700;
 }
+/* Out: greyed, struck through, and marked. The strike goes on the name alone
+   — on the whole span it would draw through the mark beside it. */
 .player[data-state='out'] {
-  color: var(--color-out-ink);
+  color: var(--color-muted);
+}
+.player[data-state='out'] .playerName {
   text-decoration: line-through;
+}
+.player[data-state='out'] .mark {
+  color: var(--color-out-ink);
+}
+.mark {
+  margin-inline-start: 0.2em;
+}
+.player[data-state='pending'] .mark {
+  opacity: 0.5;
 }

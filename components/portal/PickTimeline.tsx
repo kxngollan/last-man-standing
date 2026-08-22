@@ -1,4 +1,5 @@
 import { TeamCrest } from "./TeamCrest";
+import { ResultMark } from "@/components/ui/ResultMark";
 import { pickMeta, type PickMeta } from "@/lib/game/pickMeta";
 import styles from "./PickTimeline.module.css";
 
@@ -21,6 +22,7 @@ const hiddenMeta = (gameWeek: number): PickMeta => ({
   chip: "lms-chip--neutral",
   label: "Hidden",
   detail: `Locked in for Week ${gameWeek}. Only you see this here until the week starts.`,
+  mark: "minus",
 });
 
 /**
@@ -59,7 +61,10 @@ export function PickTimeline({ picks }: { picks: TimelinePick[] }) {
                 </div>
                 <p className={styles.detail}>{meta.detail}</p>
               </div>
-              <span className={`lms-chip ${meta.chip}`}>{meta.label}</span>
+              <span className={`lms-chip ${meta.chip}`}>
+                <ResultMark kind={meta.mark} size={12} />
+                {meta.label}
+              </span>
             </div>
           </li>
         );

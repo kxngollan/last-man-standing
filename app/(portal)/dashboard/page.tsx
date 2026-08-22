@@ -6,6 +6,7 @@ import { StateShell } from "@/components/portal/StateShell";
 import { TopPicks } from "@/components/portal/TopPicks";
 import { WeekBar } from "@/components/portal/WeekBar";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { ResultMark, markFor } from "@/components/ui/ResultMark";
 import { DeadlineClock } from "@/components/portal/DeadlineClock";
 import { BallArt } from "@/components/ui/FootballArt";
 import { getGameStateForUser, getPickSummary, getWeekOptions } from "@/lib/game/queries";
@@ -106,7 +107,7 @@ export default async function DashboardPage({
           aria-label={`Your week ${live.gameWeek} status`}
         >
           <span className={`lms-chip ${liveChip.cls}`}>
-            <span className="lms-dot" aria-hidden="true" />
+            <ResultMark kind={markFor(live.state)} size={13} />
             {liveChip.label}
           </span>
           {live.tla && <TeamCrest crest={live.crest} tla={live.tla} />}

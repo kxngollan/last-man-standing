@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TeamCrest } from "@/components/portal/TeamCrest";
+import { ResultMark, markFor } from "@/components/ui/ResultMark";
 import type { StandingRow, StandingsPage } from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
 
@@ -87,9 +88,19 @@ export function JoinButton() {
   );
 }
 
+/** How a pick's mark reads out loud, since the mark itself is the only cue. */
+const PICK_LABEL = {
+  safe: "through this week",
+  out: "knocked out this week",
+  pending: "still to play this week",
+} as const;
+
 function StandingRowItem({ p }: { p: StandingRow }) {
+  const out = p.status === "eliminated";
   return (
-    <li className={styles.row} data-you={p.you} data-out={p.status !== "alive"}>
+    // Greyed only when they're actually out of the game — a winner's row is
+    // not a spent one.
+    <li className={styles.row} data-you={p.you} data-out={out}>
       <span className={styles.rank} data-nums aria-hidden="true">
         {p.rank}
       </span>
@@ -111,14 +122,21 @@ function StandingRowItem({ p }: { p: StandingRow }) {
           <>
             {p.pick.tla && <TeamCrest crest={p.pick.crest} tla={p.pick.tla} />}
             <span className={styles.pickName}>{p.pick.teamName ?? "—"}</span>
+            {/* Tick, cross or dash: how that week went for them, at a glance. */}
+            <ResultMark
+              kind={markFor(p.pick.state)}
+              size={15}
+              className={styles.pickMark}
+              label={PICK_LABEL[p.pick.state]}
+            />
           </>
         ) : (
           <span className={styles.pickName}>—</span>
         )}
       </span>
-      <span className={`lms-chip ${p.status === "alive" ? "lms-chip--safe" : "lms-chip--out"}`}>
-        <span className="lms-dot" aria-hidden="true" />
-        {p.status === "winner" ? "Winner" : p.status === "alive" ? "In" : "Out"}
+      <span className={`lms-chip ${out ? "lms-chip--out" : "lms-chip--safe"}`}>
+        <ResultMark kind={out ? "cross" : "tick"} size={12} />
+        {p.status === "winner" ? "Winner" : out ? "Out" : "In"}
       </span>
     </li>
   );

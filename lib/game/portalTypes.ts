@@ -13,6 +13,9 @@ export type PickResult = "pending" | "win" | "draw" | "loss" | "postponed" | "sa
  */
 export type LivePickState = "safe" | "out" | "pending";
 
+/** The three marks a result can carry: through, out, or not settled. */
+export type ResultMarkKind = "tick" | "cross" | "minus";
+
 /** Where a game week sits relative to now. */
 export type WeekState = "played" | "in-play" | "open";
 

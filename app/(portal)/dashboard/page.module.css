@@ -150,8 +150,22 @@
   border-color: var(--color-accent);
   background: var(--color-accent-wash);
 }
-.row[data-out="true"] {
-  opacity: 0.72;
+/* Out of the game: greyed deliberately rather than faded wholesale, so the
+   row stays readable while clearly reading as spent. */
+.row[data-out='true'] {
+  background: var(--color-paper-2);
+}
+.row[data-out='true'] .pname,
+.row[data-out='true'] .nameLink,
+.row[data-out='true'] .pickName {
+  color: var(--color-muted);
+}
+.row[data-out='true'] .nameLink {
+  text-decoration-color: var(--color-muted);
+}
+.row[data-out='true'] :global(.lms-crest) {
+  filter: grayscale(1);
+  opacity: 0.6;
 }
 .rank {
   grid-area: rank;
@@ -225,6 +239,19 @@
 .lastPick[data-state='out'] .pickName {
   text-decoration: line-through;
   color: var(--color-muted);
+}
+/* The mark carries the colour even where the name has gone grey. */
+.pickMark {
+  color: var(--color-muted);
+}
+.lastPick[data-state='safe'] .pickMark {
+  color: var(--color-safe-ink);
+}
+.lastPick[data-state='out'] .pickMark {
+  color: var(--color-out-ink);
+}
+.lastPick[data-state='pending'] .pickMark {
+  opacity: 0.5;
 }
 .row :global(.lms-chip) {
   grid-area: status;
