@@ -111,3 +111,13 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* A player's standing in the week this board is for. */
+.player[data-state='safe'] {
+  color: var(--color-safe-ink);
+  font-weight: 700;
+}
+.player[data-state='out'] {
+  color: var(--color-out-ink);
+  text-decoration: line-through;
+}

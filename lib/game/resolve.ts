@@ -7,7 +7,8 @@ import { Team } from "@/models/Teams/Team";
 import { Fixture } from "@/models/Teams/Fixture";
 import { syncFixtures } from "@/lib/football-api/sync";
 import { acquireLock, releaseLock } from "@/lib/locks";
-import { INCOMPLETE_STATUSES, UNPLAYABLE_STATUSES, DECIDED_STATUSES } from "./constants";
+import { INCOMPLETE_STATUSES, UNPLAYABLE_STATUSES } from "./constants";
+import { isDecided, scoreDecidedPick } from "./scoring";
 import { getMatchdayDeadline, isLocked } from "./deadline";
 import { GameError } from "./errors";
 
@@ -209,25 +210,17 @@ async function doResolve(
         }
 
         const f = pick.fixtureApiId ? fixtureById.get(pick.fixtureApiId) : undefined;
-        if (!f || !DECIDED_STATUSES.includes(f.status) || !f.winner) {
+        if (!f || !isDecided(f)) {
           // Postponed / cancelled / force-resolved before finishing → safe.
           pickOps.push(setResult(pick._id, "postponed"));
           continue;
         }
 
-        const isHome = f.homeTeamApiId === pick.teamApiId;
-        const won =
-          (f.winner === "HOME_TEAM" && isHome) || (f.winner === "AWAY_TEAM" && !isHome);
-        const drew = f.winner === "DRAW";
-
-        // The wildcard protects the pick: a draw is enough to go through, so
-        // only a loss knocks a wildcard player out.
-        if (won || (drew && pick.isWildcard)) {
-          pickOps.push(setResult(pick._id, won ? "win" : "draw"));
-        } else {
-          pickOps.push(setResult(pick._id, drew ? "draw" : "loss"));
-          eliminatedIds.push(entry._id);
-        }
+        // Same rule the portal reads a live verdict from (lib/game/scoring.ts),
+        // so what a player was told mid-week is what gets written here.
+        const { result, survives } = scoreDecidedPick(f, pick);
+        pickOps.push(setResult(pick._id, result));
+        if (!survives) eliminatedIds.push(entry._id);
       }
 
       if (pickOps.length) await Pick.bulkWrite(pickOps, { session });

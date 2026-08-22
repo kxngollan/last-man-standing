@@ -8,7 +8,18 @@ export { OPTIONS };
 
 /** Who's on which team this week. Public by design, like the web board. */
 export const GET = authedRoute(async () => {
-  return (await getPickSummary()) ?? { gameWeek: 0, matchday: 0, totalPicks: 0, teams: [] };
+  return (
+    (await getPickSummary()) ?? {
+      gameWeek: 0,
+      matchday: 0,
+      totalPicks: 0,
+      state: "open" as const,
+      locked: false,
+      counts: { safe: 0, pending: 0, out: 0 },
+      excluded: 0,
+      teams: [],
+    }
+  );
 });
 
 /** Make (or change) this week's pick. */

@@ -80,6 +80,46 @@
   color: var(--color-accent-strong);
 }
 
+/* ---- Live week status (are you safe right now) ----
+ * A settled week is stated in its own colour; an unsettled one stays neutral,
+ * so the card never implies a result the fixtures haven't given yet. */
+.live {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-xl);
+  border: 1px solid var(--color-rule);
+  border-inline-start: 4px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+}
+.live[data-state='safe'] {
+  border-inline-start-color: var(--color-safe);
+  background: var(--color-safe-wash);
+}
+.live[data-state='out'] {
+  border-inline-start-color: var(--color-out-ink);
+  background: var(--color-out-wash);
+}
+.liveDetail {
+  flex: 1 1 16rem;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.liveNote {
+  font-weight: 500;
+  color: var(--color-muted);
+}
+.liveWhen {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
 /* ---- Standings board (table that becomes cards on mobile) ---- */
 .board {
   list-style: none;
@@ -161,17 +201,30 @@
   font-size: var(--text-xs);
   color: var(--color-muted);
 }
+/* One pick, for the one week the board is showing. */
 .lastPick {
   grid-area: pick;
   display: flex;
   align-items: center;
   gap: var(--space-xs);
   justify-self: start;
+  min-width: 0;
 }
 .pickName {
   font-size: var(--text-sm);
   color: var(--color-ink-2);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Already settled by the fixtures: through, or knocked out on it. */
+.lastPick[data-state='safe'] .pickName {
+  color: var(--color-safe-ink);
+  font-weight: 600;
+}
+.lastPick[data-state='out'] .pickName {
+  text-decoration: line-through;
+  color: var(--color-muted);
 }
 .row :global(.lms-chip) {
   grid-area: status;

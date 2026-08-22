@@ -104,11 +104,13 @@ function StandingRowItem({ p }: { p: StandingRow }) {
           survived {p.survivedWeeks} {p.survivedWeeks === 1 ? "week" : "weeks"}
         </span>
       </span>
-      <span className={styles.lastPick}>
-        {p.lastTeamTla ? (
+      {/* The pick for the one week the board is showing — never a mix of
+          weeks, and never a later week's pick standing in for this one. */}
+      <span className={styles.lastPick} data-state={p.pick?.state ?? "none"}>
+        {p.pick ? (
           <>
-            <TeamCrest crest={p.lastTeamCrest} tla={p.lastTeamTla} />
-            <span className={styles.pickName}>{p.lastTeamName}</span>
+            {p.pick.tla && <TeamCrest crest={p.pick.crest} tla={p.pick.tla} />}
+            <span className={styles.pickName}>{p.pick.teamName ?? "—"}</span>
           </>
         ) : (
           <span className={styles.pickName}>—</span>
@@ -125,15 +127,21 @@ function StandingRowItem({ p }: { p: StandingRow }) {
 /**
  * The board: first page arrives server-rendered in props; further pages
  * lazy-load from /api/standings as the sentinel scrolls into view.
+ *
+ * Mounted with `key={week}` so changing week starts a clean board — pages
+ * fetched for the old week describe different picks and can't be appended.
  */
 export function StandingsBoard({
   firstPage,
   myStanding,
   total,
+  week,
 }: {
   firstPage: StandingRow[];
   myStanding: StandingRow | null;
   total: number;
+  /** The game week the rows' picks are for — later pages must match it. */
+  week: number;
 }) {
   const [extraRows, setExtraRows] = useState<StandingRow[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -146,7 +154,9 @@ export function StandingsBoard({
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/standings?offset=${loadedCount}`, { cache: "no-store" });
+      const res = await fetch(`/api/standings?offset=${loadedCount}&week=${week}`, {
+        cache: "no-store",
+      });
       if (!res.ok) return;
       const page = (await res.json()) as StandingsPage;
       setExtraRows((rows) => [...rows, ...page.rows]);
@@ -155,7 +165,7 @@ export function StandingsBoard({
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, loadedCount]);
+  }, [loadingMore, hasMore, loadedCount, week]);
 
   // Auto-load the next page when the end of the board scrolls into view.
   useEffect(() => {

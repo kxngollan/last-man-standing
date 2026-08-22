@@ -9,7 +9,8 @@ import { Fixture } from "@/models/Teams/Fixture";
 import { User } from "@/models/User/User";
 import { publicName } from "@/lib/displayName";
 import { getMatchdayDeadline, isLocked } from "./deadline";
-import { getPickWindow } from "./pickWindow";
+import { getPickWindow, type PickWindow } from "./pickWindow";
+import { livePickState, pickState, liveDetail } from "./scoring";
 import { getUndoableResolution } from "./resolve";
 import { GameError } from "./errors";
 import type {
@@ -19,6 +20,10 @@ import type {
   StandingRow,
   StandingsPage,
   PickSummary,
+  StandingPick,
+  LivePickState,
+  WeekState,
+  WeekOption,
 } from "./portalTypes";
 
 export type { TeamOption, PortalState, AdminOverview } from "./portalTypes";
@@ -150,12 +155,19 @@ const STANDINGS_SORT_FIELDS = {
   elimSort: { $ifNull: ["$eliminatedAtMatchday", 9999] },
 } as const;
 
-/** Build display rows for a slice of entries (already in rank order). */
+/**
+ * Build display rows for a slice of entries (already in rank order).
+ *
+ * `weekMatchday` is the one game week the board is showing. Rows carry that
+ * week's pick and nothing else: with two weeks live at once, a row built from
+ * a player's newest pick shows next week's team as if it were this week's.
+ */
 async function buildStandingRows(
   game: HydratedDocument<IGame>,
   entriesSlice: IEntry[],
   userId: string,
-  firstRank: number
+  firstRank: number,
+  weekMatchday: number
 ): Promise<StandingRow[]> {
   const md = game.currentMatchday;
   const entryIds = entriesSlice.map((e) => e._id);
@@ -163,7 +175,7 @@ async function buildStandingRows(
 
   // Picks are fully public by design — including the open week's — so every
   // player sees the same board and nobody wonders where a result came from.
-  const [users, teams, picks] = await Promise.all([
+  const [users, teams, picks, fixtures] = await Promise.all([
     User.find({ _id: { $in: userIds } })
       .select("name firstName lastName")
       .lean(),
@@ -171,19 +183,38 @@ async function buildStandingRows(
     Pick.find({ entryId: { $in: entryIds } })
       .sort({ matchday: -1 })
       .lean(),
+    Fixture.find({ season: game.season, matchday: weekMatchday }).lean(),
   ]);
   // Standings are public — show "First L.", never the full surname.
   const nameById = new Map(users.map((u) => [String(u._id), publicName(u)]));
   const teamById = new Map(teams.map((t) => [t.apiId, t]));
-  const lastPickByEntry = new Map<string, (typeof picks)[number]>();
+  const fixtureById = new Map(fixtures.map((f) => [f.apiId, f]));
+  const pickByEntry = new Map<string, (typeof picks)[number]>();
   for (const p of picks) {
-    const key = String(p.entryId);
-    if (!lastPickByEntry.has(key)) lastPickByEntry.set(key, p);
+    if (p.matchday === weekMatchday) pickByEntry.set(String(p.entryId), p);
   }
 
+  const toStandingPick = (p: (typeof picks)[number]): StandingPick => {
+    const team = p.teamApiId ? teamById.get(p.teamApiId) : null;
+    return {
+      matchday: p.matchday,
+      gameWeek: p.matchday - game.startMatchday + 1,
+      // Wildcard picks carry a team now; "WC" is only the legacy teamless form.
+      teamName: team?.name ?? (p.isWildcard ? "Wildcard" : null),
+      tla: team?.tla ?? (p.isWildcard ? "WC" : null),
+      crest: team?.crest ?? null,
+      isWildcard: p.isWildcard,
+      state: pickState(p, p.fixtureApiId ? fixtureById.get(p.fixtureApiId) : undefined),
+    };
+  };
+
   return entriesSlice.map((e, i) => {
-    const last = lastPickByEntry.get(String(e._id));
-    const lastTeam = last?.teamApiId ? teamById.get(last.teamApiId) : null;
+    const mine = pickByEntry.get(String(e._id));
+    // A pick-ahead row from a player already out of the game is void — never
+    // show it as the team they're on.
+    const void_ = !!mine && e.status === "eliminated" && weekMatchday > (e.eliminatedAtMatchday ?? 0);
+    const pick = mine && !void_ ? toStandingPick(mine) : null;
+
     return {
       rank: firstRank + i,
       name: nameById.get(String(e.userId)) ?? "Player",
@@ -191,10 +222,10 @@ async function buildStandingRows(
       you: String(e.userId) === String(userId),
       survivedWeeks: survived(game.startMatchday, e.eliminatedAtMatchday ?? md),
       status: e.status,
-      // Wildcard picks carry a team now; "WC" is only the legacy teamless form.
-      lastTeamTla: lastTeam?.tla ?? (last?.isWildcard ? "WC" : null),
-      lastTeamName: lastTeam?.name ?? (last?.isWildcard ? "Wildcard" : null),
-      lastTeamCrest: lastTeam?.crest ?? null,
+      pick,
+      lastTeamTla: pick?.tla ?? null,
+      lastTeamName: pick?.teamName ?? null,
+      lastTeamCrest: pick?.crest ?? null,
     };
   });
 }
@@ -204,7 +235,8 @@ async function standingsPageForGame(
   game: HydratedDocument<IGame>,
   userId: string,
   offset: number,
-  limit: number
+  limit: number,
+  weekMatchday: number
 ): Promise<StandingsPage> {
   const [total, pageEntries] = await Promise.all([
     Entry.countDocuments({ gameId: game._id }),
@@ -216,7 +248,7 @@ async function standingsPageForGame(
       { $limit: limit },
     ]),
   ]);
-  const rows = await buildStandingRows(game, pageEntries, userId, offset + 1);
+  const rows = await buildStandingRows(game, pageEntries, userId, offset + 1, weekMatchday);
   return { total, offset, rows };
 }
 
@@ -261,10 +293,11 @@ export async function rankOfEntry(
 async function myStandingRow(
   game: HydratedDocument<IGame>,
   entry: HydratedDocument<IEntry>,
-  userId: string
+  userId: string,
+  weekMatchday: number
 ): Promise<StandingRow> {
   const rank = await rankOfEntry(game._id, entry);
-  const [row] = await buildStandingRows(game, [entry.toObject()], userId, rank);
+  const [row] = await buildStandingRows(game, [entry.toObject()], userId, rank, weekMatchday);
   return row;
 }
 
@@ -272,58 +305,127 @@ async function myStandingRow(
 export async function getStandingsPage(
   userId: string,
   offset: number,
-  limit: number
+  limit: number,
+  /** Game week to show picks for. Defaults to the week being played. */
+  gameWeek?: number
 ): Promise<StandingsPage> {
   await connectDB();
   const game = await getCurrentGame();
   if (!game) return { total: 0, offset: 0, rows: [] };
-  return standingsPageForGame(game, userId, offset, limit);
+  return standingsPageForGame(
+    game,
+    userId,
+    offset,
+    limit,
+    await weekMatchdayFor(game, gameWeek)
+  );
 }
 
 /**
- * Live pick counts — and who is behind each one — for the week currently
- * being picked. Fully public by design: everyone sees the same board while
- * deciding, so nobody feels a result came out of nowhere.
+ * Live pick counts — and who is behind each one — for one game week. Fully
+ * public by design: everyone sees the same board while deciding, so nobody
+ * feels a result came out of nowhere.
+ *
+ * One board is one week. A player only appears on it if they can actually be
+ * in that week: anyone out of the game is left off, and on a week that hasn't
+ * started yet so is anyone the week being played has already knocked out —
+ * their pick-ahead row is void. Whoever is left carries their live state, so
+ * the board separates the players guaranteed to be there ("safe") from those
+ * still playing for their place ("pending").
  *
  * `playersPerTeam` caps the names carried per team (the compact dashboard/
  * make-selection boards show a few + "+N more"); `count` always reflects the
  * full number, so at thousands of players the payload stays small. Omit it
  * for the full roster (the /picks breakdown page).
  */
-export async function getPickSummary(
-  opts: { playersPerTeam?: number } = {}
-): Promise<PickSummary | null> {
-  await connectDB();
-  const game = await getCurrentGame();
-  if (!game) return null;
+async function buildWeekBoard(
+  game: HydratedDocument<IGame>,
+  md: number,
+  window: PickWindow,
+  opts: { playersPerTeam?: number; withState?: boolean } = {}
+): Promise<PickSummary> {
+  const inPlayMd = game.currentMatchday;
+  const state: WeekState = md < inPlayMd ? "played" : md === inPlayMd ? "in-play" : "open";
+  // Anything before the open window has had its deadline pass.
+  const locked = md < window.matchday ? true : window.locked;
 
-  const window = await getPickWindow(game.season, game.currentMatchday);
-  const pickMd = window.matchday;
-
-  const [picks, teams] = await Promise.all([
-    Pick.find({ gameId: game._id, matchday: pickMd, teamApiId: { $ne: null } })
-      .select("teamApiId userId")
+  const [picks, teams, entries, fixtures] = await Promise.all([
+    Pick.find({
+      gameId: game._id,
+      matchday: state === "open" ? { $in: [md, inPlayMd] } : md,
+      teamApiId: { $ne: null },
+    })
+      .select("entryId userId matchday teamApiId fixtureApiId isWildcard result")
       .lean(),
     loadTeams(),
+    Entry.find({ gameId: game._id }).select("status").lean(),
+    Fixture.find({
+      season: game.season,
+      matchday: state === "open" ? { $in: [md, inPlayMd] } : md,
+    }).lean(),
   ]);
-  const users = await User.find({ _id: { $in: picks.map((p) => p.userId) } })
+
+  const weekPicks = picks.filter((p) => p.matchday === md);
+  const users = await User.find({ _id: { $in: weekPicks.map((p) => p.userId) } })
     .select("name firstName lastName")
     .lean();
   const nameById = new Map(users.map((u) => [String(u._id), publicName(u)]));
   const teamById = new Map(teams.map((t) => [t.apiId, t]));
+  const statusByEntry = new Map(entries.map((e) => [String(e._id), e.status]));
+  const fixtureById = new Map(fixtures.map((f) => [f.apiId, f]));
+  // The week being played decides who is still in a later week.
+  const inPlayPickByEntry = new Map(
+    picks.filter((p) => p.matchday === inPlayMd).map((p) => [String(p.entryId), p])
+  );
 
-  const playersByTeam = new Map<number, string[]>();
-  for (const p of picks) {
+  const rosterByTeam = new Map<number, Array<{ name: string; state: LivePickState }>>();
+  const counts = { safe: 0, pending: 0, out: 0 };
+  let excluded = 0;
+
+  for (const p of weekPicks) {
     if (p.teamApiId == null || !teamById.has(p.teamApiId)) continue;
-    const list = playersByTeam.get(p.teamApiId) ?? [];
-    list.push(nameById.get(String(p.userId)) ?? "Player");
-    playersByTeam.set(p.teamApiId, list);
+
+    // A week already played is history: everyone who was on it belongs on it,
+    // including the players it knocked out. Only a week still to come drops
+    // players who can't be in it.
+    if (state !== "played" && statusByEntry.get(String(p.entryId)) === "eliminated") {
+      excluded++;
+      continue;
+    }
+
+    let live: LivePickState;
+    if (state !== "open") {
+      live = pickState(p, p.fixtureApiId ? fixtureById.get(p.fixtureApiId) : undefined);
+    } else {
+      // A later week: their place in it depends on the week being played.
+      const running = inPlayPickByEntry.get(String(p.entryId));
+      live = running
+        ? pickState(running, running.fixtureApiId ? fixtureById.get(running.fixtureApiId) : undefined)
+        : "pending";
+      if (live === "out") {
+        excluded++; // knocked out before this week starts — not in it
+        continue;
+      }
+    }
+
+    counts[live]++;
+    const row = { name: nameById.get(String(p.userId)) ?? "Player", state: live };
+    const list = rosterByTeam.get(p.teamApiId) ?? [];
+    list.push(row);
+    rosterByTeam.set(p.teamApiId, list);
   }
 
-  const rows = [...playersByTeam.entries()]
-    .map(([apiId, players]) => {
+  const rows = [...rosterByTeam.entries()]
+    .map(([apiId, roster]) => {
       const t = teamById.get(apiId)!;
-      const sorted = players.sort((a, b) => a.localeCompare(b));
+      // Certainties first, then alphabetical — a capped board shows the names
+      // that are actually settled rather than an arbitrary few.
+      const sorted = roster.sort(
+        (a, b) =>
+          (a.state === "pending" ? 1 : 0) - (b.state === "pending" ? 1 : 0) ||
+          a.name.localeCompare(b.name)
+      );
+      const shown = opts.playersPerTeam != null ? sorted.slice(0, opts.playersPerTeam) : sorted;
       return {
         teamApiId: t.apiId,
         name: t.name,
@@ -331,21 +433,98 @@ export async function getPickSummary(
         tla: t.tla,
         crest: t.crest ?? null,
         count: sorted.length,
-        players: opts.playersPerTeam != null ? sorted.slice(0, opts.playersPerTeam) : sorted,
+        players: shown.map((r) => r.name),
+        ...(opts.withState ? { roster: shown } : {}),
       };
     })
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   return {
-    gameWeek: pickMd - game.startMatchday + 1,
-    matchday: pickMd,
+    gameWeek: md - game.startMatchday + 1,
+    matchday: md,
     totalPicks: rows.reduce((sum, r) => sum + r.count, 0),
+    state,
+    locked,
+    counts,
+    excluded,
     teams: rows,
   };
 }
 
+/**
+ * One week's board. Defaults to the week that's open for picks.
+ *
+ * `gameWeek` is the player-facing week number (week 1 is the game's first),
+ * clamped to the weeks that exist: nothing past the week now open for picks,
+ * since a later one has no picks to show and isn't a player's business yet.
+ */
+export async function getPickSummary(
+  opts: {
+    matchday?: number;
+    gameWeek?: number;
+    playersPerTeam?: number;
+    withState?: boolean;
+  } = {}
+): Promise<PickSummary | null> {
+  await connectDB();
+  const game = await getCurrentGame();
+  if (!game) return null;
+  const window = await getPickWindow(game.season, game.currentMatchday);
+  const md =
+    opts.matchday != null
+      ? Math.min(Math.max(opts.matchday, game.startMatchday), window.matchday)
+      : opts.gameWeek != null
+        ? await weekMatchdayFor(game, opts.gameWeek)
+        : window.matchday;
+  return buildWeekBoard(game, md, window, opts);
+}
+
+/**
+ * Turn a player-facing game week into a matchday, clamped to the weeks that
+ * exist: never before the game's first, never past the week now open for
+ * picks. Undefined means the week being played — "this week".
+ */
+async function weekMatchdayFor(
+  game: HydratedDocument<IGame>,
+  gameWeek?: number
+): Promise<number> {
+  if (gameWeek == null) return game.currentMatchday;
+  const window = await getPickWindow(game.season, game.currentMatchday);
+  const asked = game.startMatchday + gameWeek - 1;
+  return Math.min(Math.max(asked, game.startMatchday), Math.max(window.matchday, game.currentMatchday));
+}
+
+/**
+ * Every game week a player can look at, in order: each week played so far, the
+ * one being played, and the next one once it opens for picks. Cheap — no picks
+ * are read. This is what the week buttons are built from, and screens show one
+ * of these weeks at a time, never two at once.
+ */
+export async function getWeekOptions(): Promise<WeekOption[]> {
+  await connectDB();
+  const game = await getCurrentGame();
+  if (!game) return [];
+  const window = await getPickWindow(game.season, game.currentMatchday);
+  const last = Math.max(game.currentMatchday, window.matchday);
+  const options: WeekOption[] = [];
+  for (let md = game.startMatchday; md <= last; md++) {
+    options.push({
+      matchday: md,
+      gameWeek: md - game.startMatchday + 1,
+      state:
+        md < game.currentMatchday ? "played" : md === game.currentMatchday ? "in-play" : "open",
+      locked: md < window.matchday ? true : window.locked,
+    });
+  }
+  return options;
+}
+
 /** Everything the player-facing screens need for the current game. */
-export async function getGameStateForUser(userId: string): Promise<PortalState> {
+export async function getGameStateForUser(
+  userId: string,
+  /** `standingsWeek` scopes the standings' pick column to one game week. */
+  opts: { standingsWeek?: number } = {}
+): Promise<PortalState> {
   await connectDB();
   const game = await getCurrentGame();
   if (!game) {
@@ -364,6 +543,7 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
       standingsTotal: 0,
       myStanding: null,
       history: [],
+      liveWeek: null,
     };
   }
 
@@ -443,9 +623,10 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
 
   // Standings: first page only — the board lazy-loads the rest — plus the
   // player's own ranked row so the UI can pin it on top.
+  const standingsMd = await weekMatchdayFor(game, opts.standingsWeek);
   const [standingsPage, myStanding] = await Promise.all([
-    standingsPageForGame(game, userId, 0, STANDINGS_PAGE_SIZE),
-    entry ? myStandingRow(game, entry, userId) : Promise.resolve(null),
+    standingsPageForGame(game, userId, 0, STANDINGS_PAGE_SIZE, standingsMd),
+    entry ? myStandingRow(game, entry, userId, standingsMd) : Promise.resolve(null),
   ]);
 
   // History (this player's picks).
@@ -464,6 +645,47 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
         isWildcard: p.isWildcard,
       };
     });
+  }
+
+  // Where the player stands in the week being played, read straight off the
+  // fixtures. This is the answer to "am I safe?" during the week — the
+  // resolution only writes down what this already knows.
+  let liveWeek: PortalState["liveWeek"] = null;
+  if (entry) {
+    const myRunning = await Pick.findOne({ entryId: entry._id, matchday: md }).lean();
+    if (myRunning) {
+      const fixture = myRunning.fixtureApiId
+        ? await Fixture.findOne({ apiId: myRunning.fixtureApiId }).lean()
+        : null;
+      const live = livePickState(myRunning, fixture);
+      const team = myRunning.teamApiId ? teamById.get(myRunning.teamApiId) : null;
+      const score =
+        fixture && fixture.homeScore != null && fixture.awayScore != null
+          ? myRunning.teamApiId === fixture.homeTeamApiId
+            ? `${fixture.homeScore}–${fixture.awayScore}`
+            : `${fixture.awayScore}–${fixture.homeScore}`
+          : null;
+
+      liveWeek = {
+        matchday: md,
+        gameWeek,
+        teamName: team?.name ?? null,
+        tla: team?.tla ?? null,
+        crest: team?.crest ?? null,
+        isWildcard: myRunning.isWildcard,
+        state: live.state,
+        detail: liveDetail(live, {
+          teamName: team?.name ?? null,
+          isWildcard: myRunning.isWildcard,
+          score,
+        }),
+        kickoff:
+          live.state === "pending" && fixture?.utcKickoff
+            ? new Date(fixture.utcKickoff).toISOString()
+            : null,
+        score,
+      };
+    }
   }
 
   return {
@@ -497,5 +719,6 @@ export async function getGameStateForUser(userId: string): Promise<PortalState> 
     standingsTotal: standingsPage.total,
     myStanding,
     history,
+    liveWeek,
   };
 }

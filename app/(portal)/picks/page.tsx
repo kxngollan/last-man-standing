@@ -4,18 +4,34 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { TeamCrest } from "@/components/portal/TeamCrest";
 import { StateShell } from "@/components/portal/StateShell";
-import { getPickSummary } from "@/lib/game/queries";
+import { WeekBar } from "@/components/portal/WeekBar";
+import { getPickSummary, getWeekOptions } from "@/lib/game/queries";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
   title: "This week's picks",
 };
 
-export default async function PicksPage() {
+// The week being viewed lives in the URL, and the board moves with the games.
+export const dynamic = "force-dynamic";
+
+export default async function PicksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?next=/picks");
 
-  const summary = await getPickSummary();
+  const asked = Number((await searchParams).week);
+  const [summary, weeks] = await Promise.all([
+    getPickSummary({
+      gameWeek: Number.isInteger(asked) && asked > 0 ? asked : undefined,
+      withState: true,
+    }),
+    // Just for the switcher: which weeks a player can look at right now.
+    getWeekOptions().catch(() => []),
+  ]);
 
   if (!summary) {
     return (
@@ -39,17 +55,44 @@ export default async function PicksPage() {
 
       <div className="lms-head">
         <p className={styles.kicker} data-nums>
-          Game week {summary.gameWeek}
+          Game week {summary.gameWeek} &middot;{" "}
+          {summary.state === "in-play"
+            ? "being played"
+            : summary.state === "played"
+              ? "already played"
+              : "open for picks"}
         </p>
-        <h1 className={styles.title}>This week&rsquo;s picks</h1>
+        <h1 className={styles.title}>
+          {summary.state === "in-play"
+            ? "This week’s picks"
+            : summary.state === "played"
+              ? `Week ${summary.gameWeek} picks`
+              : "Next week’s picks"}
+        </h1>
         <p className="lms-head__hint">
           {summary.totalPicks === 0
-            ? "Nobody has picked yet — be the first."
+            ? "Nobody has picked for this week yet — be the first."
             : `Where all ${summary.totalPicks} ${
                 summary.totalPicks === 1 ? "pick" : "picks"
-              } have gone so far, and who’s behind each one. Everyone sees this board — one team each, no repeats.`}
+              } for this week have gone, and who’s behind each one. Everyone sees this board — one team each, no repeats.`}
         </p>
+        {summary.state !== "open" ? (
+          <p className="lms-head__hint">
+            {`${summary.counts.safe} through, ${summary.counts.out} out, ${summary.counts.pending} still to play.`}
+          </p>
+        ) : (
+          <p className="lms-head__hint">
+            {`${summary.counts.safe} of these players are already through to this week; ${summary.counts.pending} are still playing for their place.`}
+            {summary.excluded > 0 &&
+              ` ${summary.excluded} pick${summary.excluded === 1 ? "" : "s"} from players already out ${
+                summary.excluded === 1 ? "isn’t" : "aren’t"
+              } shown.`}
+          </p>
+        )}
       </div>
+
+      {/* One week at a time — these move between them. */}
+      <WeekBar weeks={weeks} selected={summary.gameWeek} href={(w) => `/picks?week=${w}`} />
 
       {summary.teams.length > 0 && (
         <ol className={styles.list}>
@@ -77,7 +120,16 @@ export default async function PicksPage() {
               {/* The full roster, on its own full-width line so however many
                   names there are, the bar above keeps its space. */}
               {t.players.length > 0 && (
-                <span className={styles.players}>{t.players.join(", ")}</span>
+                <span className={styles.players}>
+                  {(t.roster ?? t.players.map((name) => ({ name, state: "pending" as const }))).map(
+                    (p, n) => (
+                      <span key={`${p.name}-${n}`} className={styles.player} data-state={p.state}>
+                        {p.name}
+                        {n < t.players.length - 1 ? ", " : ""}
+                      </span>
+                    )
+                  )}
+                </span>
               )}
             </li>
           ))}

@@ -5,6 +5,26 @@ export type GameStatus = "registration" | "active" | "finished";
 export type EntryStatus = "alive" | "eliminated" | "winner";
 export type PickResult = "pending" | "win" | "draw" | "loss" | "postponed" | "safe";
 
+/**
+ * Where a pick stands before the resolver has run. "safe" and "out" are
+ * certainties read off a finished fixture — the resolution will say the same —
+ * so the portal can state them as fact mid-week. "pending" is everything still
+ * to be settled.
+ */
+export type LivePickState = "safe" | "out" | "pending";
+
+/** Where a game week sits relative to now. */
+export type WeekState = "played" | "in-play" | "open";
+
+/** One game week a player can look at — what the week buttons are built from. */
+export interface WeekOption {
+  matchday: number;
+  gameWeek: number;
+  state: WeekState;
+  /** True once its deadline has passed and its picks are fixed. */
+  locked: boolean;
+}
+
 export interface TeamOption {
   apiId: number;
   name: string;
@@ -193,9 +213,30 @@ export interface StandingRow {
   you: boolean;
   survivedWeeks: number;
   status: EntryStatus;
+  /**
+   * This player's pick for the one game week the board is showing, or null if
+   * they had none (they were already out, or haven't picked yet). The board is
+   * always scoped to a single week — a row that mixed weeks, or showed a
+   * player's newest pick whatever week it was for, is how a week-2 pick ends
+   * up reading as this week's team.
+   */
+  pick: StandingPick | null;
+  /** `pick`, flattened — kept for older clients. */
   lastTeamTla: string | null;
   lastTeamName: string | null;
   lastTeamCrest: string | null;
+}
+
+/** One of a standings row's picks, tied to the week it's for. */
+export interface StandingPick {
+  matchday: number;
+  gameWeek: number;
+  teamName: string | null;
+  tla: string | null;
+  crest: string | null;
+  isWildcard: boolean;
+  /** Where it stands: settled by a result, or still to be played out. */
+  state: LivePickState;
 }
 
 /** A page of standings — the board loads these lazily as the player scrolls. */
@@ -210,6 +251,26 @@ export interface PickSummary {
   gameWeek: number;
   matchday: number;
   totalPicks: number;
+  /**
+   * Which week this board is: one already played out, the one being played
+   * now, or a later one still open for picks. Boards are per-week — one screen
+   * never mixes two.
+   */
+  state: WeekState;
+  /** True once this week's deadline has passed and its picks are fixed. */
+  locked: boolean;
+  /**
+   * How this board's players stand relative to its week. On the in-play week
+   * that's their result so far; on an open week it's whether they're already
+   * guaranteed to be in it ("safe") or could still be knocked out of the week
+   * being played first ("pending").
+   */
+  counts: { safe: number; pending: number; out: number };
+  /**
+   * Picks left off the board because their player is already out of the game
+   * (or out of the week being played), so they can't be in this week at all.
+   */
+  excluded: number;
   teams: Array<{
     teamApiId: number;
     name: string;
@@ -219,6 +280,8 @@ export interface PickSummary {
     count: number;
     /** Public display names ("Sam K.") of the players on this team. */
     players: string[];
+    /** The same players with their live state — only when the caller asks. */
+    roster?: Array<{ name: string; state: LivePickState }>;
   }>;
 }
 
@@ -266,6 +329,26 @@ export interface PortalState {
     result: string;
     isWildcard: boolean;
   }>;
+  /**
+   * Where the player stands in the week being played, read live off the
+   * fixtures rather than waiting for the resolution. Null when there's no
+   * entry, or when that week hasn't been picked yet.
+   */
+  liveWeek: {
+    matchday: number;
+    gameWeek: number;
+    teamName: string | null;
+    tla: string | null;
+    crest: string | null;
+    isWildcard: boolean;
+    state: LivePickState;
+    /** One line on where the pick stands, ready to show. */
+    detail: string;
+    /** Their fixture's kickoff (ISO) while it's still to come. */
+    kickoff: string | null;
+    /** The score so far / final, e.g. "2–0", when there is one. */
+    score: string | null;
+  } | null;
 }
 
 /* ---- Profiles -----------------------------------------------------------

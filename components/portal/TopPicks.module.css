@@ -64,3 +64,17 @@
   font-weight: 600;
   margin-bottom: var(--space-xl);
 }
+
+/* One player on a team's line, carrying how their week stands. */
+.player[data-state='safe'] {
+  color: var(--color-safe-ink);
+  font-weight: 700;
+}
+.player[data-state='out'] {
+  color: var(--color-out-ink);
+  text-decoration: line-through;
+}
+.mark {
+  margin-inline-start: 0.15em;
+  font-family: var(--font-mono);
+}

@@ -18,8 +18,9 @@ export default async function MakeSelectionPage() {
 
   const [state, summary] = await Promise.all([
     getGameStateForUser(session.user.id),
-    // Compact board: a few names per team, "+N more" covers the rest.
-    getPickSummary({ playersPerTeam: 3 }).catch(() => null),
+    // The week being picked, and only players who can be in it. Compact: a few
+    // names per team, "+N more" covers the rest.
+    getPickSummary({ playersPerTeam: 3, withState: true }).catch(() => null),
   ]);
   const myPick = state.myPick;
 
