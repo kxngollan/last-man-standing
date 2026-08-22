@@ -310,3 +310,126 @@ async function doResolve(
 
   return { complete: true, matchday: md, outcome, eliminated, aliveNow };
 }
+
+/* ---- Undo (admin escape hatch) ------------------------------------------ */
+
+export interface UndoableResolution {
+  game: HydratedDocument<IGame>;
+  /** The matchday that would be put back into play. */
+  matchday: number;
+}
+
+/**
+ * The most recent resolution an admin could undo, if there is one: the newest
+ * game that has resolved at least one week. A finished game still counts —
+ * that's the accident worth undoing most (a force-resolve that crowned a
+ * winner), and `currentMatchday` was never advanced when the game ended, so it
+ * *is* the resolved week.
+ */
+export async function getUndoableResolution(): Promise<UndoableResolution | null> {
+  await connectDB();
+  const game = await Game.findOne({ status: { $in: ["active", "finished"] } }).sort({
+    createdAt: -1,
+  });
+  if (!game) return null;
+  const md = game.status === "finished" ? game.currentMatchday : game.currentMatchday - 1;
+  if (md < game.startMatchday) return null; // nothing resolved yet
+  return { game, matchday: md };
+}
+
+export interface UnresolveResult {
+  matchday: number;
+  gameWeek: number;
+  /** Entries put back to "alive" — eliminations, plus a crowned winner. */
+  restored: number;
+  /** True when the undo also reopened a game that the resolution had ended. */
+  reopened: boolean;
+}
+
+/**
+ * Undo the last resolution: put the week back into play, revive everyone it
+ * knocked out, and reset that week's picks to "pending". Reverses everything
+ * `doResolve` writes, with one exception it cannot recover — the pick-ahead
+ * rows (matchday > md) that were deleted from the entries it eliminated.
+ * Those players are alive again and free to re-enter them; the wildcard
+ * refunded off such a row stays refunded, which matches the deleted pick.
+ *
+ * Shares the resolve lease, so an undo can never race a resolution.
+ */
+export async function unresolveMatchday(gameId: string): Promise<UnresolveResult> {
+  await connectDB();
+  const game = await Game.findById(gameId);
+  if (!game) throw new GameError("Game not found.", 404);
+  if (game.status === "registration") {
+    throw new GameError("This game hasn’t started yet — there’s nothing to undo.", 409);
+  }
+
+  const md = game.status === "finished" ? game.currentMatchday : game.currentMatchday - 1;
+  if (md < game.startMatchday) {
+    throw new GameError("No game week has been resolved yet.", 409);
+  }
+  const reopened = game.status === "finished";
+  if (reopened) {
+    // Reopening this one while another game is open would leave two live at
+    // once — the portal assumes a single global game.
+    const other = await Game.findOne({
+      _id: { $ne: game._id },
+      status: { $in: ["registration", "active"] },
+    });
+    if (other) {
+      throw new GameError(
+        "Another game is already open. Remove that one before reopening this game.",
+        409
+      );
+    }
+  }
+
+  const lock = `resolve:${gameId}`;
+  if (!(await acquireLock(lock, 2 * 60_000))) {
+    throw new GameError("A resolution is running right now. Try again in a moment.", 409);
+  }
+  try {
+    let restored = 0;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        restored = 0; // withTransaction may retry — recompute from scratch
+
+        await Pick.updateMany(
+          { gameId: game._id, matchday: md },
+          { $set: { result: "pending" } },
+          { session }
+        );
+
+        const revived = await Entry.updateMany(
+          { gameId: game._id, status: "eliminated", eliminatedAtMatchday: md },
+          { $set: { status: "alive", eliminatedAtMatchday: null } },
+          { session }
+        );
+        restored = revived.modifiedCount;
+
+        if (reopened) {
+          // The winner was crowned by this resolution — uncrown them.
+          const uncrowned = await Entry.updateMany(
+            { gameId: game._id, status: "winner" },
+            { $set: { status: "alive", eliminatedAtMatchday: null } },
+            { session }
+          );
+          restored += uncrowned.modifiedCount;
+        }
+
+        game.status = "active";
+        game.currentMatchday = md;
+        game.winnerUserId = null;
+        game.noWinner = false;
+        game.finishedAt = null;
+        await game.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
+    return { matchday: md, gameWeek: md - game.startMatchday + 1, restored, reopened };
+  } finally {
+    await releaseLock(lock);
+  }
+}

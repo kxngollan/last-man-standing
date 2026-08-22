@@ -10,6 +10,7 @@ import { User } from "@/models/User/User";
 import { publicName } from "@/lib/displayName";
 import { getMatchdayDeadline, isLocked } from "./deadline";
 import { getPickWindow } from "./pickWindow";
+import { getUndoableResolution } from "./resolve";
 import { GameError } from "./errors";
 import type {
   TeamOption,
@@ -116,7 +117,24 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     };
   }
 
-  return { current, pastGames, teamsSeeded };
+  // The undo target: offered even when the game is finished, because a
+  // resolution that ended the game leaves `current` null. A finished game
+  // can't be reopened while a newer game is open, so don't offer an undo that
+  // would only be refused.
+  const undoable = await getUndoableResolution();
+  const blocked = !!undoable && !!current && current.id !== String(undoable.game._id);
+  const recovery =
+    undoable && !blocked
+      ? {
+          gameId: String(undoable.game._id),
+          no: await Game.countDocuments({ createdAt: { $lte: undoable.game.createdAt } }),
+          gameWeek: undoable.matchday - undoable.game.startMatchday + 1,
+          matchday: undoable.matchday,
+          endedGame: undoable.game.status === "finished",
+        }
+      : null;
+
+  return { current, pastGames, teamsSeeded, recovery };
 }
 
 /* ---- Standings (paginated) ----------------------------------------------

@@ -1,5 +1,10 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from "vitest";
-import { resolveMatchday, autoPickForMatchday } from "@/lib/game/resolve";
+import {
+  resolveMatchday,
+  autoPickForMatchday,
+  unresolveMatchday,
+  getUndoableResolution,
+} from "@/lib/game/resolve";
 import { acquireLock, releaseLock } from "@/lib/locks";
 import { Game } from "@/models/Game/Game";
 import { Entry } from "@/models/Game/Entry";
@@ -216,6 +221,103 @@ describe("resolveMatchday", () => {
     const again = await resolveMatchday(String(game._id));
     expect(again.complete).toBe(false);
     expect(again.message).toMatch(/not active/i);
+  });
+});
+
+describe("unresolveMatchday", () => {
+  it("puts the week back: eliminations revived, picks pending, week rewound", async () => {
+    await seedTeams(6);
+    const game = await seedGame();
+    const alice = await seedEntry(game._id, "Alice");
+    const bob = await seedEntry(game._id, "Bob");
+    const cara = await seedEntry(game._id, "Cara");
+    await seedFixtures(1, [
+      { home: 1, away: 2, status: "FINISHED", winner: "HOME_TEAM" },
+      { home: 3, away: 4, status: "FINISHED", winner: "HOME_TEAM" },
+    ]);
+    await seedFixtures(2, [{ home: 5, away: 6, kickoff: future(), status: "TIMED" }]);
+    await seedPick({ gameId: game._id, entryId: alice.entry._id, userId: alice.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0) });
+    await seedPick({ gameId: game._id, entryId: bob.entry._id, userId: bob.userId, matchday: 1, teamApiId: 2, fixtureApiId: fixtureApiId(1, 0) });
+    await seedPick({ gameId: game._id, entryId: cara.entry._id, userId: cara.userId, matchday: 1, teamApiId: 3, fixtureApiId: fixtureApiId(1, 1) });
+
+    const resolved = await resolveMatchday(String(game._id));
+    expect(resolved.outcome).toBe("advanced");
+    expect((await Entry.findById(bob.entry._id))?.status).toBe("eliminated");
+
+    const undo = await unresolveMatchday(String(game._id));
+    expect(undo).toMatchObject({ matchday: 1, gameWeek: 1, restored: 1, reopened: false });
+
+    const fresh = await Game.findById(game._id);
+    expect(fresh?.status).toBe("active");
+    expect(fresh?.currentMatchday).toBe(1);
+    const revived = await Entry.findById(bob.entry._id);
+    expect(revived?.status).toBe("alive");
+    expect(revived?.eliminatedAtMatchday).toBeNull();
+    for (const p of await Pick.find({ gameId: game._id, matchday: 1 })) {
+      expect(p.result).toBe("pending");
+    }
+  });
+
+  it("reopens a finished game and uncrowns the winner", async () => {
+    await seedTeams(4);
+    const game = await seedGame();
+    const alice = await seedEntry(game._id, "Alice");
+    const bob = await seedEntry(game._id, "Bob");
+    // Week 1 is still playing; the accidental force-resolve scores it anyway,
+    // knocks Bob out on the decided fixture and crowns Alice.
+    await seedFixtures(1, [
+      { home: 1, away: 2, status: "FINISHED", winner: "HOME_TEAM" },
+      { home: 3, away: 4, kickoff: future(), status: "TIMED" },
+    ]);
+    await seedPick({ gameId: game._id, entryId: alice.entry._id, userId: alice.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0) });
+    await seedPick({ gameId: game._id, entryId: bob.entry._id, userId: bob.userId, matchday: 1, teamApiId: 2, fixtureApiId: fixtureApiId(1, 0) });
+    const resolved = await resolveMatchday(String(game._id), { force: true });
+    expect(resolved.outcome).toBe("winner");
+    expect((await Game.findById(game._id))?.status).toBe("finished");
+
+    const undo = await unresolveMatchday(String(game._id));
+    expect(undo).toMatchObject({ matchday: 1, restored: 2, reopened: true });
+
+    const fresh = await Game.findById(game._id);
+    expect(fresh?.status).toBe("active");
+    expect(fresh?.currentMatchday).toBe(1);
+    expect(fresh?.winnerUserId).toBeNull();
+    expect(fresh?.noWinner).toBe(false);
+    expect(fresh?.finishedAt).toBeNull();
+    expect((await Entry.findById(alice.entry._id))?.status).toBe("alive");
+    expect((await Entry.findById(bob.entry._id))?.status).toBe("alive");
+  });
+
+  it("refuses when no week has been resolved yet", async () => {
+    const game = await seedGame();
+    await expect(unresolveMatchday(String(game._id))).rejects.toThrow(/no game week/i);
+    expect(await getUndoableResolution()).toBeNull();
+  });
+
+  it("refuses to reopen a finished game while another game is open", async () => {
+    const finished = await seedGame({ status: "finished", startMatchday: 1, currentMatchday: 3 });
+    await seedGame({ status: "registration", startMatchday: 4, currentMatchday: 4 });
+    await expect(unresolveMatchday(String(finished._id))).rejects.toThrow(/another game/i);
+  });
+
+  it("refuses while a resolution holds the lease", async () => {
+    const game = await seedGame({ currentMatchday: 2 });
+    await acquireLock(`resolve:${game._id}`, 60_000);
+    try {
+      await expect(unresolveMatchday(String(game._id))).rejects.toThrow(/running right now/i);
+    } finally {
+      await releaseLock(`resolve:${game._id}`);
+    }
+  });
+
+  it("offers the resolved week as the undo target, finished game included", async () => {
+    const active = await seedGame({ currentMatchday: 5, startMatchday: 3 });
+    const undoable = await getUndoableResolution();
+    expect(String(undoable?.game._id)).toBe(String(active._id));
+    expect(undoable?.matchday).toBe(4); // the week just resolved, not the one awaited
+
+    await Game.updateOne({ _id: active._id }, { $set: { status: "finished" } });
+    expect((await getUndoableResolution())?.matchday).toBe(5); // never advanced on finish
   });
 });
 

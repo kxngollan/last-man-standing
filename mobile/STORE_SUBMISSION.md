@@ -20,6 +20,29 @@ They differ, deliberately, and both live in `app.json`:
 Once a build is uploaded under an identifier it can never be changed or reused,
 so change them now if you want something else. Neither has to match your domain.
 
+**Then go and update the provider consoles to match.** Both sign-in providers key
+off these identifiers, neither reads them from the repo, and both fail in a way
+that looks like nothing at all:
+
+- **Apple.** An App ID for `com.footballlms` has to exist under Certificates,
+  Identifiers & Profiles with the **Sign in with Apple** capability ticked.
+  Prebuild emits the entitlement, but the entitlement is a claim about a
+  registration that has to be there.
+- **Google, iOS.** The Google *iOS* OAuth client is registered against a bundle
+  ID, and this one was created while the app was still `com.lastmanstanding.app`.
+  After the rename it must be changed to `com.footballlms` in the Cloud console.
+  Until it is, Google's sheet opens, accepts the sign-in, and never returns to
+  the app — no error, nothing in the logs to point at.
+- **Google, Android — the one that only breaks in production.** The Android
+  client matches by package name plus signing-certificate SHA-1. Play App
+  Signing means Google **re-signs the app with its own key** after upload, so the
+  fingerprint real users arrive with is not the one you built with. Register the
+  SHA-1 from Play Console → Test and release → Setup → **App integrity → App
+  signing key certificate**, which does not exist until you have uploaded once.
+  Keep the EAS upload-key fingerprint registered alongside it so internal test
+  builds keep working. Skip this and Google sign-in passes every test you run and
+  fails for everyone who installs from the store.
+
 **2. Put the server somewhere with an https address.**
 
 The app is useless without one, and a reviewer opening an app whose every screen
@@ -28,7 +51,7 @@ fails is an Apple 2.1 rejection. On the server set:
 | Variable | Why |
 | --- | --- |
 | `APP_URL` | Canonical site URL. Email links, sitemap and share URLs all derive from it, and it still defaults to `http://localhost:3000`. Already set correctly on the live deploy — `robots.txt` and `sitemap.xml` both read `https://www.footballlms.com`. |
-| `SUPPORT_EMAIL` | Shown on `/policy` and `/delete-account` as the way to reach you. **Not set on the live deploy** — both pages print the code default, `support@footballlms.com`. That is at least a domain you own now, but the mailbox still has to exist and be read: it is the route for someone locked out of their account, and Play verifies it. |
+| `SUPPORT_EMAIL` | Shown on `/policy` and `/delete-account` as the way to reach you. **Set on the live deploy** — `/support` prints `onlymuza@gmail.com`, so the code default is no longer showing. Both stores accept a free mailbox, but it is the route for someone locked out of their account and Play verifies it, so it has to stay read. Swapping it for an address on the domain later means changing the variable, not the code. |
 
 **3. Point the app at that server.**
 
@@ -46,9 +69,18 @@ eas env:create --name EXPO_PUBLIC_API_URL --value https://your-domain \
 
 **4. Link the EAS project and fill in the App Store Connect app ID.**
 
-`eas init` writes `extra.eas.projectId` into the config. Then create the app
-record in App Store Connect and replace `REPLACE_WITH_APP_STORE_CONNECT_APP_ID`
-in `eas.json` with the App ID from **App Information → General Information**.
+`eas init` writes `extra.eas.projectId` into the config — already done, the ID is
+in `app.json`. Then create the app record in App Store Connect and replace
+`REPLACE_WITH_APP_STORE_CONNECT_APP_ID` in `eas.json` with the App ID from
+**App Information → General Information**.
+
+**No build has ever been run on this project** — `eas build:list` comes back
+empty. That matters beyond the missing binary: EAS generates the iOS
+distribution certificate, the provisioning profile and the Android keystore on
+the *first* build, and the iOS half of that needs an active Apple Developer
+Program membership behind the Apple ID it asks for. Let EAS manage all three
+rather than uploading your own; it is the difference between one prompt and an
+afternoon. Build a `preview` first, not `production` — see step 6.
 
 **5. Make a review account.**
 
@@ -57,13 +89,91 @@ App Review notes or it will be rejected under 2.1. Do not use the seed accounts
 from the repo README — `player@dev.local` is not a real address and the password
 is public. Create a real account, and make sure it is:
 
-- email-verified (sign-up alone leaves it unverified and unable to log in);
+- email-verified (sign-up alone leaves it unverified and unable to log in), so
+  use a mailbox you actually control;
 - **not** an admin, because admin accounts cannot self-delete and a reviewer may
   well test the delete flow;
 - already joined to a game that is running, so the reviewer sees the actual app
   rather than an empty state.
 
-Give Google the same credentials under **App content → App access**.
+**The last one constrains the order.** `joinGame` in `lib/game/join.ts` only
+finds a game whose status is `registration`; there is no way to add an account to
+a game that has already started. So the sequence, from `/admin`, is: open
+registration → sign the account up and verify it → join → start the game week.
+Get that backwards and the account cannot enter until the next game opens.
+
+The same constraint is what makes a review account go stale. Both stores re-use
+these credentials on every future submission and on spot re-reviews, so when the
+game the account joined finishes, a later update is reviewed against an account
+sitting on an empty state — and it cannot simply be re-added. Check the account
+still lands somewhere useful before each submission, and rotate it into the new
+game while registration is open.
+
+**Where the credentials go:** see *Review notes* below.
+
+**6. Build a preview and open it on a real phone.**
+
+```bash
+eas build --platform ios --profile preview
+eas build --platform android --profile preview
+```
+
+Nothing in this repo has ever run on a device, and everything in step 1 that can
+be wrong is wrong in silence — a stale bundle ID in the Google console, a missing
+App ID on the Apple side. None of it shows up in a typecheck, a unit test or a
+simulator running against Expo Go. Sign in with Apple, sign in with Google, and
+walk the delete-account flow, because a reviewer may. This is the only step that
+proves the console work in step 1 actually landed.
+
+Run `npx expo install --check` first. `expo-doctor` otherwise passes 20 of 21
+checks, the failure being a handful of Expo packages a patch version or two
+behind the SDK — not a blocker, but not worth shipping either.
+
+## Review notes
+
+The credentials from step 5 and the context a reviewer needs go in different
+places on each store, and Google has fewer places than you would expect.
+
+**Apple.** App Store Connect → the version page → **App Review Information**.
+Tick **Sign-In Required** and fill User Name and Password; the free-text
+**Notes** box beneath it takes everything else, and there is an **Attachment**
+slot if a demo video is ever easier than an explanation. Fill in the contact
+name, phone and email above it too — that is who Apple calls if review stalls.
+Do not confuse Notes with *What's New in This Version* on the same page, which is
+public release-note text.
+
+If you send a build to **external** TestFlight testers it goes through Beta App
+Review, which reads its own copy under TestFlight → **Test Information → Review
+Notes**. Internal testers skip review entirely.
+
+**Google.** There is no reviewer-notes field. The only free text the review team
+reliably reads is **Policy → App content → App access**: choose *All or some
+functionality is restricted*, add an instruction, and the **Any other
+instructions** box has to carry everything Apple's Notes field would. Release
+notes on a track are the public *What's new*, not reviewer instructions. After a
+rejection the only channel is the appeal form in the rejection email.
+
+**What to write.** The same four points on both, since all four map to a
+guideline someone might otherwise raise:
+
+> The app is entirely behind a login. The credentials above are a verified,
+> non-admin account already joined to a game in progress.
+>
+> Free contest, no stakes, no real-money element, no simulated gambling. Official
+> rules, including the statement that Apple is not a sponsor, are in-app at
+> Menu → Rules.
+>
+> Player display names are user-generated and shown to other players on the
+> standings. Reporting is at Menu → Report an issue → Player's name, and reports
+> land in an admin queue.
+>
+> Fixture and result data comes from football-data.org, credited in-app and at
+> /policy.
+
+For Apple, name the guideline numbers — 5.3.1 and 5.3.2 for the contest, 1.2 for
+the user-generated names. Reviewers work from that list, and pointing at the one
+you have already answered saves a round trip. Drop the numbers for Google, where
+they mean nothing.
 
 ## Store listing assets
 

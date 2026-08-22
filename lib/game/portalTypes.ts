@@ -168,6 +168,20 @@ export interface AdminOverview {
     weeks: number;
   }>;
   teamsSeeded: number;
+  /**
+   * The last resolution the admin can undo, if any. Present even when the
+   * resolution finished the game (and so left `current` null) — that's the
+   * accident most worth reversing.
+   */
+  recovery: {
+    gameId: string;
+    no: number;
+    /** The game week that would go back into play. */
+    gameWeek: number;
+    matchday: number;
+    /** True when that resolution also ended the game. */
+    endedGame: boolean;
+  } | null;
 }
 
 /** One row of the game standings, ranked server-side. */
