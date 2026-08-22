@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { TeamCrest } from "./TeamCrest";
+import { PickRoster } from "./PickRoster";
+import { ResultMark } from "@/components/ui/ResultMark";
+import { teamWeekMeta } from "@/lib/game/pickMeta";
 import type { PickSummary } from "@/lib/game/portalTypes";
 import styles from "./TopPicks.module.css";
 
@@ -34,16 +37,18 @@ function hintFor(summary: PickSummary): string {
     : `Open for picks — ${picks} in, from players already through to this week.${dropped}`;
 }
 
-const STATE_MARK: Record<string, string> = { safe: "✓", out: "✕", pending: "" };
-
 /**
  * One game week's most-picked teams, with who's on each one — shared by the
  * dashboard and make-selection so players see the same live board wherever
  * they're deciding. Hook-free: renders on the server or inside an island.
  *
- * A board is always exactly one week (see getPickSummary), and every player on
- * it can still be in that week. Where the summary carries per-player state,
- * names show it: who is already through, and who is still playing for it.
+ * Each row is banded by how that team's week went, the way the league table
+ * bands its last five: green when everyone on the team went through, red when
+ * nobody did, grey when it split. A split is a draw — the players who came
+ * through it are the ones who played a wildcard.
+ *
+ * Rows show the first few names per line and link to the team's own page for
+ * the rest; nobody needs forty names on a summary board.
  */
 export function TopPicks({
   summary,
@@ -65,42 +70,60 @@ export function TopPicks({
         <p className="lms-head__hint">{hintFor(summary)}</p>
       </div>
       <ol className={styles.list}>
-        {top.map((t) => (
-          <li key={t.teamApiId} className={styles.row}>
-            <TeamCrest crest={t.crest} tla={t.tla} />
-            <span className={styles.meta}>
-              <span className={styles.name}>{t.shortName || t.name}</span>
-              {showPlayers && t.players.length > 0 && (
-                <span className={styles.players}>
-                  {t.roster
-                    ? t.roster.map((p, i) => (
-                        <span key={`${p.name}-${i}`} className={styles.player} data-state={p.state}>
-                          {p.name}
-                          {STATE_MARK[p.state] && (
-                            <span className={styles.mark} aria-hidden="true">
-                              {STATE_MARK[p.state]}
-                            </span>
-                          )}
-                          {i < t.roster!.length - 1 ? ", " : ""}
-                        </span>
-                      ))
-                    : t.players.join(", ")}
-                  {/* players is server-capped; count is the real total */}
-                  {t.count > t.players.length && ` +${t.count - t.players.length} more`}
+        {top.map((t) => {
+          const week = teamWeekMeta(t.counts, t.count, summary.state);
+          const share =
+            summary.totalPicks > 0 ? Math.round((t.count / summary.totalPicks) * 100) : 0;
+          return (
+            <li key={t.teamApiId} className={styles.row} data-tone={week.tone}>
+              {/* The whole row opens the team's week — that's where the full
+                  list of names lives. */}
+              <Link
+                href={`/picks/${summary.gameWeek}/${t.tla.toLowerCase()}`}
+                className={styles.rowLink}
+              >
+                <TeamCrest crest={t.crest} tla={t.tla} />
+                <span className={styles.meta}>
+                  <span className={styles.titleLine}>
+                    <span className={styles.name}>{t.shortName || t.name}</span>
+                    {week.mark && (
+                      <span className={styles.disc}>
+                        <ResultMark kind={week.mark} size={11} label={week.detail} />
+                      </span>
+                    )}
+                    <span className={styles.tally} data-nums>
+                      {week.label}
+                    </span>
+                    <span className={styles.share} data-nums>
+                      {t.count} &middot; {share}%
+                    </span>
+                    {t.wildcards > 0 && (
+                      <span className={styles.wcCount} title="Wildcards played on this team">
+                        {t.wildcards} WC
+                      </span>
+                    )}
+                  </span>
+                  {showPlayers && t.roster && t.roster.length > 0 && (
+                    <PickRoster roster={t.roster} counts={t.counts} perLine={3} />
+                  )}
+                  {showPlayers && !t.roster && t.players.length > 0 && (
+                    <span className={styles.plainNames}>
+                      {t.players.join(", ")}
+                      {t.count > t.players.length && ` +${t.count - t.players.length}`}
+                    </span>
+                  )}
                 </span>
-              )}
-            </span>
-            <span className={styles.bar} aria-hidden="true">
+              </Link>
+              {/* Share of the week's picks, as a hairline along the row's
+                  bottom edge — popularity without taking a column. */}
               <span
-                className={styles.fill}
-                style={{ width: `${Math.max(8, (t.count / max) * 100)}%` }}
+                className={styles.bar}
+                style={{ width: `${Math.max(6, (t.count / max) * 100)}%` }}
+                aria-hidden="true"
               />
-            </span>
-            <span className={styles.count} data-nums>
-              {t.count}
-            </span>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ol>
       {summary.totalPicks > 0 && (
         <Link href={`/picks?week=${summary.gameWeek}`} className={styles.allLink}>

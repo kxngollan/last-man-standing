@@ -20,7 +20,7 @@ export default async function MakeSelectionPage() {
     getGameStateForUser(session.user.id),
     // The week being picked, and only players who can be in it. Compact: a few
     // names per team, "+N more" covers the rest.
-    getPickSummary({ playersPerTeam: 3, withState: true }).catch(() => null),
+    getPickSummary({ playersPerTeam: 9, withState: true }).catch(() => null),
   ]);
   const myPick = state.myPick;
 

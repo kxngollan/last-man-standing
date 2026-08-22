@@ -43,14 +43,107 @@
   gap: var(--space-xs);
 }
 .row {
+  border: 1px solid var(--color-rule);
+  border-inline-start: 4px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper);
+}
+/* The whole row is the link to the team's week. */
+.rowLink {
   display: grid;
+  /* pos · crest · name · outcome (1fr, takes the slack) · count */
   grid-template-columns: 1.5rem auto minmax(6rem, auto) minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-md);
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-card);
-  background: var(--color-paper);
+  color: inherit;
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    border-color: var(--color-rule-2);
+  }
+  .rowLink:hover .name {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+/* How the team's week went, in one colour: everyone through, nobody through,
+   or split — a draw, where the only survivors played a wildcard. */
+.row[data-tone='through'] {
+  background: var(--color-safe-wash);
+  border-color: var(--color-safe);
+  border-inline-start-color: var(--color-safe);
+}
+.row[data-tone='out'] {
+  background: var(--color-out-wash);
+  border-color: color-mix(in oklch, var(--color-out) 45%, transparent);
+  border-inline-start-color: var(--color-out);
+}
+.row[data-tone='split'] {
+  background: var(--color-paper-2);
+  border-inline-start-color: var(--color-neutral);
+}
+.row[data-tone='pending'],
+.row[data-tone='open'] {
+  border-inline-start-color: var(--color-rule-2);
+}
+
+.outcome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+/* The result disc, the same shape as the league table's last five. */
+.disc {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  /* paper flips with the theme, so the mark stays readable on both fills */
+  color: var(--color-paper);
+  background: var(--color-neutral);
+}
+.row[data-tone='through'] .disc {
+  background: var(--color-safe-ink);
+}
+.row[data-tone='out'] .disc {
+  background: var(--color-out);
+}
+.tally {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-ink-2);
+  white-space: nowrap;
+}
+.row[data-tone='through'] .tally {
+  color: var(--color-safe-ink);
+}
+.row[data-tone='out'] .tally {
+  color: var(--color-out-ink);
+}
+
+/* Wildcards: how many on this team, and which player played one. */
+.wcCount,
+.wc {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-wild-ink);
+  background: var(--color-wild-wash);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-2xs);
+  white-space: nowrap;
+  flex: none;
+}
+.wc {
+  margin-inline-start: 0.25em;
 }
 .pos {
   font-family: var(--font-mono);
@@ -66,19 +159,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.bar {
-  height: 10px;
-  border-radius: var(--radius-pill);
-  background: var(--color-paper-2);
-  overflow: hidden;
-}
-.fill {
-  display: block;
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--color-accent);
-  transition: width var(--dur-mid) var(--ease-out);
-}
 .count {
   font-family: var(--font-mono);
   font-weight: 700;
@@ -91,46 +171,23 @@
   font-size: var(--text-xs);
 }
 
-/* Phones: the name gets the room; bars stay readable. */
+/* Phones: the name and the result get the room. */
 @media (max-width: 27rem) {
-  .row {
-    grid-template-columns: 1.25rem auto minmax(0, 1fr) auto;
+  .rowLink {
+    grid-template-columns: 1.25rem auto minmax(0, 1fr);
+    row-gap: var(--space-2xs);
   }
-  .bar {
-    display: none;
+  .outcome {
+    grid-column: 3;
+  }
+  .count {
+    grid-column: 2 / -1;
   }
 }
 
-/* Who's behind each pick — its own full-width row under the bar, so any
-   number of names wraps without squeezing the bar's column. */
+/* Who's behind each pick — its own full-width row, holding the grouped
+   result lines (through / out / to play). */
 .players {
   grid-column: 1 / -1;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--color-muted);
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-/* A player's standing in the week this board is for. */
-.player[data-state='safe'] {
-  color: var(--color-safe-ink);
-  font-weight: 700;
-}
-/* Out: greyed, struck through, and marked. The strike goes on the name alone
-   — on the whole span it would draw through the mark beside it. */
-.player[data-state='out'] {
-  color: var(--color-muted);
-}
-.player[data-state='out'] .playerName {
-  text-decoration: line-through;
-}
-.player[data-state='out'] .mark {
-  color: var(--color-out-ink);
-}
-.mark {
-  margin-inline-start: 0.2em;
-}
-.player[data-state='pending'] .mark {
-  opacity: 0.5;
+  min-width: 0;
 }

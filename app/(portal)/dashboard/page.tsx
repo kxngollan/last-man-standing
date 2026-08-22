@@ -37,8 +37,9 @@ export default async function DashboardPage({
 
   const [state, summary] = await Promise.all([
     getGameStateForUser(session.user.id, { standingsWeek: week }),
-    // Compact board: a few names per team, "+N more" covers the rest.
-    getPickSummary({ gameWeek: week, playersPerTeam: 3, withState: true }).catch(() => null),
+    // Compact board: a few names per result line, and the team's own page
+    // (/picks/[week]/[team]) has the rest.
+    getPickSummary({ gameWeek: week, playersPerTeam: 9, withState: true }).catch(() => null),
   ]);
 
   if (!state.game) {

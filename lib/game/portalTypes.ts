@@ -281,10 +281,18 @@ export interface PickSummary {
     tla: string;
     crest: string | null;
     count: number;
+    /**
+     * How this team's week went for the players on it — all of them, not just
+     * the named ones. A won fixture puts everyone through; a draw puts through
+     * only the wildcards, which is why "2 of 10 through" happens.
+     */
+    counts: { safe: number; out: number; pending: number };
+    /** How many of them played a wildcard on it. */
+    wildcards: number;
     /** Public display names ("Sam K.") of the players on this team. */
     players: string[];
     /** The same players with their live state — only when the caller asks. */
-    roster?: Array<{ name: string; state: LivePickState }>;
+    roster?: Array<{ name: string; state: LivePickState; isWildcard: boolean }>;
   }>;
 }
 

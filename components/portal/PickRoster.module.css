@@ -1,0 +1,76 @@
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* One state per line: through, out, still to play. */
+.line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  min-width: 0;
+  font-size: var(--text-xs);
+}
+
+/* The label carries the colour and the count, so the names can stay quiet. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.line[data-state='safe'] .tag {
+  color: var(--color-safe-ink);
+}
+.line[data-state='out'] .tag {
+  color: var(--color-out-ink);
+}
+
+.names {
+  min-width: 0;
+  color: var(--color-muted);
+  font-weight: 500;
+  /* Boards keep every line to one row and ellipsize; the team page wraps. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roster[data-full='true'] .names {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.roster[data-full='true'] .line {
+  align-items: flex-start;
+  font-size: var(--text-sm);
+}
+
+.line[data-state='out'] .playerName {
+  text-decoration: line-through;
+}
+.more {
+  color: var(--color-ink-2);
+  font-weight: 700;
+}
+
+/* Wildcard played, right where the name is. */
+.wc {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-wild-ink);
+  background: var(--color-wild-wash);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-2xs);
+  margin-inline-start: 0.25em;
+  white-space: nowrap;
+}

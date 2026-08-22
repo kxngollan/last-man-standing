@@ -378,7 +378,10 @@ async function buildWeekBoard(
     picks.filter((p) => p.matchday === inPlayMd).map((p) => [String(p.entryId), p])
   );
 
-  const rosterByTeam = new Map<number, Array<{ name: string; state: LivePickState }>>();
+  const rosterByTeam = new Map<
+    number,
+    Array<{ name: string; state: LivePickState; isWildcard: boolean }>
+  >();
   const counts = { safe: 0, pending: 0, out: 0 };
   let excluded = 0;
 
@@ -409,23 +412,36 @@ async function buildWeekBoard(
     }
 
     counts[live]++;
-    const row = { name: nameById.get(String(p.userId)) ?? "Player", state: live };
     const list = rosterByTeam.get(p.teamApiId) ?? [];
-    list.push(row);
+    list.push({
+      name: nameById.get(String(p.userId)) ?? "Player",
+      state: live,
+      // Public on purpose: a wildcard changes what a draw means for that
+      // player, so everyone reading the board should see it.
+      isWildcard: p.isWildcard,
+    });
     rosterByTeam.set(p.teamApiId, list);
   }
 
   const rows = [...rosterByTeam.entries()]
     .map(([apiId, roster]) => {
       const t = teamById.get(apiId)!;
-      // Certainties first, then alphabetical — a capped board shows the names
-      // that are actually settled rather than an arbitrary few.
+      // Grouped by state — through, then out, then still to play — each
+      // alphabetical. Boards render one line per group and cap the names, so
+      // ordering this way keeps every line populated instead of spending the
+      // whole allowance on one of them.
+      const order = { safe: 0, out: 1, pending: 2 } as const;
       const sorted = roster.sort(
-        (a, b) =>
-          (a.state === "pending" ? 1 : 0) - (b.state === "pending" ? 1 : 0) ||
-          a.name.localeCompare(b.name)
+        (a, b) => order[a.state] - order[b.state] || a.name.localeCompare(b.name)
       );
       const shown = opts.playersPerTeam != null ? sorted.slice(0, opts.playersPerTeam) : sorted;
+      // Counted over everyone on the team, not just the names that fit.
+      const teamCounts = { safe: 0, out: 0, pending: 0 };
+      let wildcards = 0;
+      for (const r of sorted) {
+        teamCounts[r.state]++;
+        if (r.isWildcard) wildcards++;
+      }
       return {
         teamApiId: t.apiId,
         name: t.name,
@@ -433,6 +449,8 @@ async function buildWeekBoard(
         tla: t.tla,
         crest: t.crest ?? null,
         count: sorted.length,
+        counts: teamCounts,
+        wildcards,
         players: shown.map((r) => r.name),
         ...(opts.withState ? { roster: shown } : {}),
       };

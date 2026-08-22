@@ -31,6 +31,67 @@ export const RESULT_META: Record<string, PickMeta> = {
   },
 };
 
+/** How a whole team's game week reads on a picks board. */
+export interface TeamWeekMeta {
+  /** Colour band: green all through, red all out, grey anything in between. */
+  tone: "through" | "out" | "split" | "pending" | "open";
+  /** Mark beside the team name, or null before there's anything to say. */
+  mark: ResultMarkKind | null;
+  /** The tally, e.g. "10/10 through". */
+  label: string;
+  /** Spelled out, for a screen reader and the row's title. */
+  detail: string;
+}
+
+/**
+ * A team's week from the counts of the players who picked it.
+ *
+ * A won fixture puts every one of them through, a lost one puts none through,
+ * and a draw splits them: only the players who played a wildcard survive it.
+ * That's why a tally like "2/10 through" is a real result and not a rounding
+ * error — those two are the wildcards.
+ */
+export function teamWeekMeta(
+  counts: { safe: number; out: number; pending: number },
+  total: number,
+  weekState: "played" | "in-play" | "open"
+): TeamWeekMeta {
+  const { safe, out, pending } = counts;
+
+  // A week nobody has played yet: the story is who's on it, not how it went.
+  if (weekState === "open") {
+    return {
+      tone: "open",
+      mark: null,
+      label: `${total} in`,
+      detail: `${total} ${total === 1 ? "player" : "players"} on this team`,
+    };
+  }
+  if (safe + out === 0) {
+    // Nothing decided yet — so the number on it is the only news there is.
+    return {
+      tone: "pending",
+      mark: "minus",
+      label: `${total} to play`,
+      detail: `${total} ${total === 1 ? "player" : "players"} still to play`,
+    };
+  }
+
+  const label = `${safe}/${total} through`;
+  if (out === 0 && pending === 0) {
+    return { tone: "through", mark: "tick", label, detail: `All ${total} through` };
+  }
+  if (safe === 0 && pending === 0) {
+    return { tone: "out", mark: "cross", label, detail: `All ${total} knocked out` };
+  }
+  return {
+    tone: "split",
+    mark: "minus",
+    label,
+    detail: `${safe} of ${total} through, ${out} out${pending ? `, ${pending} still to play` : ""}`,
+  };
+}
+
 /** Wildcard weeks read differently: a draw is a save, not an exit. */
 export function wildcardMeta(p: { tla: string | null; result: string }): PickMeta {
   if (!p.tla) {

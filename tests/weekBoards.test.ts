@@ -193,6 +193,47 @@ describe("week boards", () => {
     expect(rosterOf(week1)).toEqual({ TAA: ["Alice T.:safe"], TBA: ["Bob T.:out"] });
   });
 
+  it("splits a drawn team: the wildcards through, everyone else out", async () => {
+    await seedTeams(4);
+    const game = await seedGame();
+    // Three on the drawing team; only Amy played her wildcard on it.
+    const amy = await seedEntry(game._id, "Amy", { wildcardUsed: true });
+    const ben = await seedEntry(game._id, "Ben");
+    const cal = await seedEntry(game._id, "Cal");
+    await seedFixtures(1, [{ home: 1, away: 2, kickoff: past(4), status: "FINISHED", winner: "DRAW" }]);
+    await seedPick({ gameId: game._id, entryId: amy.entry._id, userId: amy.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0), isWildcard: true });
+    await seedPick({ gameId: game._id, entryId: ben.entry._id, userId: ben.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0) });
+    await seedPick({ gameId: game._id, entryId: cal.entry._id, userId: cal.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0) });
+
+    const [team] = (await board(1)).teams;
+    expect(team.count).toBe(3);
+    expect(team.counts).toEqual({ safe: 1, out: 2, pending: 0 });
+    expect(team.wildcards).toBe(1);
+    // The wildcard is on the row, so everyone can see why she survived it.
+    expect(team.roster).toEqual([
+      { name: "Amy T.", state: "safe", isWildcard: true },
+      { name: "Ben T.", state: "out", isWildcard: false },
+      { name: "Cal T.", state: "out", isWildcard: false },
+    ]);
+  });
+
+  it("counts wildcards over the whole team, not just the names that fit", async () => {
+    await seedTeams(4);
+    const game = await seedGame();
+    for (const name of ["Amy", "Ben", "Cal"]) {
+      const e = await seedEntry(game._id, name, { wildcardUsed: true });
+      await seedPick({ gameId: game._id, entryId: e.entry._id, userId: e.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0), isWildcard: true });
+    }
+    await seedFixtures(1, [{ home: 1, away: 2, kickoff: future(), status: "TIMED" }]);
+
+    const summary = await getPickSummary({ gameWeek: 1, playersPerTeam: 1, withState: true });
+    const [team] = summary!.teams;
+    expect(team.players).toHaveLength(1); // capped for the compact board
+    expect(team.count).toBe(3);
+    expect(team.wildcards).toBe(3); // still the real number
+    expect(team.counts).toEqual({ safe: 0, out: 0, pending: 3 });
+  });
+
   it("serves one asked-for week, and never a week that isn't open yet", async () => {
     await midWeekOne();
 
@@ -203,6 +244,30 @@ describe("week boards", () => {
     expect((await getPickSummary({ gameWeek: 0 }))?.matchday).toBe(1);
     // Default is the week open for picks.
     expect((await getPickSummary())?.matchday).toBe(2);
+  });
+
+  it("spends a capped board's names on the through line first", async () => {
+    await seedTeams(4);
+    const game = await seedGame();
+    // A draw: the one wildcard is through, the other five are out. A cap of
+    // three has to show the survivor, not three of the casualties.
+    const amy = await seedEntry(game._id, "Zoe", { wildcardUsed: true });
+    await seedFixtures(1, [{ home: 1, away: 2, kickoff: past(4), status: "FINISHED", winner: "DRAW" }]);
+    await seedPick({ gameId: game._id, entryId: amy.entry._id, userId: amy.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0), isWildcard: true });
+    for (const name of ["Ann", "Bob", "Cal", "Dee", "Eve"]) {
+      const e = await seedEntry(game._id, name);
+      await seedPick({ gameId: game._id, entryId: e.entry._id, userId: e.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0) });
+    }
+
+    const summary = await getPickSummary({ gameWeek: 1, playersPerTeam: 3, withState: true });
+    const [team] = summary!.teams;
+    expect(team.counts).toEqual({ safe: 1, out: 5, pending: 0 });
+    // "Zoe" is last alphabetically and still comes first: state leads.
+    expect(team.roster?.map((r) => `${r.name}:${r.state}`)).toEqual([
+      "Zoe T.:safe",
+      "Ann T.:out",
+      "Bob T.:out",
+    ]);
   });
 
   it("caps the names per team but keeps the real count, settled names first", async () => {
@@ -218,7 +283,7 @@ describe("week boards", () => {
     const team = board!.teams[0];
     expect(team.count).toBe(2);
     expect(team.players).toEqual(["Amy T."]); // alphabetical among equals
-    expect(team.roster).toEqual([{ name: "Amy T.", state: "safe" }]);
+    expect(team.roster).toEqual([{ name: "Amy T.", state: "safe", isWildcard: false }]);
   });
 });
 
