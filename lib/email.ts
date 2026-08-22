@@ -180,3 +180,96 @@ export async function sendPasswordResetEmail(to: string, link: string): Promise<
     }),
   });
 }
+
+export type ResultEmailKind = "through" | "out" | "winner" | "all-out";
+
+export interface ResultEmailOptions {
+  kind: ResultEmailKind;
+  /** The game week just played. */
+  gameWeek: number;
+  /** The team they had on it, when they had one. */
+  teamName?: string | null;
+  /** Players still standing — only meaningful for "through". */
+  playersLeft?: number;
+}
+
+/** "Team X" → "with Team X on it"; nothing when the week passed them by. */
+function withTeam(teamName?: string | null): string {
+  return teamName ? ` with ${teamName} on it` : "";
+}
+
+/**
+ * The week's verdict, sent once per player per game week: through, out, won,
+ * or the all-out draw where nobody wins. Transactional — it's the result of a
+ * game they entered, and the only push a web player gets.
+ */
+export async function sendResultEmail(
+  to: string,
+  link: string,
+  opts: ResultEmailOptions
+): Promise<void> {
+  const { kind, gameWeek, teamName, playersLeft } = opts;
+  const left =
+    playersLeft === 1 ? "1 player left" : `${playersLeft ?? 0} players left`;
+
+  const copy = {
+    through: {
+      subject: `You're through to game week ${gameWeek + 1}`,
+      headline: `Through to week&nbsp;${gameWeek + 1}`,
+      preheader: `Week ${gameWeek} went your way. Time to pick again.`,
+      text: `Week ${gameWeek} went your way${withTeam(teamName)} — you're still standing.\n\n${left}. Get your week ${gameWeek + 1} pick in before the deadline:\n${link}`,
+      body: `Week&nbsp;${gameWeek} went your way${withTeam(teamName)} &mdash; you&rsquo;re still standing.`,
+      ctaLabel: `Pick for week ${gameWeek + 1}`,
+      ticketNote: `Still standing &middot; ${left}`,
+    },
+    out: {
+      subject: `You're out — game week ${gameWeek}`,
+      headline: `Knocked out in week&nbsp;${gameWeek}`,
+      preheader: `Week ${gameWeek} didn't go your way.`,
+      text: `Week ${gameWeek} didn't go your way${withTeam(teamName)} — you're out of this game.\n\nThe table shows how far everyone got, and you're in from the first week of the next game:\n${link}`,
+      body: `Week&nbsp;${gameWeek} didn&rsquo;t go your way${withTeam(teamName)} &mdash; you&rsquo;re out of this one. There&rsquo;s always the next game.`,
+      ctaLabel: "See the table",
+      ticketNote: `Knocked out &middot; week ${gameWeek}`,
+    },
+    winner: {
+      subject: "You won Last Man Standing!",
+      headline: "You&rsquo;re the last one&nbsp;standing",
+      preheader: "Everyone else is out. The game is yours.",
+      text: `Everyone else is out — you won it${withTeam(teamName)} in week ${gameWeek}.\n\nTake a look at the final table:\n${link}`,
+      body: `Everyone else is out. You won it${withTeam(teamName)} in week&nbsp;${gameWeek} &mdash; last one standing.`,
+      ctaLabel: "See the final table",
+      ticketNote: `Winner &middot; ${gameWeek} weeks survived`,
+    },
+    "all-out": {
+      subject: `Everyone's out — nobody wins game week ${gameWeek}`,
+      headline: "Everyone&rsquo;s out",
+      preheader: `Week ${gameWeek} took the whole field. Nobody wins.`,
+      text: `Week ${gameWeek} took the whole field${withTeam(teamName)} — nobody wins this one.\n\nA new game starts from scratch, and you're in it:\n${link}`,
+      body: `Week&nbsp;${gameWeek} took the whole field${withTeam(teamName)}. Nobody wins this one &mdash; a new game starts from scratch.`,
+      ctaLabel: "Join the next game",
+      ticketNote: `All out &middot; week ${gameWeek}`,
+    },
+  }[kind];
+
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log(`\n[email] Week ${gameWeek} "${kind}" result for ${to}\n`);
+    return;
+  }
+  await deliver(transporter, {
+    from: FROM,
+    to,
+    subject: copy.subject,
+    text: copy.text,
+    attachments: logoAttachments(),
+    html: flyerHtml({
+      preheader: copy.preheader,
+      headline: copy.headline,
+      body: copy.body,
+      ctaLabel: copy.ctaLabel,
+      link,
+      ticketNote: copy.ticketNote,
+      finePrint: "You get this because you&rsquo;re in the game. One a week, results only.",
+    }),
+  });
+}

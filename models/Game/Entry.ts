@@ -9,6 +9,12 @@ export interface IEntry {
   status: EntryStatus;
   eliminatedAtMatchday: number | null;
   wildcardUsed: boolean;
+  /**
+   * The last game week whose result email this player has been sent. Stops a
+   * repeated (or resumed) notify run emailing the same verdict twice; cleared
+   * by an undo, so a corrected resolution notifies again.
+   */
+  resultEmailedMatchday: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +31,7 @@ const EntrySchema = new Schema<IEntry>(
     },
     eliminatedAtMatchday: { type: Number, default: null },
     wildcardUsed: { type: Boolean, default: false },
+    resultEmailedMatchday: { type: Number, default: null },
   },
   { timestamps: true }
 );

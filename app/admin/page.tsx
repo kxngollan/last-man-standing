@@ -407,6 +407,13 @@ export default function AdminPage() {
           } back in.${body.reopened ? ' The game is running again.' : ''}` +
             ' Heads up: if every fixture in that week is already final, the next automatic check will resolve it again.'
         )
+      } else if (key === 'notify') {
+        setResolveMsg(
+          `Week ${body.gameWeek} results emailed — ${body.sent} sent` +
+            (body.skipped ? `, ${body.skipped} already told` : '') +
+            (body.failed ? `, ${body.failed} failed` : '') +
+            (body.remaining ? `. ${body.remaining} still to go — click again to carry on.` : '.')
+        )
       } else if (key === 'sync') {
         setResolveMsg(
           body.total
@@ -489,6 +496,19 @@ export default function AdminPage() {
     </button>
   )
 
+  // Tell the players how the resolved week went. Idempotent server-side —
+  // anyone already emailed is skipped — so a second click is safe, and is how
+  // a capped run (big game) or a failed send gets picked up.
+  const notifyButton = recovery && (
+    <button
+      className='lms-btn lms-btn--ghost'
+      disabled={busy !== null}
+      onClick={() => action('notify', '/api/admin/notify', { gameId: recovery.gameId })}
+    >
+      {busy === 'notify' ? 'Emailing…' : `Email players their Week ${recovery.gameWeek} result`}
+    </button>
+  )
+
   return (
     <div className={styles.shell}>
       <header className={styles.bar}>
@@ -502,8 +522,8 @@ export default function AdminPage() {
         <div className='lms-head'>
           <h1 className={styles.title}>Game control</h1>
           <p className='lms-head__hint'>
-            Results resolve automatically after each game week. Use the controls below to run a resolution early or
-            start a new game.
+            Results resolve automatically after each game week. Use the controls below to run a resolution early,
+            email players their result, or start a new game.
           </p>
         </div>
 
@@ -524,7 +544,12 @@ export default function AdminPage() {
                     ? `Game ${recovery.no} ended on Week ${recovery.gameWeek}. Undo that below, or start a new game from the panel on the right.`
                     : 'Start one from the panel on the right.'}
                 </p>
-                {undoButton && <div className={styles.actions}>{undoButton}</div>}
+                {undoButton && (
+                  <div className={styles.actions}>
+                    {notifyButton}
+                    {undoButton}
+                  </div>
+                )}
                 {resolveMsg && (
                   <p className={styles.resolved} role='status'>
                     {resolveMsg}
@@ -625,6 +650,7 @@ export default function AdminPage() {
                   >
                     {busy === 'sync' ? 'Syncing…' : 'Sync current matches'}
                   </button>
+                  {notifyButton}
                   {undoButton}
                 </div>
                 {resolveMsg && (

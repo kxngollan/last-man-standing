@@ -408,6 +408,14 @@ export async function unresolveMatchday(gameId: string): Promise<UnresolveResult
         );
         restored = revived.modifiedCount;
 
+        // Whatever verdict went out for this week is void — let the corrected
+        // resolution email its own (lib/game/notify.ts).
+        await Entry.updateMany(
+          { gameId: game._id, resultEmailedMatchday: md },
+          { $set: { resultEmailedMatchday: null } },
+          { session }
+        );
+
         if (reopened) {
           // The winner was crowned by this resolution — uncrown them.
           const uncrowned = await Entry.updateMany(
