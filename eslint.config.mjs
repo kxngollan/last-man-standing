@@ -24,6 +24,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Expo app is its own package, with its own toolchain, its own lockfile
+    // and its own linter (`npm run lint` inside mobile/, which is `expo lint`).
+    // This config is eslint-config-next — Next.js rules, wrong for React
+    // Native — so it stays out, exactly as tsconfig.json already excludes it.
+    "mobile/**",
   ]),
 ]);
 
