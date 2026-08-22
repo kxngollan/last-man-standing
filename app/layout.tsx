@@ -4,6 +4,7 @@ import './globals.css'
 import './ui.css'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import CookieNotice from '@/components/CookieNotice'
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_KEYWORDS } from '@/lib/site'
 
@@ -110,6 +111,7 @@ export default function RootLayout({
           empty text node inside <html> — invalid HTML, hydration error. */}
       {gid ? <GoogleAnalytics gaId={gid} /> : null}
       <Analytics />
+      <SpeedInsights />
     </html>
   )
 }
