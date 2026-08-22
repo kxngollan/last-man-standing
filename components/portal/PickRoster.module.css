@@ -46,7 +46,9 @@
 .roster[data-full='true'] .names {
   white-space: normal;
   overflow-wrap: anywhere;
-  line-height: 1.6;
+  line-height: 1.9;
+  /* The badges here open a tooltip above themselves — nothing to clip. */
+  overflow: visible;
 }
 .roster[data-full='true'] .line {
   align-items: flex-start;
@@ -64,13 +66,16 @@
 /* Wildcard played, right where the name is. */
 .wc {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+  line-height: 1;
+  cursor: help;
   color: var(--color-wild-ink);
   background: var(--color-wild-wash);
+  border: 1px solid color-mix(in oklch, var(--color-wild-ink) 35%, transparent);
   border-radius: var(--radius-pill);
-  padding: 1px var(--space-2xs);
-  margin-inline-start: 0.25em;
+  padding: 2px var(--space-2xs);
+  margin-inline-start: 0.3em;
   white-space: nowrap;
 }

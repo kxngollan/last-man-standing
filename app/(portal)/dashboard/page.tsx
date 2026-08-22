@@ -162,7 +162,8 @@ export default async function DashboardPage({
           </h2>
           <p className="lms-head__hint">
             Survive each week to climb. When one player is left, they win the game. Teams shown are
-            each player&rsquo;s Week {week} pick.
+            each player&rsquo;s Week {week} pick, and <b>WC</b> marks a wildcard played on it &mdash;
+            a draw is enough for those players.
           </p>
         </div>
 

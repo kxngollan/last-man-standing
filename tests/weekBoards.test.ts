@@ -319,6 +319,25 @@ describe("standings rows", () => {
     });
   });
 
+  it("carries a wildcard on the row, so everyone can see who played one", async () => {
+    await seedTeams(4);
+    const game = await seedGame();
+    const amy = await seedEntry(game._id, "Amy", { wildcardUsed: true });
+    const ben = await seedEntry(game._id, "Ben");
+    await seedFixtures(1, [{ home: 1, away: 2, kickoff: past(4), status: "FINISHED", winner: "DRAW" }]);
+    await seedPick({ gameId: game._id, entryId: amy.entry._id, userId: amy.userId, matchday: 1, teamApiId: 1, fixtureApiId: fixtureApiId(1, 0), isWildcard: true });
+    await seedPick({ gameId: game._id, entryId: ben.entry._id, userId: ben.userId, matchday: 1, teamApiId: 2, fixtureApiId: fixtureApiId(1, 0) });
+
+    const { standings, myStanding } = await getGameStateForUser(String(amy.userId));
+    const byName = Object.fromEntries(standings.map((r) => [r.name, r.pick]));
+
+    // The draw put Amy through and knocked Ben out — the wildcard is the
+    // reason, so the row has to say so.
+    expect(byName["Amy T."]).toMatchObject({ teamName: "Team A", state: "safe", isWildcard: true });
+    expect(byName["Ben T."]).toMatchObject({ teamName: "Team B", state: "out", isWildcard: false });
+    expect(myStanding?.pick?.isWildcard).toBe(true);
+  });
+
   it("keeps the flat field in step with the week on screen", async () => {
     const { alice } = await midWeekOne();
     const week1 = await getGameStateForUser(String(alice.userId), { standingsWeek: 1 });

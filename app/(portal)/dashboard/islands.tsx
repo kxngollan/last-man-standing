@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TeamCrest } from "@/components/portal/TeamCrest";
 import { ResultMark, markFor } from "@/components/ui/ResultMark";
+import { WildcardBadge } from "@/components/portal/WildcardBadge";
 import type { StandingRow, StandingsPage } from "@/lib/game/portalTypes";
 import styles from "./page.module.css";
 
@@ -122,6 +123,12 @@ function StandingRowItem({ p }: { p: StandingRow }) {
           <>
             {p.pick.tla && <TeamCrest crest={p.pick.crest} tla={p.pick.tla} />}
             <span className={styles.pickName}>{p.pick.teamName ?? "—"}</span>
+            {/* A wildcard turns a draw into a pass, so it changes what this
+                row's result means — everyone reading the board needs it, and
+                the badge explains the rule on hover or tap. Skipped on a
+                legacy teamless wildcard, where the team column already says
+                "Wildcard". */}
+            {p.pick.isWildcard && p.pick.tla !== "WC" && <WildcardBadge you={p.you} />}
             {/* Tick, cross or dash: how that week went for them, at a glance. */}
             <ResultMark
               kind={markFor(p.pick.state)}

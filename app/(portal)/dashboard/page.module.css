@@ -167,6 +167,8 @@
   filter: grayscale(1);
   opacity: 0.6;
 }
+/* Note: the greying above is deliberately targeted, so the wildcard badge in
+   this row keeps its amber — it explains how the week ended for them. */
 .rank {
   grid-area: rank;
   font-family: var(--font-mono);

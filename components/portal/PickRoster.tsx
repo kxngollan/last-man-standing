@@ -1,4 +1,5 @@
 import { ResultMark, markFor } from "@/components/ui/ResultMark";
+import { WildcardBadge } from "./WildcardBadge";
 import type { LivePickState } from "@/lib/game/portalTypes";
 import styles from "./PickRoster.module.css";
 
@@ -7,6 +8,10 @@ export interface RosterEntry {
   state: LivePickState;
   isWildcard: boolean;
 }
+
+/** Said in full wherever the badge has room to say it. */
+export const WILDCARD_RULE =
+  "Played their wildcard this week — if their team draws, they’re still safe.";
 
 /** The three lines, in the order they matter. */
 const GROUPS: Array<{ state: LivePickState; label: string }> = [
@@ -61,12 +66,18 @@ export function PickRoster({
                 <span key={`${p.name}-${i}`} className={styles.player}>
                   <span className={styles.playerName}>{p.name}</span>
                   {/* A wildcard changes what a draw means for them, so
-                      everyone reading the board gets to see who played one. */}
-                  {p.isWildcard && (
-                    <span className={styles.wc} title="Played their wildcard">
-                      WC
-                    </span>
-                  )}
+                      everyone reading the board gets to see who played one.
+                      The full list is the one place not wrapped in a link, so
+                      it can afford a badge that explains itself; board rows
+                      make do with a hover title. */}
+                  {p.isWildcard &&
+                    (full ? (
+                      <WildcardBadge />
+                    ) : (
+                      <span className={styles.wc} title={WILDCARD_RULE}>
+                        WC
+                      </span>
+                    ))}
                   {i < shown.length - 1 ? ", " : ""}
                 </span>
               ))}

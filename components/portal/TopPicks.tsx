@@ -100,7 +100,10 @@ export function TopPicks({
                       {t.count} &middot; {share}%
                     </span>
                     {t.wildcards > 0 && (
-                      <span className={styles.wcCount} title="Wildcards played on this team">
+                      <span
+                        className={styles.wcCount}
+                        title={`${t.wildcards} played a wildcard on this team — a draw is enough for them`}
+                      >
                         {t.wildcards} WC
                       </span>
                     )}

@@ -123,7 +123,10 @@ export default async function PicksPage({ searchParams }: { searchParams: Promis
                       {week.label}
                     </span>
                     {t.wildcards > 0 && (
-                      <span className={styles.wcCount} title={`${t.wildcards} played a wildcard on this team`}>
+                      <span
+                        className={styles.wcCount}
+                        title={`${t.wildcards} played a wildcard on this team — a draw is enough for them`}
+                      >
                         {t.wildcards} WC
                       </span>
                     )}
